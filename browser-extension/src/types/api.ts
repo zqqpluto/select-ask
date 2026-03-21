@@ -35,27 +35,3 @@ export interface QuestionsRequest {
 export interface QuestionsResponse {
   questions: string[];
 }
-
-export interface UsageRequest {
-  model: string;
-  action: 'chat' | 'question';
-}
-
-export interface UsageResponse {
-  success: boolean;
-}
-
-export interface StatsOverview {
-  today: {
-    activeUsers: number;
-    totalRequests: number;
-  };
-  trend: {
-    dailyUsers: number[];
-    dailyRequests: number[];
-  };
-  byModel: Array<{
-    model: string;
-    count: number;
-  }>;
-}

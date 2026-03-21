@@ -344,22 +344,24 @@ export default function App() {
           });
 
           // 自动生成推荐问题
-          const config = await getAppConfig();
-          if (config.preferences?.autoGenerateQuestions !== false && session.selectedText) {
-            setIsGeneratingQuestions(true);
-            try {
-              const questions = await generateRecommendedQuestions(
-                session.selectedText,
-                chatInput.trim(),
-                fullContent
-              );
-              setRecommendedQuestions(questions);
-            } catch (error) {
-              console.error('Failed to generate questions:', error);
-            } finally {
-              setIsGeneratingQuestions(false);
+          (async () => {
+            const config = await getAppConfig();
+            if (config.preferences?.autoGenerateQuestions !== false && session.selectedText) {
+              setIsGeneratingQuestions(true);
+              try {
+                const questions = await generateRecommendedQuestions(
+                  session.selectedText,
+                  chatInput.trim(),
+                  fullContent
+                );
+                setRecommendedQuestions(questions);
+              } catch (error) {
+                console.error('Failed to generate questions:', error);
+              } finally {
+                setIsGeneratingQuestions(false);
+              }
             }
-          }
+          })();
         }
       });
 
@@ -1026,40 +1028,6 @@ export default function App() {
                                 {msg.content}
                               </div>
                             )}
-                          </div>
-                        ))}
-                                  <div className="flex items-center gap-2 mt-3 pt-2 border-t border-[rgba(59,130,246,0.06)]">
-                                    <button
-                                      onClick={async () => {
-                                        const success = await copyToClipboard(msg.content);
-                                        if (success) {
-                                          setCopiedMessageId(idx);
-                                          setTimeout(() => setCopiedMessageId(null), 2000);
-                                        }
-                                      }}
-                                      className="flex items-center gap-1 px-2 py-1 text-[12px] text-[#86909c] hover:text-[#165dff] hover:bg-[rgba(59,130,246,0.05)] rounded transition-colors"
-                                    >
-                                      {copiedMessageId === idx ? (
-                                        <>
-                                          <svg className="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                          </svg>
-                                          已复制
-                                        </>
-                                      ) : (
-                                        <>
-                                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" strokeWidth={2}></rect>
-                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" strokeWidth={2}></path>
-                                          </svg>
-                                          复制
-                                        </>
-                                      )}
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
                           </div>
                         ))}
 

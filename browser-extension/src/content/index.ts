@@ -9,7 +9,6 @@ import {
   getHistory,
 } from '../utils/history-manager';
 import { getSelectedChatModel, getAppConfig, saveAppConfig, setSelectedChatModel, getSelectedChatModels, getDisplayMode, setDisplayMode } from '../utils/config-manager';
-import { trackFeatureUse } from '../utils/analytics';
 import { extractMainContent, truncateContent, generateSummaryPrompt } from '../utils/content-extractor';
 import type { HistorySession, HistoryMessage } from '../types/history';
 import type { ProviderType } from '../types/llm';
@@ -3699,8 +3698,6 @@ async function handleQuestionClick(question: string): Promise<void> {
 
   // 获取当前选中的模型用于统计
   const selectedModel = await getSelectedChatModel();
-  // 统计常见问题功能使用
-  trackFeatureUse('questions', selectedModel?.modelId);
 
   // 恢复选区高亮
   restoreSelectionRange();
@@ -3817,20 +3814,15 @@ async function handleMenuAction(action: string): Promise<void> {
 
   if (action === 'question') {
     console.log('=== Handling question action ===');
-    // 统计提问功能使用
-    trackFeatureUse('ask', selectedModel?.modelId);
     // 显示问题输入框，让用户输入问题
     await showCustomQuestionInputBox(text, context, dropdownRect);
   } else if (action === 'summarize') {
     console.log('=== Handling summarize action ===');
     // 统计总结功能使用
-    trackFeatureUse('summarize', selectedModel?.modelId);
     // 显示页面总结
     await showPageSummary(dropdownRect);
   } else if (action === 'explain' || action === 'translate') {
     console.log('=== Handling explain/translate action ===');
-    // 统计功能使用
-    trackFeatureUse(action as 'explain' | 'translate', selectedModel?.modelId);
     // 显示响应浮动框
     await showResponseFloatingBox(title, text, context, dropdownRect);
   } else {

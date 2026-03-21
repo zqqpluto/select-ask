@@ -3,7 +3,6 @@ import { useAppStore } from '../store/index';
 import { handleLLMStream } from './llm-service';
 import { LLM_STREAM_PORT_NAME } from '../types/messages';
 import { cleanExpiredSessions } from '../utils/history-manager';
-import { initAnalytics, trackStartup } from '../utils/analytics';
 
 // 插件安装时初始化
 chrome.runtime.onInstalled.addListener(async () => {
@@ -22,10 +21,6 @@ chrome.runtime.onInstalled.addListener(async () => {
 
   // 清理过期的历史记录
   await cleanExpiredSessions();
-
-  // 初始化统计并上报启动
-  await initAnalytics();
-  await trackStartup();
 });
 
 // 插件启动时加载状态
@@ -33,10 +28,6 @@ chrome.runtime.onStartup.addListener(async () => {
   await loadStore();
   // 清理过期的历史记录
   await cleanExpiredSessions();
-
-  // 初始化统计并上报启动
-  await initAnalytics();
-  await trackStartup();
 });
 
 // 处理 LLM 流式请求端口连接

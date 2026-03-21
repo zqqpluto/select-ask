@@ -1,7 +1,8 @@
 /// <reference types="vite/client" />
 
+// Select Ask 是完全本地化的插件，不需要后端相关的环境变量
 interface ImportMetaEnv {
-  readonly VITE_API_BASE_URL: string
+  // 当前没有需要配置的环境变量
 }
 
 interface ImportMeta {
