@@ -1,0 +1,294 @@
+{
+  "extension_name": {
+    "message": "Select Ask - AI文本助手",
+    "description": "Extension name"
+  },
+  "extension_description": {
+    "message": "选中即问，知识自来 - 选中文本，AI帮您解释、翻译、提问",
+    "description": "Extension description"
+  },
+  "action_explain": {
+    "message": "解释",
+    "description": "Explain action"
+  },
+  "action_translate": {
+    "message": "翻译",
+    "description": "Translate action"
+  },
+  "action_ask": {
+    "message": "提问",
+    "description": "Ask action"
+  },
+  "action_questions": {
+    "message": "常见问题",
+    "description": "FAQs action"
+  },
+  "popup_title": {
+    "message": "Select Ask",
+    "description": "Popup title"
+  },
+  "popup_settings": {
+    "message": "设置",
+    "description": "Settings button"
+  },
+  "popup_history": {
+    "message": "历史",
+    "description": "History button"
+  },
+  "popup_no_model": {
+    "message": "未配置模型",
+    "description": "No model configured message"
+  },
+  "popup_add_model": {
+    "message": "添加模型",
+    "description": "Add model button"
+  },
+  "popup_default_model": {
+    "message": "默认模型",
+    "description": "Default model label"
+  },
+  "popup_open_settings": {
+    "message": "打开设置",
+    "description": "Open settings button"
+  },
+  "settings_title": {
+    "message": "设置",
+    "description": "Settings page title"
+  },
+  "settings_models": {
+    "message": "AI 模型",
+    "description": "Models section title"
+  },
+  "settings_general": {
+    "message": "通用设置",
+    "description": "General section title"
+  },
+  "settings_add_model": {
+    "message": "添加模型",
+    "description": "Add model button"
+  },
+  "settings_model_name": {
+    "message": "模型名称",
+    "description": "Model name label"
+  },
+  "settings_provider": {
+    "message": "提供商",
+    "description": "Provider label"
+  },
+  "settings_api_key": {
+    "message": "API Key",
+    "description": "API Key label"
+  },
+  "settings_base_url": {
+    "message": "Base URL",
+    "description": "Base URL label"
+  },
+  "settings_test_connection": {
+    "message": "测试连接",
+    "description": "Test connection button"
+  },
+  "settings_save": {
+    "message": "保存",
+    "description": "Save button"
+  },
+  "settings_cancel": {
+    "message": "取消",
+    "description": "Cancel button"
+  },
+  "settings_delete": {
+    "message": "删除",
+    "description": "Delete button"
+  },
+  "settings_set_default": {
+    "message": "设为默认",
+    "description": "Set as default button"
+  },
+  "settings_testing": {
+    "message": "测试中...",
+    "description": "Testing status"
+  },
+  "settings_test_success": {
+    "message": "连接成功！",
+    "description": "Test success message"
+  },
+  "settings_test_failed": {
+    "message": "连接失败",
+    "description": "Test failed message"
+  },
+  "settings_display_mode": {
+    "message": "显示模式",
+    "description": "Display mode label"
+  },
+  "settings_mode_popup": {
+    "message": "悬浮框",
+    "description": "Popup mode"
+  },
+  "settings_mode_sidebar": {
+    "message": "侧边栏",
+    "description": "Sidebar mode"
+  },
+  "settings_language": {
+    "message": "语言",
+    "description": "Language label"
+  },
+  "settings_language_auto": {
+    "message": "自动（跟随浏览器）",
+    "description": "Auto language option"
+  },
+  "settings_language_en": {
+    "message": "English",
+    "description": "English language option"
+  },
+  "settings_language_zh": {
+    "message": "中文",
+    "description": "Chinese language option"
+  },
+  "settings_analytics": {
+    "message": "匿名统计",
+    "description": "Analytics label"
+  },
+  "settings_analytics_desc": {
+    "message": "分享匿名使用数据，帮助改进产品",
+    "description": "Analytics description"
+  },
+  "history_title": {
+    "message": "历史记录",
+    "description": "History page title"
+  },
+  "history_empty": {
+    "message": "暂无历史记录",
+    "description": "Empty history message"
+  },
+  "history_clear": {
+    "message": "清空全部",
+    "description": "Clear history button"
+  },
+  "history_search": {
+    "message": "搜索历史记录...",
+    "description": "Search placeholder"
+  },
+  "history_delete": {
+    "message": "删除",
+    "description": "Delete button"
+  },
+  "history_continue": {
+    "message": "继续",
+    "description": "Continue conversation button"
+  },
+  "chat_input_placeholder": {
+    "message": "继续追问...",
+    "description": "Chat input placeholder"
+  },
+  "chat_send": {
+    "message": "发送",
+    "description": "Send button"
+  },
+  "chat_thinking": {
+    "message": "思考中...",
+    "description": "Thinking status"
+  },
+  "chat_error": {
+    "message": "发生错误",
+    "description": "Error message"
+  },
+  "chat_retry": {
+    "message": "重试",
+    "description": "Retry button"
+  },
+  "chat_copy": {
+    "message": "复制",
+    "description": "Copy button"
+  },
+  "chat_copied": {
+    "message": "已复制！",
+    "description": "Copied message"
+  },
+  "model_openai": {
+    "message": "OpenAI",
+    "description": "OpenAI provider name"
+  },
+  "model_anthropic": {
+    "message": "Anthropic",
+    "description": "Anthropic provider name"
+  },
+  "model_deepseek": {
+    "message": "DeepSeek",
+    "description": "DeepSeek provider name"
+  },
+  "model_qwen": {
+    "message": "通义千问",
+    "description": "Qwen provider name"
+  },
+  "model_glm": {
+    "message": "智谱AI",
+    "description": "GLM provider name"
+  },
+  "model_custom": {
+    "message": "自定义",
+    "description": "Custom provider name"
+  },
+  "error_no_api_key": {
+    "message": "请先配置 API Key",
+    "description": "No API key error"
+  },
+  "error_no_text": {
+    "message": "请选择文本",
+    "description": "No text selected error"
+  },
+  "error_request_failed": {
+    "message": "请求失败，请重试",
+    "description": "Request failed error"
+  },
+  "confirm_delete": {
+    "message": "确定要删除吗？",
+    "description": "Delete confirmation"
+  },
+  "confirm_clear_history": {
+    "message": "确定要清空所有历史记录吗？",
+    "description": "Clear history confirmation"
+  },
+  "tooltip_close": {
+    "message": "关闭",
+    "description": "Close tooltip"
+  },
+  "tooltip_minimize": {
+    "message": "最小化",
+    "description": "Minimize tooltip"
+  },
+  "tooltip_new_chat": {
+    "message": "新对话",
+    "description": "New chat tooltip"
+  },
+  "loading": {
+    "message": "加载中...",
+    "description": "Loading message"
+  },
+  "saved": {
+    "message": "已保存",
+    "description": "Saved message"
+  },
+  "popup_mode_draggable": {
+    "message": "可拖拽移动",
+    "description": "Draggable mode hint"
+  },
+  "popup_mode_fixed_right": {
+    "message": "固定右侧",
+    "description": "Fixed right side hint"
+  },
+  "popup_view_history": {
+    "message": "查看历史对话",
+    "description": "View history hint"
+  },
+  "popup_current_status": {
+    "message": "当前状态",
+    "description": "Current status label"
+  },
+  "popup_enabled": {
+    "message": "已启用",
+    "description": "Enabled status"
+  },
+  "popup_models_configured": {
+    "message": "已配置 {0} 个模型",
+    "description": "Models configured count"
+  }
+}

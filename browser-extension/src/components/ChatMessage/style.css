@@ -1,0 +1,35 @@
+.select-ask-chat-message {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.select-ask-chat-message-user {
+  background: #1677ff;
+  color: white;
+  align-self: flex-end;
+  margin-left: 40px;
+}
+
+.select-ask-chat-message-assistant {
+  background: #f5f5f5;
+  color: #333;
+  align-self: flex-start;
+  margin-right: 40px;
+}
+
+.select-ask-chat-message-content {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.select-ask-chat-message-timestamp {
+  font-size: 11px;
+  color: #999;
+  margin-top: 4px;
+}
+
+.select-ask-chat-message-user .select-ask-chat-message-timestamp {
+  color: rgba(255, 255, 255, 0.7);
+}

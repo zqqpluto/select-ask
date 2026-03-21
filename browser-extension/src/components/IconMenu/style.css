@@ -1,0 +1,45 @@
+.select-ask-icon-menu-dropdown {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 4px;
+  min-width: 140px;
+}
+
+.select-ask-icon-menu-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.select-ask-icon-menu-item {
+  margin: 0;
+}
+
+.select-ask-icon-menu-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+  transition: background-color 0.2s;
+}
+
+.select-ask-icon-menu-button:hover {
+  background-color: #f5f5f5;
+}
+
+.select-ask-icon-menu-icon {
+  font-size: 16px;
+}
+
+.select-ask-icon-menu-label {
+  flex: 1;
+  text-align: left;
+}

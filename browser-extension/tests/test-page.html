@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Select Ask 测试页面</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      line-height: 1.6;
+      color: #333;
+    }
+    h1 {
+      color: #3b82f6;
+      border-bottom: 2px solid #3b82f6;
+      padding-bottom: 10px;
+    }
+    .content-section {
+      background: #f8fafc;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    .selectable-text {
+      padding: 15px;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      margin: 10px 0;
+    }
+    code {
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <h1>Select Ask 扩展测试页面</h1>
+
+  <div class="content-section">
+    <h2>技术说明</h2>
+    <p class="selectable-text">
+      HDFS Federation provides namespace scalability for horizontal scaling of the cluster.
+      It allows multiple namenodes to manage different namespaces, improving overall throughput
+      and providing isolation between different applications or users.
+    </p>
+    <p class="selectable-text">
+      分布式系统是现代计算机科学的重要领域，它研究如何将计算任务分散到多台计算机上执行。
+      通过分布式系统，可以实现高可用性、可扩展性和容错能力。
+    </p>
+  </div>
+
+  <div class="content-section">
+    <h2>代码示例</h2>
+    <pre class="selectable-text"><code>function fetchData(url) {
+  return fetch(url)
+    .then(response => response.json())
+    .then(data => console.log(data));
+}</code></pre>
+  </div>
+
+  <div class="content-section">
+    <h2>测试说明</h2>
+    <p>请选择上方任意文本，测试扩展功能：</p>
+    <ul>
+      <li>选择文本后应出现图标菜单</li>
+      <li>点击图标可打开下拉菜单</li>
+      <li>选择"解释"或"翻译"可打开对话框</li>
+      <li>对话框支持全屏模式</li>
+      <li>全屏模式下左侧显示历史记录</li>
+    </ul>
+  </div>
+
+  <div class="content-section">
+    <h2>长文本测试</h2>
+    <p class="selectable-text">
+      人工智能（Artificial Intelligence，简称 AI）是计算机科学的一个分支，旨在创建能够模拟人类智能的系统。
+      这些系统可以学习、推理、解决问题、理解自然语言、识别模式和做出决策。
+      机器学习是 AI 的一个重要子领域，它使计算机能够从数据中学习并改进性能，而无需显式编程。
+      深度学习是机器学习的进一步发展，使用多层神经网络来处理复杂的数据模式。
+    </p>
+  </div>
+</body>
+</html>

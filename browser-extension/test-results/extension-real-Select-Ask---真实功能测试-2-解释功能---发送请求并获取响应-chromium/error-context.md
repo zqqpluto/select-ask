@@ -1,0 +1,56 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - heading "Select Ask 功能测试" [level=1] [ref=e2]
+  - generic [ref=e3]:
+    - heading "技术文档" [level=2] [ref=e4]
+    - paragraph [ref=e5]: Kubernetes is an open-source container orchestration platform for automating deployment, scaling, and management of containerized applications. It groups containers that make up an application into logical units called pods for easy management and discovery.
+    - paragraph [ref=e6]: 机器学习是人工智能的一个分支，它使用统计技术让计算机系统能够从数据中"学习"。深度学习是机器学习的一种方法，使用多层神经网络来处理复杂的数据模式。
+  - generic [ref=e7]:
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]: select ask
+        - generic [ref=e11]: ·
+        - generic [ref=e12]: 选中即问，知识自来
+      - generic [ref=e13]:
+        - button "全屏" [ref=e14] [cursor=pointer]:
+          - img [ref=e15]
+        - button "历史记录" [ref=e17] [cursor=pointer]:
+          - img [ref=e18]
+        - button "关闭" [ref=e21] [cursor=pointer]:
+          - img [ref=e22]
+    - generic [ref=e25]:
+      - generic [ref=e26]:
+        - img [ref=e28]
+        - generic [ref=e30]:
+          - generic [ref=e31]: 2026-03-17 18:10:46
+          - generic [ref=e32]:
+            - generic [ref=e33]: 解释Kubernetes is an open-source container orchestration platform for automating deployment, scaling, and management of containerized applications. It groups containers that make up an application into logical units called pods for easy management and discovery.是什么
+            - generic [ref=e34]:
+              - button "复制" [ref=e35] [cursor=pointer]:
+                - img [ref=e36]
+              - button "编辑并重新提问" [ref=e39] [cursor=pointer]:
+                - img [ref=e40]
+      - generic [ref=e43]:
+        - img "AI" [ref=e45]
+        - generic [ref=e46]:
+          - generic [ref=e47]:
+            - generic [ref=e48]: 2026-03-17 18:10:46
+            - generic [ref=e49]: ·
+            - generic [ref=e50]: AI
+            - generic [ref=e51]: ·
+          - generic [ref=e52]:
+            - text: ...
+            - generic [ref=e54]: 请先在设置中选择问答模型
+    - generic [ref=e56]:
+      - textbox "追问或提出新问题..." [ref=e58]
+      - generic [ref=e59]:
+        - generic [ref=e60]:
+          - combobox [disabled] [ref=e61] [cursor=pointer]:
+            - option "无模型" [selected]
+          - generic:
+            - img
+        - button [disabled] [ref=e62]:
+          - img [ref=e63]
+```

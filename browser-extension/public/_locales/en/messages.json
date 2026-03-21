@@ -1,0 +1,294 @@
+{
+  "extension_name": {
+    "message": "Select Ask - AI Text Assistant",
+    "description": "Extension name"
+  },
+  "extension_description": {
+    "message": "Select text to ask AI - explain, translate, and ask questions instantly",
+    "description": "Extension description"
+  },
+  "action_explain": {
+    "message": "Explain",
+    "description": "Explain action"
+  },
+  "action_translate": {
+    "message": "Translate",
+    "description": "Translate action"
+  },
+  "action_ask": {
+    "message": "Ask",
+    "description": "Ask action"
+  },
+  "action_questions": {
+    "message": "FAQs",
+    "description": "FAQs action"
+  },
+  "popup_title": {
+    "message": "Select Ask",
+    "description": "Popup title"
+  },
+  "popup_settings": {
+    "message": "Settings",
+    "description": "Settings button"
+  },
+  "popup_history": {
+    "message": "History",
+    "description": "History button"
+  },
+  "popup_no_model": {
+    "message": "No model configured",
+    "description": "No model configured message"
+  },
+  "popup_add_model": {
+    "message": "Add Model",
+    "description": "Add model button"
+  },
+  "popup_default_model": {
+    "message": "Default Model",
+    "description": "Default model label"
+  },
+  "popup_open_settings": {
+    "message": "Open Settings",
+    "description": "Open settings button"
+  },
+  "settings_title": {
+    "message": "Settings",
+    "description": "Settings page title"
+  },
+  "settings_models": {
+    "message": "AI Models",
+    "description": "Models section title"
+  },
+  "settings_general": {
+    "message": "General",
+    "description": "General section title"
+  },
+  "settings_add_model": {
+    "message": "Add Model",
+    "description": "Add model button"
+  },
+  "settings_model_name": {
+    "message": "Model Name",
+    "description": "Model name label"
+  },
+  "settings_provider": {
+    "message": "Provider",
+    "description": "Provider label"
+  },
+  "settings_api_key": {
+    "message": "API Key",
+    "description": "API Key label"
+  },
+  "settings_base_url": {
+    "message": "Base URL",
+    "description": "Base URL label"
+  },
+  "settings_test_connection": {
+    "message": "Test Connection",
+    "description": "Test connection button"
+  },
+  "settings_save": {
+    "message": "Save",
+    "description": "Save button"
+  },
+  "settings_cancel": {
+    "message": "Cancel",
+    "description": "Cancel button"
+  },
+  "settings_delete": {
+    "message": "Delete",
+    "description": "Delete button"
+  },
+  "settings_set_default": {
+    "message": "Set as Default",
+    "description": "Set as default button"
+  },
+  "settings_testing": {
+    "message": "Testing...",
+    "description": "Testing status"
+  },
+  "settings_test_success": {
+    "message": "Connection successful!",
+    "description": "Test success message"
+  },
+  "settings_test_failed": {
+    "message": "Connection failed",
+    "description": "Test failed message"
+  },
+  "settings_display_mode": {
+    "message": "Display Mode",
+    "description": "Display mode label"
+  },
+  "settings_mode_popup": {
+    "message": "Popup",
+    "description": "Popup mode"
+  },
+  "settings_mode_sidebar": {
+    "message": "Sidebar",
+    "description": "Sidebar mode"
+  },
+  "settings_language": {
+    "message": "Language",
+    "description": "Language label"
+  },
+  "settings_language_auto": {
+    "message": "Auto (Browser Language)",
+    "description": "Auto language option"
+  },
+  "settings_language_en": {
+    "message": "English",
+    "description": "English language option"
+  },
+  "settings_language_zh": {
+    "message": "中文",
+    "description": "Chinese language option"
+  },
+  "settings_analytics": {
+    "message": "Anonymous Statistics",
+    "description": "Analytics label"
+  },
+  "settings_analytics_desc": {
+    "message": "Help improve the extension by sharing anonymous usage data",
+    "description": "Analytics description"
+  },
+  "history_title": {
+    "message": "History",
+    "description": "History page title"
+  },
+  "history_empty": {
+    "message": "No history yet",
+    "description": "Empty history message"
+  },
+  "history_clear": {
+    "message": "Clear All",
+    "description": "Clear history button"
+  },
+  "history_search": {
+    "message": "Search history...",
+    "description": "Search placeholder"
+  },
+  "history_delete": {
+    "message": "Delete",
+    "description": "Delete button"
+  },
+  "history_continue": {
+    "message": "Continue",
+    "description": "Continue conversation button"
+  },
+  "chat_input_placeholder": {
+    "message": "Ask a follow-up question...",
+    "description": "Chat input placeholder"
+  },
+  "chat_send": {
+    "message": "Send",
+    "description": "Send button"
+  },
+  "chat_thinking": {
+    "message": "Thinking...",
+    "description": "Thinking status"
+  },
+  "chat_error": {
+    "message": "Error occurred",
+    "description": "Error message"
+  },
+  "chat_retry": {
+    "message": "Retry",
+    "description": "Retry button"
+  },
+  "chat_copy": {
+    "message": "Copy",
+    "description": "Copy button"
+  },
+  "chat_copied": {
+    "message": "Copied!",
+    "description": "Copied message"
+  },
+  "model_openai": {
+    "message": "OpenAI",
+    "description": "OpenAI provider name"
+  },
+  "model_anthropic": {
+    "message": "Anthropic",
+    "description": "Anthropic provider name"
+  },
+  "model_deepseek": {
+    "message": "DeepSeek",
+    "description": "DeepSeek provider name"
+  },
+  "model_qwen": {
+    "message": "Qwen",
+    "description": "Qwen provider name"
+  },
+  "model_glm": {
+    "message": "GLM",
+    "description": "GLM provider name"
+  },
+  "model_custom": {
+    "message": "Custom",
+    "description": "Custom provider name"
+  },
+  "error_no_api_key": {
+    "message": "Please configure API Key first",
+    "description": "No API key error"
+  },
+  "error_no_text": {
+    "message": "Please select some text",
+    "description": "No text selected error"
+  },
+  "error_request_failed": {
+    "message": "Request failed, please try again",
+    "description": "Request failed error"
+  },
+  "confirm_delete": {
+    "message": "Are you sure you want to delete?",
+    "description": "Delete confirmation"
+  },
+  "confirm_clear_history": {
+    "message": "Are you sure you want to clear all history?",
+    "description": "Clear history confirmation"
+  },
+  "tooltip_close": {
+    "message": "Close",
+    "description": "Close tooltip"
+  },
+  "tooltip_minimize": {
+    "message": "Minimize",
+    "description": "Minimize tooltip"
+  },
+  "tooltip_new_chat": {
+    "message": "New Chat",
+    "description": "New chat tooltip"
+  },
+  "loading": {
+    "message": "Loading...",
+    "description": "Loading message"
+  },
+  "saved": {
+    "message": "Saved",
+    "description": "Saved message"
+  },
+  "popup_mode_draggable": {
+    "message": "Draggable",
+    "description": "Draggable mode hint"
+  },
+  "popup_mode_fixed_right": {
+    "message": "Fixed Right",
+    "description": "Fixed right side hint"
+  },
+  "popup_view_history": {
+    "message": "View chat history",
+    "description": "View history hint"
+  },
+  "popup_current_status": {
+    "message": "Current Status",
+    "description": "Current status label"
+  },
+  "popup_enabled": {
+    "message": "Enabled",
+    "description": "Enabled status"
+  },
+  "popup_models_configured": {
+    "message": "{0} models configured",
+    "description": "Models configured count"
+  }
+}
