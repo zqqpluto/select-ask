@@ -3,8 +3,8 @@
  * 用于收集匿名使用数据，帮助了解产品使用情况
  */
 
-// 统计服务地址（请在部署后修改为实际的 Worker URL）
-// 部署方法见 analytics-service/README.md
+// 统计服务地址（可选功能，部署后设置 VITE_ANALYTICS_URL 环境变量）
+// 如需部署统计服务，请参考 select-ask-server/analytics-service/README.md
 const ANALYTICS_URL = import.meta.env.VITE_ANALYTICS_URL || '';
 
 // 是否启用统计（用户可在设置中关闭）

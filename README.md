@@ -8,8 +8,6 @@
 
 一个功能强大的智能浏览器插件，让用户选中文本后即可通过AI进行解释、翻译、提问、总结和生成常见问题。**前端完全开源**，支持本地模型配置。
 
-![Select Ask Demo](./docs/demo.gif)
-
 ## ✨ 核心功能
 
 ### 🎯 AI文本交互
@@ -69,14 +67,13 @@ select-ask/
 │   │   │   └── llm/            # LLM 提供商实现
 │   │   └── utils/              # 工具函数
 │   └── manifest.json
-├── analytics-service/          # 可选：匿名统计分析服务
 └── docs/                       # 文档
 ```
 
 **💡 架构说明**：
 - 前端可以**完全独立运行**，用户自行配置API密钥
 - 后端服务为可选增强功能，提供免费试用配额
-- 详见 [架构设计](./docs/integrated-technical-review-report.md)
+- 详细技术文档请参考：[select-ask-server 仓库](https://github.com/zqqpluto/select-ask-server)
 
 ## 🚀 安装方式
 
@@ -157,19 +154,6 @@ npm run build
 npm test
 ```
 
-#### 分析服务（可选）
-
-```bash
-cd analytics-service
-npm install
-
-# 本地开发
-npm run dev
-
-# 部署到 Cloudflare Workers
-npm run deploy
-```
-
 ### 加载开发版本
 
 1. 运行 `npm run dev` 或 `npm run build`
@@ -203,7 +187,7 @@ npm run deploy
 - ✅ 原子操作并发保护
 - ✅ 阻止设备黑名单机制
 
-详见 [安全测试报告](./docs/security-test-report.md)
+详细技术文档请参考后端仓库。
 
 ## 📊 技术栈
 
@@ -215,11 +199,6 @@ npm run deploy
 - Web Crypto API
 - Zustand (状态管理)
 - marked (Markdown 渲染)
-
-### 可选服务（analytics-service）
-- Cloudflare Workers
-- TypeScript
-- KV Storage
 
 ## 🌐 后端服务（私有）
 
@@ -245,7 +224,6 @@ npm run deploy
 **开源范围**：
 - ✅ 浏览器插件前端代码
 - ✅ 文档和示例
-- ✅ 分析服务代码（analytics-service）
 
 **不包含**：
 - ❌ 后端服务代码（私有）
@@ -268,14 +246,14 @@ npm run deploy
   <img src="https://contrib.rocks/image?repo=zqqpluto/select-ask" />
 </a>
 
-## 📖 文档
+## 📖 更多信息
 
-- [完整功能说明](./docs/integrated-technical-review-report.md)
-- [安全测试报告](./docs/security-test-report.md)
 - [隐私政策](./PRIVACY_POLICY.md)
 - [服务条款](./TERMS_OF_SERVICE.md)
 - [免责声明](./DISCLAIMER.md)
 - [更新日志](CHANGELOG.md)
+
+详细技术文档、架构设计、安全报告等请参考：[后端仓库文档](https://github.com/zqqpluto/select-ask-server)
 
 ## 🗺️ Roadmap
 

@@ -75,3 +75,6 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+
+# macOS
+.DS_Store
