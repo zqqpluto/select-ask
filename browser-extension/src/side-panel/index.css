@@ -680,55 +680,31 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   padding: 0;
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   border: none;
-  border-radius: 14px;
+  border-radius: 50%;
   color: white;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow:
-    0 4px 12px rgba(99, 102, 241, 0.3),
-    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.25);
   position: relative;
-  overflow: hidden;
-}
-
-.side-panel-send::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.2) 50%,
-    transparent 100%
-  );
-  transition: left 0.5s ease-out;
-}
-
-.side-panel-send:hover::before {
-  left: 100%;
 }
 
 .side-panel-send:hover:not(:disabled) {
-  transform: translateY(-2px) scale(1.05);
-  box-shadow:
-    0 8px 24px rgba(99, 102, 241, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.15) inset;
+  transform: scale(1.08);
+  box-shadow: 0 6px 24px rgba(99, 102, 241, 0.35);
+  background: linear-gradient(135deg, #5558e3 0%, #7c4fe8 100%);
 }
 
 .side-panel-send:active:not(:disabled) {
-  transform: translateY(0) scale(0.98);
+  transform: scale(0.95);
 }
 
 .side-panel-send:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
   box-shadow: none;
 }
@@ -736,10 +712,11 @@ body {
 /* Stop 按钮样式 */
 .side-panel-send svg rect {
   transition: all 0.2s ease-out;
+  rx: 3;
 }
 
 .side-panel-send:hover svg rect {
-  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.5));
+  fill-opacity: 0.9;
 }
 
 /* 滚动条样式 */
