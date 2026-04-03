@@ -15,8 +15,11 @@ function formatTime(timestamp: number | Date = Date.now()): string {
 }
 
 function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
-  return `${(ms / 1000).toFixed(1)}s`;
+  const seconds = Math.round(ms / 1000);
+  if (seconds < 60) return `${seconds}秒`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}分${remainingSeconds}秒`;
 }
 
 function renderMarkdown(text: string): string {
@@ -28,6 +31,7 @@ interface ExtendedHistoryMessage extends HistoryMessage {
   duration?: number;
   startTime?: number;
   reasoning?: string;
+  isStopped?: boolean; // 标记是否被中断
 }
 
 export default function App() {
@@ -44,11 +48,14 @@ export default function App() {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const currentPortRef = useRef<chrome.runtime.Port | null>(null);
-  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(false);
+  const [userHasScrolled, setUserHasScrolled] = useState(false);
+  const modelButtonRef = useRef<HTMLButtonElement>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
 
   // 滚动到底部
   const scrollToBottom = () => {
-    if (shouldAutoScroll) {
+    if (!userHasScrolled) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   };
@@ -62,12 +69,10 @@ export default function App() {
     const container = messagesContainerRef.current;
     if (!container) return;
 
-    let userScrollTimeout: NodeJS.Timeout;
-
     const handleScroll = () => {
-      // 用户滚动时，检查是否接近底部
+      // 检查是否接近底部
       const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-      setShouldAutoScroll(isNearBottom);
+      setUserHasScrolled(!isNearBottom);
     };
 
     container.addEventListener('scroll', handleScroll);
@@ -92,6 +97,16 @@ export default function App() {
       currentPortRef.current = null;
     }
     setIsLoading(false);
+    // 标记最后一条 AI 消息为已中断
+    setMessages(prev => {
+      const lastAiIndex = prev.map((m, i) => m.role === 'assistant' ? i : -1).filter(i => i !== -1).pop();
+      if (lastAiIndex !== undefined && lastAiIndex >= 0) {
+        return prev.map((msg, index) =>
+          index === lastAiIndex ? { ...msg, isStopped: true } : msg
+        );
+      }
+      return prev;
+    });
   };
 
   // 重新生成最后一条 AI 消息
@@ -484,10 +499,47 @@ export default function App() {
       }
 
       setShowModelSelector(false);
+      setDropdownPosition(null);
     } catch (error) {
       console.error('Failed to select model:', error);
     }
   };
+
+  // 切换模型选择器下拉菜单
+  const toggleModelSelector = () => {
+    if (showModelSelector) {
+      setShowModelSelector(false);
+      setDropdownPosition(null);
+    } else {
+      // 计算按钮位置
+      if (modelButtonRef.current) {
+        const rect = modelButtonRef.current.getBoundingClientRect();
+        setDropdownPosition({
+          top: rect.top - 8, // 按钮上方 8px
+          left: rect.left,
+        });
+        setShowModelSelector(true);
+      }
+    }
+  };
+
+  // 点击外部关闭下拉菜单
+  useEffect(() => {
+    if (!showModelSelector) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (modelButtonRef.current && !modelButtonRef.current.contains(e.target as Node)) {
+        const dropdown = document.querySelector('.side-panel-model-dropdown');
+        if (dropdown && !dropdown.contains(e.target as Node)) {
+          setShowModelSelector(false);
+          setDropdownPosition(null);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showModelSelector]);
 
   // 输入框自动调整高度
   const handleTextareaChange = () => {
@@ -557,22 +609,21 @@ export default function App() {
                         onClick={() => toggleReasoning(index)}
                       >
                         <div className="side-panel-reasoning-status">
+                          {!msg.duration ? (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <circle cx="12" cy="12" r="10"/>
+                              <path d="M12 6v6l4 2"/>
+                            </svg>
+                          ) : (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                          )}
                           <span className="side-panel-reasoning-model">{msg.modelName}</span>
                           {!msg.duration ? (
-                            <>
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <path d="M12 6v6l4 2"/>
-                              </svg>
-                              思考中
-                            </>
+                            <span>思考中</span>
                           ) : (
-                            <>
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="20 6 9 17 4 12"/>
-                              </svg>
-                              已思考 {formatDuration(msg.duration)}
-                            </>
+                            <span>已思考（用时{formatDuration(msg.duration)}）</span>
                           )}
                         </div>
                         <svg
@@ -601,32 +652,34 @@ export default function App() {
                     dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
                   />
                 </div>
-                {/* 操作按钮 - 始终显示 */}
-                <div className="side-panel-message-actions side-panel-message-actions-always">
-                  <button
-                    className="side-panel-action-btn"
-                    onClick={() => copyToClipboard(msg.content)}
-                    title="复制正文"
-                  >
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                    </svg>
-                  </button>
-                  {/* 重新生成按钮 - 只在最后一条 AI 消息且已完成时显示 */}
-                  {index === messages.length - 1 && !isLoading && msg.duration && (
+                {/* 操作按钮 - 回答完成后或中断后显示 */}
+                {(msg.duration || msg.isStopped) && (
+                  <div className="side-panel-message-actions side-panel-message-actions-always">
                     <button
                       className="side-panel-action-btn"
-                      onClick={handleRegenerate}
-                      title="重新生成"
+                      onClick={() => copyToClipboard(msg.content)}
+                      title="复制正文"
                     >
                       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M23 4v6h-6M1 20v-6h6"/>
-                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                       </svg>
                     </button>
-                  )}
-                </div>
+                    {/* 重新生成按钮 - 只在最后一条 AI 消息时显示 */}
+                    {index === messages.length - 1 && (
+                      <button
+                        className="side-panel-action-btn"
+                        onClick={handleRegenerate}
+                        title="重新生成"
+                      >
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M23 4v6h-6M1 20v-6h6"/>
+                          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -638,69 +691,89 @@ export default function App() {
       {/* 输入区域 */}
       <div className="side-panel-input">
         <div className="side-panel-input-box">
-          {/* 模型选择器 */}
-          <div className="side-panel-model-selector">
-            <button
-              className="side-panel-model-btn"
-              onClick={() => setShowModelSelector(!showModelSelector)}
-              title="切换模型"
-            >
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1m15.5-6.5l-4 4m-3 3l-4 4m-3-3l4-4m3-3l4-4"/>
-              </svg>
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M6 9l6 6 6-6"/>
-              </svg>
-            </button>
-
-            {showModelSelector && (
-              <div className="side-panel-model-dropdown">
-                {availableModels.map(model => (
-                  <button
-                    key={model.id}
-                    className={`side-panel-model-option ${currentModel?.id === model.id ? 'active' : ''}`}
-                    onClick={() => handleModelSelect(model.id)}
-                  >
-                    {model.name}
-                  </button>
-                ))}
-                {availableModels.length === 0 && (
-                  <div className="side-panel-model-empty">
-                    请先在配置中添加模型
-                  </div>
-                )}
-              </div>
-            )}
+          {/* 上栏：文本输入 */}
+          <div className="side-panel-input-row">
+            <textarea
+              ref={textareaRef}
+              placeholder="追问或提出新问题..."
+              rows={2}
+              value={inputValue}
+              onChange={(e) => {
+                setInputValue(e.target.value);
+                handleTextareaChange();
+              }}
+              onKeyDown={handleKeyDown}
+              disabled={isLoading}
+            />
           </div>
 
-          <textarea
-            ref={textareaRef}
-            placeholder="追问或提出新问题..."
-            rows={1}
-            value={inputValue}
-            onChange={(e) => {
-              setInputValue(e.target.value);
-              handleTextareaChange();
-            }}
-            onKeyDown={handleKeyDown}
-            disabled={isLoading}
-          />
-          <button
-            className="side-panel-send"
-            onClick={isLoading ? handleStopGeneration : handleSend}
-            disabled={!inputValue.trim() && !isLoading}
-          >
-            {isLoading ? (
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                <rect x="6" y="6" width="12" height="12" rx="2"/>
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-              </svg>
-            )}
-          </button>
+          {/* 下栏：模型选择 + 发送按钮 */}
+          <div className="side-panel-input-controls">
+            {/* 模型选择器 */}
+            <div className="side-panel-model-selector">
+              <button
+                ref={modelButtonRef}
+                className="side-panel-model-btn"
+                onClick={toggleModelSelector}
+                title="切换模型"
+              >
+                {/* 科技感神经元图标 */}
+                <svg className="model-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                  <circle cx="12" cy="5" r="2.5"/>
+                  <circle cx="6" cy="12" r="2.5"/>
+                  <circle cx="18" cy="12" r="2.5"/>
+                  <circle cx="12" cy="19" r="2.5"/>
+                  <path d="M12 7.5v2M7.5 12h2M14.5 12h2M12 14.5v2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+                  <path d="M7.5 13.5l3 3M13.5 7.5l3-3M16.5 13.5l-3 3M7.5 10.5l3-3" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.6"/>
+                </svg>
+                <span>{currentModel?.name || '选择模型'}</span>
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M6 9l6 6 6-6"/>
+                </svg>
+              </button>
+
+              {showModelSelector && dropdownPosition && (
+                <div
+                  className="side-panel-model-dropdown"
+                  style={{
+                    top: dropdownPosition.top,
+                    left: dropdownPosition.left,
+                  }}
+                >
+                  {availableModels.map(model => (
+                    <button
+                      key={model.id}
+                      className={`side-panel-model-option ${currentModel?.id === model.id ? 'active' : ''}`}
+                      onClick={() => handleModelSelect(model.id)}
+                    >
+                      {model.name}
+                    </button>
+                  ))}
+                  {availableModels.length === 0 && (
+                    <div className="side-panel-model-empty">
+                      请先在配置中添加模型
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <button
+              className="side-panel-send"
+              onClick={isLoading ? handleStopGeneration : handleSend}
+              disabled={!inputValue.trim() && !isLoading}
+            >
+              {isLoading ? (
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                  <rect x="6" y="6" width="12" height="12" rx="2"/>
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                  <path d="M12 4L4 12h6v8h4v-8h6z"/>
+                </svg>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

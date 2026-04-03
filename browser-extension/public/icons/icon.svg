@@ -1,0 +1,49 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景渐变 -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="sparkleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e0e7ff;stop-opacity:0.8" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- 圆角正方形背景 -->
+  <rect width="512" height="512" rx="120" fill="url(#bgGrad)"/>
+
+  <!-- 中心神经元网络图案 -->
+  <g filter="url(#glow)">
+    <!-- 中心节点 -->
+    <circle cx="256" cy="256" r="28" fill="url(#sparkleGrad)"/>
+
+    <!-- 周围节点 -->
+    <circle cx="256" cy="140" r="18" fill="white" fill-opacity="0.9"/>
+    <circle cx="340" cy="220" r="18" fill="white" fill-opacity="0.9"/>
+    <circle cx="340" cy="300" r="18" fill="white" fill-opacity="0.9"/>
+    <circle cx="256" cy="380" r="18" fill="white" fill-opacity="0.9"/>
+    <circle cx="172" cy="300" r="18" fill="white" fill-opacity="0.9"/>
+    <circle cx="172" cy="220" r="18" fill="white" fill-opacity="0.9"/>
+
+    <!-- 连接线 -->
+    <line x1="256" y1="158" x2="256" y2="228" stroke="white" stroke-width="4" stroke-opacity="0.5"/>
+    <line x1="322" y1="228" x2="274" y2="248" stroke="white" stroke-width="4" stroke-opacity="0.5"/>
+    <line x1="322" y1="292" x2="274" y2="272" stroke="white" stroke-width="4" stroke-opacity="0.5"/>
+    <line x1="256" y1="362" x2="256" y2="284" stroke="white" stroke-width="4" stroke-opacity="0.5"/>
+    <line x1="190" y1="292" x2="238" y2="272" stroke="white" stroke-width="4" stroke-opacity="0.5"/>
+    <line x1="190" y1="228" x2="238" y2="248" stroke="white" stroke-width="4" stroke-opacity="0.5"/>
+  </g>
+
+  <!-- 外圈装饰环 -->
+  <circle cx="256" cy="256" r="90" stroke="white" stroke-width="2" stroke-opacity="0.2" fill="none"/>
+  <circle cx="256" cy="256" r="120" stroke="white" stroke-width="1.5" stroke-opacity="0.15" fill="none"/>
+</svg>
