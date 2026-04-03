@@ -680,23 +680,23 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   padding: 0;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
   border: none;
   border-radius: 50%;
   color: white;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 3px 10px rgba(16, 185, 129, 0.3);
   position: relative;
 }
 
 .side-panel-send:hover:not(:disabled) {
-  transform: scale(1.08);
-  box-shadow: 0 6px 24px rgba(99, 102, 241, 0.35);
-  background: linear-gradient(135deg, #5558e3 0%, #7c4fe8 100%);
+  transform: scale(1.06);
+  box-shadow: 0 5px 16px rgba(16, 185, 129, 0.4);
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
 }
 
 .side-panel-send:active:not(:disabled) {
