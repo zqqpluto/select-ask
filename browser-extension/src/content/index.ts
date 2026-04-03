@@ -4737,23 +4737,9 @@ async function restoreSession(sidebar: HTMLElement, session: HistorySession): Pr
 }
 
 /**
- * 在侧边栏中显示解释/翻译响应
- * 复用浮动框的样式和组件，只是外层容器为侧边栏
+ * 在 Chrome Side Panel 中显示解释/翻译响应
  */
 async function showResponseInSidebar(title: string, text: string, context: any): Promise<void> {
-  // 如果已有侧边栏，先关闭
-  if (currentSidebar) {
-    currentSidebar.remove();
-    closeSidebarLayout();
-    currentSidebar = null;
-  }
-
-  // 如果已有浮动框，先关闭
-  if (currentFloatingBox) {
-    currentFloatingBox.remove();
-    currentFloatingBox = null;
-  }
-
   // 初始化历史会话
   currentSessionId = generateSessionId();
   currentSelectedText = text;
@@ -4776,164 +4762,17 @@ async function showResponseInSidebar(title: string, text: string, context: any):
     timestamp: Date.now(),
   });
 
-  // 创建侧边栏容器
-  const sidebar = document.createElement('div');
-  sidebar.className = 'select-ask-sidebar';
-
-  // 创建头部（与浮动框一致）
-  const header = await createChatHeader(sidebar);
-  sidebar.appendChild(header);
-  setupHistoryButton(header, sidebar);
-  setupFullscreenButton(header, sidebar);
-  setupCloseButton(header, sidebar);
-
-  // 聊天容器 - 复用浮动框样式
-  const chatContainer = document.createElement('div');
-  chatContainer.className = 'select-ask-chat-container';
-
-  // 用户消息 - 复用浮动框样式
-  const userMessage = document.createElement('div');
-  userMessage.className = 'select-ask-message select-ask-message-user';
-  userMessage.innerHTML = `
-    <div class="select-ask-message-content">
-      <div class="select-ask-message-time">${formatTime()}</div>
-      <div class="select-ask-message-body">
-        <div class="select-ask-message-text">${escapeHtml(userMessageText)}</div>
-      </div>
-    </div>
-  `;
-  chatContainer.appendChild(userMessage);
-
-  // AI 消息 - 复用浮动框样式
-  const aiMessage = document.createElement('div');
-  aiMessage.className = 'select-ask-message select-ask-message-ai';
-
-  const aiContent = document.createElement('div');
-  aiContent.className = 'select-ask-message-content';
-
-  // 获取当前模型配置
-  const currentModel = await getSelectedChatModel();
-  const modelName = currentModel?.name || 'AI';
-
-  // 使用与浮动框完全相同的结构
-  aiContent.innerHTML = `
-    <div class="select-ask-ai-header">
-      <span class="select-ask-message-time">${formatTime()}</span>
-      <span class="select-ask-ai-divider">·</span>
-      <span class="select-ask-ai-model-name">${modelName}</span>
-      <span class="select-ask-ai-divider">·</span>
-      <span class="select-ask-ai-time"></span>
-    </div>
-    <div class="select-ask-ai-content">
-      <div class="select-ask-reasoning-section" style="display: none;">
-        <button class="select-ask-reasoning-toggle" aria-expanded="true">
-          <span class="select-ask-reasoning-icon">💭</span>
-          <span class="select-ask-reasoning-title">思考中...</span>
-          <span class="select-ask-reasoning-chevron">▼</span>
-        </button>
-        <div class="select-ask-reasoning-content">
-          <div class="select-ask-reasoning-text"></div>
-        </div>
-      </div>
-      <div class="select-ask-answer-text select-ask-loading-placeholder">请求中...</div>
-    </div>
-  `;
-
-  aiMessage.appendChild(aiContent);
-
-  // 思考过程折叠/展开
-  const reasoningToggle = aiMessage.querySelector('.select-ask-reasoning-toggle');
-  const reasoningSection = aiMessage.querySelector('.select-ask-reasoning-section');
-
-  reasoningToggle?.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const isExpanded = reasoningSection?.classList.toggle('expanded');
-    reasoningToggle?.setAttribute('aria-expanded', String(!!isExpanded));
-  });
-
-  chatContainer.appendChild(aiMessage);
-
-  sidebar.appendChild(chatContainer);
-
-  // 输入区域 - 复用浮动框样式
-  const inputArea = document.createElement('div');
-  inputArea.className = 'select-ask-input-area';
-  inputArea.dataset.isLoading = 'true';
-
-  const inputBox = document.createElement('div');
-  inputBox.className = 'select-ask-input-box';
-
-  const inputRow = document.createElement('div');
-  inputRow.className = 'select-ask-input-row';
-
-  const textarea = document.createElement('textarea');
-  textarea.className = 'select-ask-textarea';
-  textarea.placeholder = '追问或提出新问题...';
-  textarea.rows = 1;
-  inputRow.appendChild(textarea);
-
-  inputBox.appendChild(inputRow);
-
-  // 控制行：模型选择 + 发送按钮
-  const controlsRow = document.createElement('div');
-  controlsRow.className = 'select-ask-controls-row';
-
-  // 创建模型选择器
-  const modelSelector = await createModelSelector();
-  controlsRow.appendChild(modelSelector);
-
-  const sendBtn = document.createElement('button');
-  sendBtn.className = 'select-ask-send-icon';
-  sendBtn.disabled = true;
-  sendBtn.innerHTML = `
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M12 19V5M5 12l7-7 7 7"/>
-    </svg>
-  `;
-  controlsRow.appendChild(sendBtn);
-
-  inputBox.appendChild(controlsRow);
-  inputArea.appendChild(inputBox);
-
-  sidebar.appendChild(inputArea);
-
-  document.body.appendChild(sidebar);
-  currentSidebar = sidebar;
-
-  // 调整页面布局，为侧边栏腾出空间
-  openSidebarLayout();
-
-  // 为用户消息添加操作按钮
-  addUserMessageActions(userMessage, userMessageText, inputArea);
-
-  // 自动调整文本框高度
-  const adjustTextareaHeight = () => {
-    textarea.style.height = 'auto';
-    const newHeight = Math.min(textarea.scrollHeight, 120);
-    textarea.style.height = Math.max(newHeight, 24) + 'px';
-  };
-
-  textarea.addEventListener('focus', adjustTextareaHeight);
-  textarea.addEventListener('input', () => {
-    adjustTextareaHeight();
-    if (inputArea.dataset.isLoading !== 'true') {
-      sendBtn.disabled = !textarea.value.trim();
+  // 通过 Background 打开 Side Panel
+  chrome.runtime.sendMessage({
+    type: 'OPEN_SIDE_PANEL',
+    selectedText: text,
+    context: context,
+    userMessage: userMessageText,
+  }, (response) => {
+    if (!response?.success) {
+      console.error('Failed to open Side Panel:', response?.error);
     }
   });
-
-  // 支持 Enter 发送
-  textarea.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (textarea.value.trim() && !sendBtn.disabled) {
-        sendBtn.click();
-      }
-    }
-  });
-
-  // 调用后端 API
-  await callBackendAPIForSidebar(title, text, context, aiMessage, sidebar, inputArea);
 }
 
 /**
@@ -5102,11 +4941,25 @@ async function callBackendAPIForSidebar(
  */
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'OPEN_SIDEBAR') {
-    createSidebar();
-    sendResponse({ success: true });
+    // 使用 Chrome Side Panel 打开侧边栏
+    chrome.runtime.sendMessage({
+      type: 'OPEN_SIDE_PANEL',
+      selectedText: message.selectedText,
+      context: message.context,
+      userMessage: message.userMessage,
+    }, (response) => {
+      sendResponse({ success: response?.success });
+    });
   } else if (message.type === 'CONTINUE_SESSION') {
-    createSidebar(message.session);
-    sendResponse({ success: true });
+    // 继续会话 - 使用 Side Panel
+    chrome.runtime.sendMessage({
+      type: 'OPEN_SIDE_PANEL',
+      selectedText: message.session?.selectedText,
+      context: null,
+      userMessage: message.session?.messages[0]?.content,
+    }, (response) => {
+      sendResponse({ success: response?.success });
+    });
   } else if (message.type === 'OPEN_HISTORY_SIDEBAR') {
     // 打开历史记录侧边栏
     showHistorySidebarFromPopup();

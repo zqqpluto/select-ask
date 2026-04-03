@@ -14,6 +14,16 @@ export type MessageType =
   | 'LLM_STREAM_END';
 
 /**
+ * Content Script 与 Background 通信的消息类型
+ */
+export type ContentMessage =
+  | 'OPEN_SIDEBAR'
+  | 'CONTINUE_SESSION'
+  | 'OPEN_HISTORY_SIDEBAR'
+  | 'OPEN_OPTIONS_PAGE'
+  | 'SHOW_FLOATING_BOX';
+
+/**
  * LLM 流式请求参数
  */
 export interface LLMStreamRequest {

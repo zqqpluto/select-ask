@@ -4,6 +4,24 @@ import { handleLLMStream } from './llm-service';
 import { LLM_STREAM_PORT_NAME } from '../types/messages';
 import { cleanExpiredSessions } from '../utils/history-manager';
 
+let sidePanelInitialized = false;
+
+// 初始化 Side Panel
+async function initializeSidePanel() {
+  if (sidePanelInitialized) return;
+
+  try {
+    await chrome.sidePanel.setOptions({
+      enabled: true,
+      path: 'src/side-panel/index.html',
+    });
+    sidePanelInitialized = true;
+    console.log('Side Panel initialized');
+  } catch (error) {
+    console.error('Failed to initialize Side Panel:', error);
+  }
+}
+
 // 插件安装时初始化
 chrome.runtime.onInstalled.addListener(async () => {
   console.log('Select Ask extension installed');
@@ -19,6 +37,9 @@ chrome.runtime.onInstalled.addListener(async () => {
   // 初始化存储
   await loadStore();
 
+  // 初始化 Side Panel
+  await initializeSidePanel();
+
   // 清理过期的历史记录
   await cleanExpiredSessions();
 });
@@ -26,6 +47,8 @@ chrome.runtime.onInstalled.addListener(async () => {
 // 插件启动时加载状态
 chrome.runtime.onStartup.addListener(async () => {
   await loadStore();
+  // 初始化 Side Panel
+  await initializeSidePanel();
   // 清理过期的历史记录
   await cleanExpiredSessions();
 });
@@ -70,6 +93,47 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       // 显示浮动框（由 content script 处理）
       sendResponse({ success: true });
       break;
+
+    case 'OPEN_SIDE_PANEL':
+      // 打开 Side Panel
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const tab = tabs[0];
+        if (tab?.windowId) {
+          chrome.sidePanel.open({ windowId: tab.windowId })
+            .then(() => {
+              sendResponse({ success: true });
+              // 将初始化数据存储到 storage，让 Side Panel 自己读取
+              chrome.storage.local.set({
+                pending_sidebar_init: {
+                  selectedText: message.selectedText,
+                  context: message.context,
+                  userMessage: message.userMessage,
+                },
+              }).catch(console.error);
+            })
+            .catch((error) => {
+              console.error('Failed to open Side Panel:', error);
+              sendResponse({ success: false, error: error.message });
+            });
+        } else {
+          sendResponse({ success: false, error: 'No active tab found' });
+        }
+      });
+      return true; // 异步响应
+
+    case 'SET_SELECTED_CHAT_MODEL':
+      // 设置选中的聊天模型
+      (async () => {
+        try {
+          const { setSelectedChatModel } = await import('../utils/config-manager');
+          await setSelectedChatModel(message.modelId);
+          sendResponse({ success: true });
+        } catch (error) {
+          console.error('Failed to set selected model:', error);
+          sendResponse({ success: false, error: error instanceof Error ? error.message : String(error) });
+        }
+      })();
+      return true; // 异步响应
 
     case 'OPEN_OPTIONS_PAGE':
       // 打开配置页面
