@@ -13,7 +13,7 @@ export function setupTranslationInteraction(
   translationEl: HTMLElement,
   entryId: string
 ): void {
-  // 1. 关闭按钮点击事件
+  // 关闭按钮点击事件
   const closeBtn = translationEl.querySelector('.select-ask-translation-close');
   if (closeBtn) {
     closeBtn.addEventListener('click', (e) => {
@@ -22,21 +22,6 @@ export function setupTranslationInteraction(
       closeTranslation(entryId);
     });
   }
-
-  // 2. 鼠标悬停显示操作按钮
-  translationEl.addEventListener('mouseenter', () => {
-    const actions = translationEl.querySelector('.select-ask-translation-actions');
-    if (actions) {
-      actions.style.opacity = '1';
-    }
-  });
-
-  translationEl.addEventListener('mouseleave', () => {
-    const actions = translationEl.querySelector('.select-ask-translation-actions');
-    if (actions) {
-      actions.style.opacity = '0';
-    }
-  });
 }
 
 /**

@@ -1,113 +1,46 @@
 /* 行内翻译样式 - 沉浸式对照翻译 */
 
-/* 译文容器 */
+/* 译文容器 - 无边框、无背景，像普通页面内容一样 */
 .select-ask-translation {
   /* 布局 */
-  margin-top: 4px;
+  margin-top: 2px;
   margin-bottom: 8px;
-  padding: 8px 12px;
+  padding: 4px 0;
 
-  /* 视觉区分 - 浅色背景，无边框 */
-  background: #f9fafb;
-  border-radius: 6px;
-  border: 1px solid #f3f4f6;
-
-  /* 字体 */
+  /* 字体 - 与页面内容融为一体 */
   font-size: 14px;
   line-height: 1.6;
-  color: #4b5563;
+  color: #6b7280;
 
   /* 过渡动画 */
-  transition: all 0.2s ease;
   opacity: 0;
-  transform: translateY(-4px);
-  animation: selectAskTranslationFadeIn 0.2s ease forwards;
+  animation: selectAskTranslationFadeIn 0.25s ease forwards;
 }
 
 @keyframes selectAskTranslationFadeIn {
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
-/* 悬停效果 */
-.select-ask-translation:hover {
-  background: #f3f4f6;
-  border-color: #e5e7eb;
-}
-
-/* 译文头部 - 简化 */
-.select-ask-translation-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-/* 翻译标识 - 小型标签 */
+/* 翻译标识 - 小型角标，放在译文前面 */
 .select-ask-translation-badge {
   font-size: 10px;
   font-weight: 500;
   color: #9ca3af;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-
-/* 操作按钮组 */
-.select-ask-translation-actions {
-  display: flex;
-  gap: 2px;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.select-ask-translation:hover .select-ask-translation-actions {
-  opacity: 1;
-}
-
-/* 关闭按钮 */
-.select-ask-translation-close,
-.select-ask-translation-action {
-  width: 20px;
-  height: 20px;
-  border: none;
-  border-radius: 3px;
-  background: transparent;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #9ca3af;
-  transition: all 0.12s ease;
-  padding: 0;
-}
-
-.select-ask-translation-close:hover,
-.select-ask-translation-action:hover {
-  background: #e5e7eb;
-  color: #374151;
-}
-
-/* 译文正文内容 */
-.select-ask-translation-content {
-  position: relative;
-}
-
-/* 流式加载时的光标效果 */
-.select-ask-translation-streaming {
+  margin-right: 6px;
   display: inline-block;
 }
 
+.select-ask-translation-badge::before {
+  content: '[译] ';
+}
+
+/* 流式加载时的光标效果 */
 .select-ask-translation-streaming::after {
   content: '|';
   animation: selectAskBlink 1s step-end infinite;
-  color: #6b7280;
+  color: #9ca3af;
   margin-left: 2px;
 }
 
@@ -135,12 +68,12 @@
   border-radius: 3px;
   font-size: 13px;
   font-family: ui-monospace, 'SF Mono', 'Monaco', Consolas, monospace;
-  color: #374151;
+  color: #4b5563;
 }
 
 .select-ask-translation-content pre {
   background: #f9fafb;
-  padding: 10px;
+  padding: 8px 10px;
   border-radius: 4px;
   overflow-x: auto;
   margin: 6px 0;
@@ -164,41 +97,52 @@
 }
 
 .select-ask-translation-content strong {
-  color: #111827;
+  color: #374151;
 }
 
 /* 错误状态 */
 .select-ask-translation-error {
   color: #dc2626;
   font-size: 13px;
-  padding: 4px 0;
+}
+
+/* 关闭按钮 - 悬浮显示在右侧 */
+.select-ask-translation-close {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  transition: all 0.12s ease;
+  padding: 0;
+  opacity: 0;
+}
+
+.select-ask-translation:hover .select-ask-translation-close {
+  opacity: 1;
+}
+
+.select-ask-translation-close:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: #374151;
 }
 
 /* 暗色模式适配 */
 @media (prefers-color-scheme: dark) {
   .select-ask-translation {
-    background: #1f2937;
-    border-color: #374151;
-    color: #d1d5db;
-  }
-
-  .select-ask-translation:hover {
-    background: #111827;
-    border-color: #4b5563;
-  }
-
-  .select-ask-translation-header {
-    border-bottom-color: #374151;
+    color: #9ca3af;
   }
 
   .select-ask-translation-badge {
     color: #6b7280;
-  }
-
-  .select-ask-translation-close:hover,
-  .select-ask-translation-action:hover {
-    background: #374151;
-    color: #e5e7eb;
   }
 
   .select-ask-translation-content code {
@@ -216,6 +160,14 @@
   }
 
   .select-ask-translation-streaming::after {
-    color: #9ca3af;
+    color: #6b7280;
+  }
+
+  .select-ask-translation-close {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .select-ask-translation-close:hover {
+    background: rgba(255, 255, 255, 0.12);
   }
 }

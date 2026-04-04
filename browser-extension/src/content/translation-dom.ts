@@ -58,29 +58,17 @@ export function generateTranslationId(text: string): string {
 }
 
 /**
- * 创建译文容器元素
+ * 创建译文容器元素 - 简洁的沉浸式样式
  */
 export function createTranslationElement(id: string): HTMLElement {
   const translationEl = document.createElement('div');
   translationEl.id = id;
   translationEl.className = 'select-ask-translation';
 
-  // 创建基本结构
+  // 简洁结构：翻译标识 + 内容 + 关闭按钮
   translationEl.innerHTML = `
-    <div class="select-ask-translation-header">
-      <span class="select-ask-translation-badge">翻译</span>
-      <div class="select-ask-translation-actions">
-        <button class="select-ask-translation-close" title="关闭翻译 (×)">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      </div>
-    </div>
-    <div class="select-ask-translation-content">
-      <span class="select-ask-translation-streaming"></span>
-    </div>
+    <span class="select-ask-translation-badge"></span><span class="select-ask-translation-content"><span class="select-ask-translation-streaming"></span></span>
+    <button class="select-ask-translation-close" title="关闭翻译">×</button>
   `;
 
   return translationEl;
@@ -123,12 +111,11 @@ export function removeTranslation(translationEl: HTMLElement): void {
   if (!translationEl) return;
 
   // 添加淡出效果
-  translationEl.style.transition = 'all 0.3s ease';
+  translationEl.style.transition = 'all 0.2s ease';
   translationEl.style.opacity = '0';
-  translationEl.style.transform = 'translateY(-8px)';
 
   // 等待动画完成后移除
   setTimeout(() => {
     translationEl.remove();
-  }, 300);
+  }, 200);
 }

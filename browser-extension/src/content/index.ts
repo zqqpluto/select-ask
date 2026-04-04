@@ -3872,78 +3872,16 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
       fullTranslation += chunk;
       // 渲染 Markdown
       contentEl.innerHTML = await marked(fullTranslation) as string;
-      // 保持流式光标效果
-      if (!contentEl.querySelector('.select-ask-translation-streaming')) {
-        const streamingSpan = document.createElement('span');
-        streamingSpan.className = 'select-ask-translation-streaming';
-        contentEl.appendChild(streamingSpan);
-      }
       // 滚动到译文可见
       translationEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    // 流式完成，移除光标
-    const streamingSpan = contentEl.querySelector('.select-ask-translation-streaming');
-    if (streamingSpan) {
-      streamingSpan.remove();
-    }
-
-    // 更新状态
+    // 流式完成
     TranslationManager.update(translationId, { streamCompleted: true });
 
-    // 添加复制按钮
-    addActionButtons(translationEl, fullTranslation);
-
-    // 保存历史记录
-    await saveTranslationHistory(entry);
-
   } catch (error) {
-    const streamingSpan = contentEl.querySelector('.select-ask-translation-streaming');
-    if (streamingSpan) {
-      streamingSpan.remove();
-    }
-    contentEl.innerHTML = `<div class="select-ask-translation-error">翻译失败：${error instanceof Error ? error.message : String(error)}</div>`;
+    contentEl.innerHTML = `<span class="select-ask-translation-error">翻译失败：${error instanceof Error ? error.message : String(error)}</span>`;
   }
-}
-
-/**
- * 保存翻译历史
- */
-async function saveTranslationHistory(entry: any): Promise<void> {
-  // 可选：保存翻译历史到 chrome.storage.local
-  // 这里暂不实现，留待后续扩展
-}
-
-/**
- * 添加操作按钮（复制等）
- */
-function addActionButtons(translationEl: HTMLElement, text: string): void {
-  const actionsDiv = translationEl.querySelector('.select-ask-translation-actions');
-  if (!actionsDiv) return;
-
-  // 复制按钮
-  const copyBtn = document.createElement('button');
-  copyBtn.className = 'select-ask-translation-action';
-  copyBtn.title = '复制译文';
-  copyBtn.innerHTML = `
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-    </svg>
-  `;
-  copyBtn.addEventListener('click', async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      copyBtn.style.color = '#10b981';
-      setTimeout(() => {
-        copyBtn.style.color = '';
-      }, 2000);
-    } catch (error) {
-      console.error('Failed to copy:', error);
-    }
-  });
-
-  actionsDiv.insertBefore(copyBtn, actionsDiv.firstChild);
 }
 
 /**
