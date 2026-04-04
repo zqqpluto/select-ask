@@ -4402,6 +4402,15 @@ function handleMouseUp(e: MouseEvent): void {
   // 立即显示菜单，无延迟
   selectionTimeout = window.setTimeout(() => {
     showIconMenu();
+
+    // 3 秒后自动隐藏图标，避免影响阅读
+    if (currentIconMenu) {
+      selectionTimeout = window.setTimeout(() => {
+        if (currentIconMenu && !currentDropdown) {
+          currentIconMenu.style.display = 'none';
+        }
+      }, 3000) as unknown as number;
+    }
   }, 50) as unknown as number;
 }
 
@@ -4441,6 +4450,22 @@ function init(): void {
 
   // 鼠标抬起时显示图标
   document.addEventListener('mouseup', handleMouseUp);
+
+  // 滚动时隐藏图标，避免影响阅读
+  let scrollTimeout: number | null = null;
+  document.addEventListener('scroll', () => {
+    if (scrollTimeout) {
+      clearTimeout(scrollTimeout);
+    }
+    scrollTimeout = window.setTimeout(() => {
+      scrollTimeout = null;
+    }, 150) as unknown as number;
+
+    // 滚动时立即隐藏图标
+    if (currentIconMenu && !currentDropdown) {
+      currentIconMenu.style.display = 'none';
+    }
+  }, true);
 
   console.log('Select Ask content script initialized');
 }
