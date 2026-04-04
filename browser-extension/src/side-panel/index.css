@@ -11,7 +11,7 @@ body {
   font-size: 14px;
   line-height: 1.5;
   color: #1d2129;
-  background: #fafafa;
+  background: #ffffff;
   overflow: hidden;
 }
 
@@ -598,7 +598,7 @@ body {
 /* 模型选择器 - 整个对话框左上角 */
 .side-panel-model-selector {
   position: absolute;
-  bottom: 70px;
+  top: 14px;
   left: 10px;
   z-index: 100;
 }
