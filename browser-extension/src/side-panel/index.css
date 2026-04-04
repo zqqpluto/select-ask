@@ -27,85 +27,6 @@ body {
   flex-direction: column;
 }
 
-/* 顶部模型选择器区域 */
-.side-panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 12px;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, rgba(52, 211, 153, 0.04) 100%);
-  border-bottom: 1px solid rgba(16, 185, 129, 0.1);
-  flex-shrink: 0;
-}
-
-.side-panel-header-model-selector {
-  position: relative;
-}
-
-.side-panel-header-model-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(52, 211, 153, 0.08) 100%);
-  border: 1px solid rgba(16, 185, 129, 0.25);
-  border-radius: 12px;
-  color: #059669;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.15);
-}
-
-.side-panel-header-model-btn:hover {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.16) 0%, rgba(52, 211, 153, 0.12) 100%);
-  border-color: rgba(16, 185, 129, 0.35);
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25), 0 0 0 3px rgba(16, 185, 129, 0.08);
-  transform: translateY(-1px);
-}
-
-.side-panel-header-model-btn:active {
-  transform: translateY(0) scale(0.98);
-}
-
-.side-panel-header-model-btn svg {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-}
-
-.side-panel-header-model-btn .model-icon {
-  filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.3));
-}
-
-.side-panel-header-model-btn svg:last-child {
-  opacity: 0.7;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease-out;
-}
-
-.side-panel-header-model-btn:hover svg:last-child {
-  opacity: 1;
-  transform: rotate(180deg);
-}
-
-/* 下拉菜单 - 顶部使用 fixed 定位 */
-.side-panel-model-dropdown-header {
-  position: fixed;
-  min-width: 200px;
-  max-height: 300px;
-  overflow-y: auto;
-  background: #ffffff;
-  border: 1px solid rgba(16, 185, 129, 0.2);
-  border-radius: 14px;
-  box-shadow:
-    0 10px 40px rgba(0, 0, 0, 0.12),
-    0 0 0 1px rgba(16, 185, 129, 0.08) inset;
-  padding: 8px;
-  z-index: 10000;
-  animation: dropdown-fade-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
 /* 聊天内容区域 */
 .side-panel-content {
   flex: 1;
@@ -496,23 +417,78 @@ body {
 .side-panel-input {
   padding: 16px 20px;
   background: #ffffff;
-  border-top: 1px solid rgba(16, 185, 129, 0.08);
+  border-top: 1px solid rgba(59, 130, 246, 0.08);
   flex-shrink: 0;
+}
+
+/* 模型选择器 - 科技感设计 */
+.side-panel-model-selector {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.side-panel-model-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.06) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 12px;
+  color: #6366f1;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(99, 102, 241, 0.1);
+}
+
+.side-panel-model-btn:hover {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(139, 92, 246, 0.1) 100%);
+  border-color: rgba(139, 92, 246, 0.35);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2), 0 0 0 3px rgba(99, 102, 241, 0.06);
+  transform: translateY(-1px);
+}
+
+.side-panel-model-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.side-panel-model-btn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* 模型图标 - 科技感设计 */
+.side-panel-model-btn .model-icon {
+  filter: drop-shadow(0 0 4px rgba(99, 102, 241, 0.4));
+}
+
+.side-panel-model-btn svg:last-child {
+  opacity: 0.7;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease-out;
+}
+
+.side-panel-model-btn:hover svg:last-child {
+  opacity: 1;
+  transform: rotate(180deg);
 }
 
 /* 下拉菜单 - 浮层设计，避免被裁剪 */
 .side-panel-model-dropdown {
   position: fixed;
-  min-width: 200px;
-  max-height: 300px;
+  min-width: 160px;
+  max-height: 280px;
   overflow-y: auto;
   background: #ffffff;
-  border: 1px solid rgba(16, 185, 129, 0.2);
-  border-radius: 14px;
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  border-radius: 12px;
   box-shadow:
     0 10px 40px rgba(0, 0, 0, 0.12),
-    0 0 0 1px rgba(16, 185, 129, 0.08) inset;
-  padding: 8px;
+    0 0 0 1px rgba(99, 102, 241, 0.05) inset;
+  padding: 6px;
   z-index: 10000;
   animation: dropdown-fade-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -542,15 +518,15 @@ body {
 .side-panel-model-option {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
-  padding: 10px 14px;
+  padding: 8px 10px;
   margin: 2px 0;
   background: transparent;
   border: none;
-  border-radius: 10px;
+  border-radius: 8px;
   text-align: left;
-  font-size: 13px;
+  font-size: 12px;
   color: #1d2129;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -558,15 +534,15 @@ body {
 }
 
 .side-panel-model-option:hover {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(52, 211, 153, 0.06) 100%);
-  color: #059669;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.06) 100%);
+  color: #6366f1;
 }
 
 .side-panel-model-option.active {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(52, 211, 153, 0.08) 100%);
-  color: #059669;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(139, 92, 246, 0.08) 100%);
+  color: #6366f1;
   font-weight: 600;
-  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.1);
+  box-shadow: 0 1px 3px rgba(99, 102, 241, 0.1);
 }
 
 .side-panel-model-option.active::before {
@@ -577,9 +553,9 @@ body {
   transform: translateY(-50%);
   width: 6px;
   height: 6px;
-  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   border-radius: 50%;
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.6);
 }
 
 .side-panel-model-option:not(.active)::before {
@@ -596,7 +572,7 @@ body {
 }
 
 .side-panel-model-option:hover:not(.active)::before {
-  border-color: #10b981;
+  border-color: #6366f1;
 }
 
 .side-panel-model-empty {
@@ -629,11 +605,11 @@ body {
 .side-panel-input-box {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px 14px;
+  gap: 6px;
+  padding: 10px 12px;
   background: #f8fafc;
   border: 1px solid rgba(59, 130, 246, 0.1);
-  border-radius: 16px;
+  border-radius: 14px;
   transition: all 0.15s ease-out;
 }
 
@@ -667,12 +643,42 @@ body {
   color: #c9cdd4;
 }
 
-/* 输入框下栏：发送按钮 */
+/* 输入框下栏：模型选择 + 发送按钮 - 缩小版 */
 .side-panel-input-controls {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+/* 模型选择器 - 位于左下角 - 缩小版 */
+.side-panel-model-selector {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.side-panel-model-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.06) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 8px;
+  color: #6366f1;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(99, 102, 241, 0.08);
+}
+
+.side-panel-model-btn:hover {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(139, 92, 246, 0.1) 100%);
+  border-color: rgba(139, 92, 246, 0.3);
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.15);
 }
 
 .side-panel-input-box textarea {
@@ -697,23 +703,23 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   padding: 0;
-  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   border: none;
   border-radius: 50%;
   color: white;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 3px 10px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 3px 10px rgba(59, 130, 246, 0.3);
   position: relative;
 }
 
 .side-panel-send:hover:not(:disabled) {
-  transform: scale(1.06);
-  box-shadow: 0 5px 16px rgba(16, 185, 129, 0.4);
-  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  transform: scale(1.08);
+  box-shadow: 0 5px 16px rgba(59, 130, 246, 0.4);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
 }
 
 .side-panel-send:active:not(:disabled) {
