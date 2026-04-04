@@ -474,8 +474,8 @@ body {
   font-size: 12px;
   line-height: 1.6;
   color: #86909c;
-  padding: 0 0 0 12px;
-  border-left: 3px solid #e5e6eb;
+  padding: 0;
+  border-left: none;
 }
 
 .side-panel-reasoning-quote-text p {
