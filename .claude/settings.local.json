@@ -61,7 +61,11 @@
       "Bash(grep -o \"sidePanel\\\\|side_panel\\\\|SidePanel\" /Users/zhaoqiqiang/code/select-ask/select-ask/browser-extension/dist/assets/*.js)",
       "Bash(sips -z 512 512 /Users/zhaoqiqiang/code/select-ask/select-ask/browser-extension/public/icons/icon.svg --out /tmp/icon-temp.png)",
       "Bash(convert -density 512 -background none /Users/zhaoqiqiang/code/select-ask/select-ask/browser-extension/public/icons/icon.svg -resize 512x512 /tmp/icon512.png)",
-      "Bash(npm list:*)"
+      "Bash(npm list:*)",
+      "Bash(git -C /Users/zhaoqiqiang/code/select-ask/select-ask show 27ed647:browser-extension/src/side-panel/App.tsx)",
+      "Bash(git -C /Users/zhaoqiqiang/code/select-ask/select-ask show 27ed647:browser-extension/src/side-panel/index.css)",
+      "Bash(git -C /Users/zhaoqiqiang/code/select-ask/select-ask/browser-extension add src/side-panel/App.tsx src/side-panel/index.css)",
+      "Bash(git:*)"
     ]
   }
 }

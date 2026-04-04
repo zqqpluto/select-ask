@@ -610,8 +610,8 @@ export default function App() {
                   {/* 第一条用户消息气泡内显示选中文本引用 */}
                   {index === 0 && pageInfo && pageInfo.selectedText && (
                     <div className="side-panel-selected-text-quote">
-                      <div className="side-panel-selected-text-quote-header">
-                        <span>选中文本</span>
+                      <blockquote className={`side-panel-selected-text-blockquote ${selectedTextExpanded ? 'expanded' : ''}`}>
+                        {pageInfo.selectedText}
                         {pageInfo.selectedText.length > 100 && (
                           <button
                             className="side-panel-quote-toggle-btn"
@@ -619,25 +619,16 @@ export default function App() {
                             title={selectedTextExpanded ? '收起' : '展开'}
                           >
                             {selectedTextExpanded ? (
-                              <>
-                                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M6 9l6-6 6 6"/>
-                                </svg>
-                                <span>收起</span>
-                              </>
+                              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M6 9l6-6 6 6"/>
+                              </svg>
                             ) : (
-                              <>
-                                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M6 9l6 6 6-6"/>
-                                </svg>
-                                <span>展开</span>
-                              </>
+                              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M6 9l6 6 6-6"/>
+                              </svg>
                             )}
                           </button>
                         )}
-                      </div>
-                      <blockquote className={`side-panel-selected-text-blockquote ${selectedTextExpanded ? 'expanded' : ''}`}>
-                        {pageInfo.selectedText}
                       </blockquote>
                     </div>
                   )}
