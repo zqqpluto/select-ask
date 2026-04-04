@@ -286,23 +286,14 @@ ${text}
     const headers = this.getHeaders();
     const body = this.buildRequestBody(processedMessages);
 
-    console.log('[LLM Provider] Request:', {
-      url,
-      headers: { ...headers, Authorization: headers.Authorization?.substring(0, 15) + '...' },
-      body: JSON.stringify(body).substring(0, 200) + '...'
-    });
-
     const response = await fetch(url, {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
     });
 
-    console.log('[LLM Provider] Response status:', response.status, response.statusText);
-
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[LLM Provider] Error response:', errorText);
       throw new Error(`API request failed: ${response.status} - ${errorText}`);
     }
 

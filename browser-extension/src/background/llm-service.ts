@@ -78,17 +78,15 @@ export async function handleLLMStream(
   }
 ): Promise<void> {
   try {
-    console.log('=== Background: Handling LLM stream request ===', request.modelId);
+    console.log('[Background] Handling LLM stream request:', request.modelId);
 
     // 获取模型配置
     const model = await getModelConfig(request.modelId);
-    console.log('=== Background: Model config ===', model ? {
+    console.log('[Background] Model config:', model ? {
       id: model.id,
       name: model.name,
       provider: model.provider,
-      modelId: model.modelId,
-      baseUrl: model.baseUrl?.substring(0, 50),
-      apiKeyLength: model.apiKey?.length
+      modelId: model.modelId
     } : 'NOT FOUND');
 
     if (!model) {
@@ -104,8 +102,7 @@ export async function handleLLMStream(
       modelId: model.modelId,
     });
 
-    console.log('=== Background: Created provider for', model.provider);
-    console.log('=== Background: API Key first 5 chars ===', model.apiKey?.substring(0, 5) + '...');
+    console.log('[Background] Created provider for', model.provider);
 
     // 构建消息 - 支持两种格式
     let messages: LLMMessage[];
