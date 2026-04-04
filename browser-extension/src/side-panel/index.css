@@ -163,6 +163,7 @@ body {
 
 .side-panel-message-user-wrapper {
   align-items: flex-end;
+  max-width: 90%;
 }
 
 .side-panel-message-ai-wrapper {
