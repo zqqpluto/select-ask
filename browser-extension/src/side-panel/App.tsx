@@ -51,6 +51,7 @@ export default function App() {
   const [showModelSelector, setShowModelSelector] = useState(false);
   const [pageInfo, setPageInfo] = useState<PageInfo | null>(null);
   const [selectedTextExpanded, setSelectedTextExpanded] = useState(false);
+  const [selectedTextNeedsExpand, setSelectedTextNeedsExpand] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -60,6 +61,7 @@ export default function App() {
   const [userHasScrolled, setUserHasScrolled] = useState(false);
   const modelButtonRef = useRef<HTMLButtonElement>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
+  const selectedTextRef = useRef<HTMLQuoteElement>(null);
 
   // 滚动到底部
   const scrollToBottom = () => {
@@ -86,6 +88,17 @@ export default function App() {
     container.addEventListener('scroll', handleScroll);
     return () => container.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // 检测选中文本是否需要展开/收起按钮（基于是否能在当前宽度下一行显示）
+  useEffect(() => {
+    if (selectedTextRef.current && pageInfo?.selectedText) {
+      const element = selectedTextRef.current;
+      // 检查文本是否溢出（scrollHeight > clientHeight 说明需要多行显示）
+      const needsExpand = element.scrollHeight > element.clientHeight ||
+                          element.scrollWidth > element.clientWidth;
+      setSelectedTextNeedsExpand(needsExpand);
+    }
+  }, [pageInfo?.selectedText, messages.length]);
 
   // 思考过程默认展开状态
   const [expandedReasoning, setExpandedReasoning] = useState<Record<number, boolean>>({});
@@ -610,8 +623,8 @@ export default function App() {
                   {/* 第一条用户消息气泡内显示选中文本引用 */}
                   {index === 0 && pageInfo && pageInfo.selectedText && (
                     <div className="side-panel-selected-text-quote">
-                      {/* 只在文本超过一定长度时显示展开/收起按钮 */}
-                      {pageInfo.selectedText.length > 150 && (
+                      {/* 根据文本是否能在当前宽度一行显示来决定是否展示展开按钮 */}
+                      {selectedTextNeedsExpand && (
                         <div
                           className="side-panel-selected-text-header"
                           onClick={() => setSelectedTextExpanded(!selectedTextExpanded)}
@@ -628,13 +641,16 @@ export default function App() {
                           </svg>
                         </div>
                       )}
-                      {/* 短文本直接显示，不显示按钮 */}
-                      {pageInfo.selectedText.length <= 150 && (
+                      {/* 不需要展开的短文本直接显示标签 */}
+                      {!selectedTextNeedsExpand && (
                         <div className="side-panel-selected-text-short">
                           <span className="side-panel-selected-text-label">{msg.content}</span>
                         </div>
                       )}
-                      <blockquote className={`side-panel-selected-text-blockquote ${selectedTextExpanded ? 'expanded' : ''}`}>
+                      <blockquote
+                        ref={selectedTextRef}
+                        className={`side-panel-selected-text-blockquote ${selectedTextExpanded ? 'expanded' : ''}`}
+                      >
                         {pageInfo.selectedText}
                       </blockquote>
                     </div>
