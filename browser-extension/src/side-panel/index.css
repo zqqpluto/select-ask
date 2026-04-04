@@ -185,7 +185,7 @@ body {
 .side-panel-message-user-wrapper .side-panel-selected-text-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 6px;
   margin-top: 8px;
   margin-bottom: 6px;
 }
