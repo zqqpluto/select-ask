@@ -25,6 +25,8 @@ body {
   height: 100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
+  padding-top: 50px; /* 为左上角模型选择器预留空间 */
 }
 
 /* 页面信息栏 - 显示选中文本和页面 URL */
@@ -611,7 +613,6 @@ body {
   border: 1px solid rgba(59, 130, 246, 0.1);
   border-radius: 12px;
   transition: all 0.15s ease-out;
-  position: relative;
 }
 
 .side-panel-input-box:focus-within {
@@ -679,7 +680,6 @@ body {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  padding-left: 140px; /* 为左上角模型选择器预留空间 */
 }
 
 .side-panel-input-box textarea {
@@ -700,24 +700,85 @@ body {
   color: #c9cdd4;
 }
 
-/* 输入框下栏：发送按钮 */
+/* 输入框下栏：模型选择 + 发送按钮 */
 .side-panel-input-controls {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 8px;
   padding-top: 4px;
 }
 
-@keyframes dropdown-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+/* 模型选择器 - 位于侧边栏左上角 */
+.side-panel-model-selector {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 100;
+}
+
+.side-panel-model-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease-out;
+  white-space: nowrap;
+  max-width: 160px;
+}
+
+.side-panel-model-btn:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+.side-panel-model-btn:active {
+  transform: scale(0.98);
+}
+
+.side-panel-model-btn .model-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: #6366f1;
+}
+
+.side-panel-model-btn svg:last-child {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  opacity: 0.5;
+  transition: transform 0.2s ease-out;
+}
+
+.side-panel-model-btn:hover svg:last-child {
+  opacity: 1;
+  transform: rotate(180deg);
+}
+
+/* 下拉菜单 - 简约浮层设计 */
+.side-panel-model-dropdown {
+  position: fixed;
+  min-width: 140px;
+  max-height: 280px;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(0, 0, 0, 0.02);
+  padding: 4px;
+  z-index: 10000;
+  animation: dropdown-fade-in 0.15s ease-out;
 }
 
 .side-panel-model-option {
