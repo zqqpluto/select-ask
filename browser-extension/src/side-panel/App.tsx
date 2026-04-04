@@ -610,25 +610,26 @@ export default function App() {
                   {/* 第一条用户消息气泡内显示选中文本引用 */}
                   {index === 0 && pageInfo && pageInfo.selectedText && (
                     <div className="side-panel-selected-text-quote">
+                      {/* 展开/收起按钮放在功能文本之后 */}
+                      {pageInfo.selectedText.length > 100 && (
+                        <button
+                          className="side-panel-quote-toggle-btn"
+                          onClick={() => setSelectedTextExpanded(!selectedTextExpanded)}
+                          title={selectedTextExpanded ? '收起' : '展开'}
+                        >
+                          {selectedTextExpanded ? (
+                            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M6 9l6-6 6 6"/>
+                            </svg>
+                          ) : (
+                            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M6 9l6 6 6-6"/>
+                            </svg>
+                          )}
+                        </button>
+                      )}
                       <blockquote className={`side-panel-selected-text-blockquote ${selectedTextExpanded ? 'expanded' : ''}`}>
                         {pageInfo.selectedText}
-                        {pageInfo.selectedText.length > 100 && (
-                          <button
-                            className="side-panel-quote-toggle-btn"
-                            onClick={() => setSelectedTextExpanded(!selectedTextExpanded)}
-                            title={selectedTextExpanded ? '收起' : '展开'}
-                          >
-                            {selectedTextExpanded ? (
-                              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M6 9l6-6 6 6"/>
-                              </svg>
-                            ) : (
-                              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M6 9l6 6 6-6"/>
-                              </svg>
-                            )}
-                          </button>
-                        )}
                       </blockquote>
                     </div>
                   )}
