@@ -3850,9 +3850,25 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
 
   // 流式翻译
   let fullTranslation = '';
+  let isReasoning = false; // 是否在思考过程标签内
 
   try {
     for await (const chunk of streamTranslate(text)) {
+      // 处理思考过程标签
+      if (chunk === '[REASONING]') {
+        isReasoning = true;
+        continue;
+      }
+      if (chunk === '[REASONING_DONE]') {
+        isReasoning = false;
+        continue;
+      }
+
+      // 如果在思考过程中，跳过不显示
+      if (isReasoning) {
+        continue;
+      }
+
       fullTranslation += chunk;
       // 渲染 Markdown
       contentEl.innerHTML = await marked(fullTranslation) as string;
