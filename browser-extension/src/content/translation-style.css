@@ -206,6 +206,22 @@
   font-size: 13px;
 }
 
+/* 行内 loading 样式 - inline 显示，不换行 */
+.select-ask-translation-loading-inline {
+  display: inline;
+  margin-left: 8px;
+  vertical-align: middle;
+  opacity: 0;
+  animation: selectAskTranslationFadeIn 0.2s ease forwards;
+}
+
+.select-ask-translation-loading-inline .select-ask-loading-spinner {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
 .select-ask-loading-spinner {
   width: 14px;
   height: 14px;

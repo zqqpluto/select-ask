@@ -275,6 +275,29 @@ export function insertTranslation(
 }
 
 /**
+ * 在选中文本后面插入 inline loading 标记（不换行）
+ * 用于翻译开始时的加载状态
+ */
+export function insertInlineLoading(
+  paragraph: HTMLElement,
+  range?: Range
+): { loadingEl: HTMLElement; container: HTMLElement; separatorNode?: Text } {
+  // 创建 inline loading 元素
+  const loadingEl = document.createElement('span');
+  loadingEl.className = 'select-ask-translation-loading-inline';
+  loadingEl.innerHTML = '<div class="select-ask-loading-spinner"></div>';
+
+  if (range && !range.collapsed) {
+    // 在 Range 结束位置的文本节点后插入
+    return { loadingEl, container: paragraph, separatorNode: insertAfterRange(range, loadingEl) };
+  } else {
+    // 兜底：直接追加到段落末尾
+    paragraph.appendChild(loadingEl);
+    return { loadingEl, container: paragraph };
+  }
+}
+
+/**
  * 在 Range 结束位置后插入元素，返回创建的分隔符节点
  */
 function insertAfterRange(range: Range, elementToInsert: HTMLElement): Text | undefined {

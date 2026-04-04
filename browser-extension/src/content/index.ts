@@ -3794,12 +3794,13 @@ async function generateQuestions(text: string, context: any): Promise<string[]> 
 /**
  * 行内翻译 - 短文本显示在原文右侧，长文本显示在原文下方
  * 支持单段和多段文本选择
+ * loading 始终显示在选中文本后面（不换行），翻译完成后再根据文本长度决定译文显示位置
  */
 async function showInPlaceTranslation(text: string, context: any): Promise<void> {
   console.log('=== showInPlaceTranslation called ===');
 
   // 动态导入翻译模块
-  const { findParagraphContainer, getAllParagraphsInRange, generateTranslationId, insertTranslation, shouldUseInlineMode, removeTranslation } = await import('./translation-dom');
+  const { findParagraphContainer, getAllParagraphsInRange, generateTranslationId, insertTranslation, insertInlineLoading, shouldUseInlineMode, removeTranslation } = await import('./translation-dom');
   const { TranslationManager } = await import('./translation-manager');
   const { setupTranslationInteraction, setupSourceElementInteraction, closeTranslation } = await import('./translation-interaction');
 
@@ -3845,38 +3846,29 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
     return;
   }
 
-  // 生成唯一 ID 并创建译文容器
+  // 生成唯一 ID
   const translationId = generateTranslationId(text);
-  const { translationEl, container, separatorNode } = insertTranslation(targetParagraph, translationId, isInline, text, isInline ? range : undefined);
 
-  // 先显示加载状态（转圈）
-  const contentEl = translationEl.querySelector('.select-ask-translation-content');
-  if (contentEl) {
-    contentEl.innerHTML = '<div class="select-ask-translation-loading"><div class="select-ask-loading-spinner"></div><span>翻译中...</span></div>';
-  }
+  // 翻译开始时：插入 inline loading（不换行）
+  const { loadingEl, container: loadingContainer } = insertInlineLoading(targetParagraph, isInline ? range : undefined);
 
-  // 创建译文条目
-  const entry = {
+  // 创建临时条目用于管理 loading 状态
+  let translationEl: HTMLElement | null = null;
+  let container: HTMLElement | null = null;
+  let separatorNode: Text | undefined;
+
+  const tempEntry = {
     id: translationId,
     originalText: text,
-    sourceElement: container,
-    translationElement: translationEl,
-    separatorNode,
+    sourceElement: loadingContainer,
+    translationElement: loadingEl,
     isVisible: true,
     createdAt: Date.now(),
     streamCompleted: false,
   };
 
   // 注册到管理器
-  TranslationManager.register(entry);
-
-  // 设置交互
-  setupTranslationInteraction(translationEl, translationId);
-  setupSourceElementInteraction(container, translationId);
-
-  // 获取内容元素用于流式显示
-  const contentElForStream = translationEl.querySelector('.select-ask-translation-content');
-  if (!contentElForStream) return;
+  TranslationManager.register(tempEntry);
 
   // 流式翻译
   let fullTranslation = '';
@@ -3900,17 +3892,51 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
       }
 
       fullTranslation += chunk;
+
+      // 第一条内容到达时，移除 loading 并创建正式译文容器
+      if (tempEntry.isVisible) {
+        loadingEl.remove();
+        const result = insertTranslation(targetParagraph, translationId, isInline, text, isInline ? range : undefined);
+        translationEl = result.translationEl;
+        container = result.container;
+        separatorNode = result.separatorNode;
+
+        // 更新条目
+        tempEntry.translationElement = translationEl;
+        tempEntry.sourceElement = container;
+        tempEntry.separatorNode = separatorNode;
+
+        // 设置交互
+        setupTranslationInteraction(translationEl, translationId);
+        setupSourceElementInteraction(container, translationId);
+
+        // 标记为已切换
+        tempEntry.isVisible = false;
+      }
+
       // 渲染 Markdown
-      contentElForStream.innerHTML = await marked(fullTranslation) as string;
-      // 滚动到译文可见
-      translationEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      if (translationEl) {
+        const contentEl = translationEl.querySelector('.select-ask-translation-content');
+        if (contentEl) {
+          contentEl.innerHTML = await marked(fullTranslation) as string;
+        }
+        // 滚动到译文可见
+        translationEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
     }
 
     // 流式完成
     TranslationManager.update(translationId, { streamCompleted: true });
 
   } catch (error) {
-    contentElForStream.innerHTML = `<span class="select-ask-translation-error">翻译失败：${error instanceof Error ? error.message : String(error)}</span>`;
+    // 翻译失败，移除 loading 并显示错误
+    loadingEl.remove();
+    if (!tempEntry.isVisible && translationEl) {
+      const contentEl = translationEl.querySelector('.select-ask-translation-content');
+      if (contentEl) {
+        contentEl.innerHTML = `<span class="select-ask-translation-error">翻译失败：${error instanceof Error ? error.message : String(error)}</span>`;
+      }
+    }
   }
 }
 
