@@ -108,6 +108,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                   selectedText: message.selectedText,
                   context: message.context,
                   userMessage: message.userMessage,
+                  pageUrl: message.pageUrl,
+                  pageTitle: message.pageTitle,
                 },
               }).catch(console.error);
             })

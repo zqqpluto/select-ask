@@ -34,6 +34,12 @@ interface ExtendedHistoryMessage extends HistoryMessage {
   isStopped?: boolean; // 标记是否被中断
 }
 
+interface PageInfo {
+  selectedText: string;
+  pageUrl: string;
+  pageTitle: string;
+}
+
 export default function App() {
   const [messages, setMessages] = useState<ExtendedHistoryMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -43,6 +49,8 @@ export default function App() {
   const [currentModel, setCurrentModel] = useState<ModelConfig | null>(null);
   const [availableModels, setAvailableModels] = useState<ModelConfig[]>([]);
   const [showModelSelector, setShowModelSelector] = useState(false);
+  const [pageInfo, setPageInfo] = useState<PageInfo | null>(null);
+  const [isTextExpanded, setIsTextExpanded] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -242,10 +250,15 @@ export default function App() {
         // 从 storage 读取选中的文本和消息
         const result = await chrome.storage.local.get(['pending_sidebar_init']);
         if (result.pending_sidebar_init) {
-          const { selectedText, context, userMessage } = result.pending_sidebar_init;
+          const { selectedText, context, userMessage, pageUrl, pageTitle } = result.pending_sidebar_init;
           console.log('Processing pending init message:', userMessage);
           setSelectedText(selectedText || '');
           setContext(context || null);
+          setPageInfo({
+            selectedText: selectedText || '',
+            pageUrl: pageUrl || '',
+            pageTitle: pageTitle || '',
+          });
 
           if (userMessage) {
             const userMsg: ExtendedHistoryMessage = {
@@ -561,6 +574,49 @@ export default function App() {
 
   return (
     <div className="side-panel-container">
+      {/* 页面信息栏 - 显示选中文本和页面 URL */}
+      {pageInfo && (
+        <div className="side-panel-page-info">
+          <div className="side-panel-page-info-header">
+            <div className="side-panel-page-info-title">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+              </svg>
+              <span>选中文本</span>
+              <button
+                className="side-panel-expand-btn"
+                onClick={() => setIsTextExpanded(!isTextExpanded)}
+                title={isTextExpanded ? '收起' : '展开'}
+              >
+                {isTextExpanded ? (
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M6 9l6-6 6 6"/>
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M6 9l6 6 6-6"/>
+                  </svg>
+                )}
+              </button>
+            </div>
+          </div>
+          <div className={`side-panel-page-info-content ${isTextExpanded ? 'expanded' : ''}`}>
+            {pageInfo.selectedText}
+          </div>
+          <div className="side-panel-page-url">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M2 12h20"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            <a href={pageInfo.pageUrl} target="_blank" rel="noopener noreferrer" title={pageInfo.pageTitle}>
+              {pageInfo.pageTitle || pageInfo.pageUrl}
+            </a>
+          </div>
+        </div>
+      )}
+
       {/* 内容区域 */}
       <div className="side-panel-content" ref={messagesContainerRef}>
         {/* 消息列表 */}

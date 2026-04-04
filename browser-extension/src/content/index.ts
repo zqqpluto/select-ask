@@ -4746,28 +4746,27 @@ async function showResponseInSidebar(title: string, text: string, context: any):
   currentSessionType = title === '解释' ? 'explain' : title === '翻译' ? 'translate' : 'custom';
   currentSessionMessages = [];
 
-  // 保存用户消息
-  let userMessageText = '';
-  const targetLang = getTargetLanguage();
-  if (title === '解释') {
-    userMessageText = `解释${text}是什么`;
-  } else if (title === '翻译') {
-    userMessageText = `将"${text}"翻译成${targetLang}`;
-  } else {
-    userMessageText = text;
-  }
+  // 只发送"解释"或"翻译"给 AI，不包含选中文本
+  const userMessageText = title; // 直接发送"解释"或"翻译"
+
   currentSessionMessages.push({
     role: 'user',
     content: userMessageText,
     timestamp: Date.now(),
   });
 
-  // 通过 Background 打开 Side Panel
+  // 获取页面 URL
+  const pageUrl = window.location.href;
+  const pageTitle = document.title;
+
+  // 通过 Background 打开 Side Panel，同时传递选中文本和页面信息
   chrome.runtime.sendMessage({
     type: 'OPEN_SIDE_PANEL',
     selectedText: text,
     context: context,
     userMessage: userMessageText,
+    pageUrl: pageUrl,
+    pageTitle: pageTitle,
   }, (response) => {
     if (!response?.success) {
       console.error('Failed to open Side Panel:', response?.error);
