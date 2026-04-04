@@ -557,12 +557,12 @@ export default function App() {
       setShowModelSelector(false);
       setDropdownPosition(null);
     } else {
-      // 计算按钮位置
+      // 计算按钮位置，下拉菜单向上弹出
       if (modelButtonRef.current) {
         const rect = modelButtonRef.current.getBoundingClientRect();
         setDropdownPosition({
-          top: rect.top - 8, // 按钮上方 8px
-          left: rect.left,
+          bottom: rect.height + 8, // 按钮上方 8px
+          left: 0,
         });
         setShowModelSelector(true);
       }
@@ -821,7 +821,7 @@ export default function App() {
                 <div
                   className="side-panel-model-dropdown"
                   style={{
-                    top: dropdownPosition.top,
+                    bottom: dropdownPosition.bottom,
                     left: dropdownPosition.left,
                   }}
                 >

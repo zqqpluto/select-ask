@@ -597,9 +597,7 @@ body {
 
 /* 模型选择器 - 输入框左下角 */
 .side-panel-model-selector {
-  position: absolute;
-  bottom: 0;
-  left: 0;
+  position: relative;
   z-index: 10;
 }
 
@@ -777,6 +775,34 @@ body {
   color: #9ca3af;
   font-size: 12px;
   line-height: 1.5;
+}
+
+/* 下拉菜单 */
+.side-panel-model-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 6px;
+  min-width: 140px;
+  max-height: 250px;
+  overflow-y: auto;
+  z-index: 1000;
+  animation: dropdown-fade-in-up 0.15s ease-out;
+}
+
+@keyframes dropdown-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* 下拉菜单滚动条 */
