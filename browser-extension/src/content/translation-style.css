@@ -35,6 +35,44 @@
   margin-bottom: 8px;
 }
 
+/* 克隆标签内的译文内容继承原文样式 */
+.select-ask-translation-clone .select-ask-translation-content {
+  /* 继承字体样式 */
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+
+/* 标题样式继承 */
+.select-ask-translation-clone h1 .select-ask-translation-content,
+.select-ask-translation-clone h2 .select-ask-translation-content,
+.select-ask-translation-clone h3 .select-ask-translation-content,
+.select-ask-translation-clone h4 .select-ask-translation-content,
+.select-ask-translation-clone h5 .select-ask-translation-content,
+.select-ask-translation-clone h6 .select-ask-translation-content {
+  font-weight: bold;
+  margin: 0;
+}
+
+.select-ask-translation-clone h1 .select-ask-translation-content {
+  font-size: 2em;
+}
+
+.select-ask-translation-clone h2 .select-ask-translation-content {
+  font-size: 1.5em;
+}
+
+.select-ask-translation-clone h3 .select-ask-translation-content {
+  font-size: 1.25em;
+}
+
+.select-ask-translation-clone p .select-ask-translation-content {
+  margin: 0;
+  display: block;
+}
+
 @keyframes selectAskTranslationFadeIn {
   to {
     opacity: 1;

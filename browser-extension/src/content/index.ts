@@ -3849,6 +3849,12 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
   const translationId = generateTranslationId(text);
   const { translationEl, container, separatorNode } = insertTranslation(targetParagraph, translationId, isInline, text, isInline ? range : undefined);
 
+  // 先显示加载状态（转圈）
+  const contentEl = translationEl.querySelector('.select-ask-translation-content');
+  if (contentEl) {
+    contentEl.innerHTML = '<div class="select-ask-translation-loading"><div class="select-ask-loading-spinner"></div><span>翻译中...</span></div>';
+  }
+
   // 创建译文条目
   const entry = {
     id: translationId,
@@ -3869,8 +3875,8 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
   setupSourceElementInteraction(container, translationId);
 
   // 获取内容元素用于流式显示
-  const contentEl = translationEl.querySelector('.select-ask-translation-content');
-  if (!contentEl) return;
+  const contentElForStream = translationEl.querySelector('.select-ask-translation-content');
+  if (!contentElForStream) return;
 
   // 流式翻译
   let fullTranslation = '';
@@ -3895,7 +3901,7 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
 
       fullTranslation += chunk;
       // 渲染 Markdown
-      contentEl.innerHTML = await marked(fullTranslation) as string;
+      contentElForStream.innerHTML = await marked(fullTranslation) as string;
       // 滚动到译文可见
       translationEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
@@ -3904,7 +3910,7 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
     TranslationManager.update(translationId, { streamCompleted: true });
 
   } catch (error) {
-    contentEl.innerHTML = `<span class="select-ask-translation-error">翻译失败：${error instanceof Error ? error.message : String(error)}</span>`;
+    contentElForStream.innerHTML = `<span class="select-ask-translation-error">翻译失败：${error instanceof Error ? error.message : String(error)}</span>`;
   }
 }
 

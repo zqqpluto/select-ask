@@ -183,13 +183,15 @@ export function createTranslationElement(id: string, isInline: boolean): HTMLEle
  * 在指定位置插入译文
  * 短文本：在选中的文本节点后面插入译文
  * 长文本：复制原文标签，插入到原文后面
+ * @param inheritStyles - 是否继承原文样式（如标题、段落等）
  */
 export function insertTranslation(
   paragraph: HTMLElement,
   translationId: string,
   isInline: boolean,
   originalText: string,
-  range?: Range
+  range?: Range,
+  inheritStyles: boolean = true
 ): { translationEl: HTMLElement; container: HTMLElement; separatorNode?: Text } {
   // 检查是否已存在
   const existing = document.getElementById(translationId);
@@ -232,6 +234,19 @@ export function insertTranslation(
     clonedParagraph.innerHTML = '';
     clonedParagraph.appendChild(translationEl);
     clonedParagraph.classList.add('select-ask-translation-clone');
+
+    // 继承原文样式类名和 style 属性
+    if (inheritStyles) {
+      // 复制所有 class（排除可能冲突的类）
+      const originalClasses = Array.from(paragraph.classList);
+      originalClasses.forEach(cls => {
+        if (!cls.startsWith('select-ask-')) {
+          clonedParagraph.classList.add(cls);
+        }
+      });
+      // 复制内联样式
+      clonedParagraph.style.cssText = paragraph.style.cssText;
+    }
 
     if (paragraph.nextSibling) {
       paragraph.parentNode?.insertBefore(clonedParagraph, paragraph.nextSibling);
