@@ -474,8 +474,8 @@ body {
   font-size: 12px;
   line-height: 1.6;
   color: #86909c;
-  padding: 0;
-  border-left: none;
+  padding: 8px 0 8px 12px;
+  border-left: 3px solid #e5e6eb;
 }
 
 .side-panel-reasoning-quote-text p {
@@ -910,11 +910,10 @@ body {
 
 /* AI 思考过程中的引用样式 - DeepSeek 风格：圆点 + 细线 */
 .side-panel-reasoning-quote-text blockquote {
-  margin: 12px 0;
-  padding: 0;
+  margin: 12px 0 12px -12px;
+  padding: 0 0 0 16px;
   border: none;
   position: relative;
-  padding-left: 16px;
 }
 
 .side-panel-reasoning-quote-text blockquote::before {
