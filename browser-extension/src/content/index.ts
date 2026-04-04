@@ -4325,12 +4325,6 @@ async function showCustomQuestionInputBox(text: string, context: any, dropdownRe
  * 显示图标菜单
  */
 function showIconMenu(): void {
-  // 移除现有菜单
-  removeIconMenus();
-  currentIconMenu = null;
-  currentFloatingBox = null;
-  currentDropdown = null;
-
   const selection = window.getSelection();
   // 检查选择有效性：非空、非折叠、非纯空白
   if (!selection || selection.rangeCount === 0 || selection.isCollapsed || !isValidSelection(selection)) {
@@ -4365,14 +4359,52 @@ function showIconMenu(): void {
       y = window.scrollY + padding;
     }
 
-    const menu = createIconMenu(x, y);
-    document.body.appendChild(menu);
-    currentIconMenu = menu;
-    console.log('Icon menu created at:', x, y, '(mouse at:', mouseUpPosition.x, mouseUpPosition.y, ')');
+    // 如果已有图标，更新位置；否则创建新图标
+    if (currentIconMenu) {
+      currentIconMenu.style.left = `${x}px`;
+      currentIconMenu.style.top = `${y}px`;
+      console.log('Icon menu updated to:', x, y);
+    } else {
+      const menu = createIconMenu(x, y);
+      document.body.appendChild(menu);
+      currentIconMenu = menu;
+      console.log('Icon menu created at:', x, y);
+    }
   }
 
   // 清除鼠标位置记录
   mouseUpPosition = null;
+}
+
+/**
+ * 检查鼠标是否在选区范围内
+ */
+function isMouseInSelection(mouseX: number, mouseY: number): boolean {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+    return false;
+  }
+
+  const range = selection.getRangeAt(0);
+  try {
+    const rects = range.getClientRects();
+    for (let i = 0; i < rects.length; i++) {
+      const rect = rects[i];
+      const scrollX = window.scrollX;
+      const scrollY = window.scrollY;
+      if (
+        mouseX >= rect.left + scrollX &&
+        mouseX <= rect.right + scrollX &&
+        mouseY >= rect.top + scrollY &&
+        mouseY <= rect.bottom + scrollY
+      ) {
+        return true;
+      }
+    }
+  } catch (e) {
+    // 如果获取选区范围失败，返回 false
+  }
+  return false;
 }
 
 /**
@@ -4399,18 +4431,9 @@ function handleMouseUp(e: MouseEvent): void {
     clearTimeout(selectionTimeout);
   }
 
-  // 立即显示菜单，无延迟
+  // 50ms 延迟后显示图标
   selectionTimeout = window.setTimeout(() => {
     showIconMenu();
-
-    // 3 秒后自动隐藏图标，避免影响阅读
-    if (currentIconMenu) {
-      selectionTimeout = window.setTimeout(() => {
-        if (currentIconMenu && !currentDropdown) {
-          currentIconMenu.style.display = 'none';
-        }
-      }, 3000) as unknown as number;
-    }
   }, 50) as unknown as number;
 }
 
@@ -4450,6 +4473,29 @@ function init(): void {
 
   // 鼠标抬起时显示图标
   document.addEventListener('mouseup', handleMouseUp);
+
+  // 鼠标移动时检测是否离开选区
+  let lastMouseX = 0;
+  let lastMouseY = 0;
+  document.addEventListener('mousemove', (e) => {
+    // 避免过于频繁的检查
+    if (Math.abs(e.clientX - lastMouseX) < 3 && Math.abs(e.clientY - lastMouseY) < 3) {
+      return;
+    }
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+
+    // 如果图标显示中且没有下拉菜单，检查鼠标是否离开选区
+    if (currentIconMenu && !currentDropdown) {
+      const pageX = e.clientX + window.scrollX;
+      const pageY = e.clientY + window.scrollY;
+
+      if (!isMouseInSelection(pageX, pageY)) {
+        // 鼠标离开选区，隐藏图标
+        currentIconMenu.style.display = 'none';
+      }
+    }
+  });
 
   // 滚动时隐藏图标，避免影响阅读
   let scrollTimeout: number | null = null;
