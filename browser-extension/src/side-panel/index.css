@@ -314,8 +314,6 @@ body {
   line-height: 1.6;
 }
 
-/* AI 回答中的引用样式 - DeepSeek 风格：圆点 + 细线 */
-
 /* 下拉菜单选项 */
 .side-panel-model-option {
   display: flex;
@@ -474,7 +472,7 @@ body {
   font-size: 12px;
   line-height: 1.6;
   color: #86909c;
-  padding: 8px 0 8px 12px;
+  padding: 0 0 0 12px;
   border-left: 3px solid #e5e6eb;
 }
 
@@ -599,10 +597,10 @@ body {
 
 /* 模型选择器 - 输入框左下角 */
 .side-panel-model-selector {
-  position: absolute;
-  bottom: 58px;
-  left: 10px;
-  z-index: 100;
+  position: relative;
+  bottom: auto;
+  left: auto;
+  z-index: 10;
 }
 
 .side-panel-model-btn {
@@ -698,9 +696,9 @@ body {
 .side-panel-input-controls {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   gap: 8px;
   padding-top: 4px;
+  position: relative;
 }
 
 @keyframes dropdown-fade-in {
@@ -906,44 +904,4 @@ body {
 .side-panel-message-content li {
   margin: 4px 0;
   line-height: 1.6;
-}
-
-/* AI 思考过程中的引用样式 - DeepSeek 风格：圆点 + 细线 */
-.side-panel-reasoning-quote-text blockquote {
-  margin: 12px 0 12px -12px;
-  padding: 0 0 0 16px;
-  border: none;
-  position: relative;
-}
-
-.side-panel-reasoning-quote-text blockquote::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 6px;
-  height: 6px;
-  background: #6366f1;
-  border-radius: 50%;
-}
-
-.side-panel-reasoning-quote-text blockquote::after {
-  content: '';
-  position: absolute;
-  left: 3px;
-  top: 10px;
-  bottom: 0;
-  width: 1px;
-  background: linear-gradient(to bottom, #e5e6eb, transparent);
-}
-
-.side-panel-reasoning-quote-text blockquote p {
-  margin: 0 0 8px 0;
-  color: #6b7280;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.side-panel-reasoning-quote-text blockquote p:last-child {
-  margin-bottom: 0;
 }
