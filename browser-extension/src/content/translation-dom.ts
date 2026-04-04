@@ -207,7 +207,7 @@ export function insertTranslation(
   translationEl.dataset.originalText = originalText;
 
   if (isInline) {
-    // 短文本：在选中的文本节点后面插入译文
+    // 短文本：直接在原文标签内插入译文（行内形式）
     const streamingSpan = translationEl.querySelector('.select-ask-translation-streaming');
     if (streamingSpan) {
       streamingSpan.remove();
@@ -217,7 +217,7 @@ export function insertTranslation(
       contentEl.innerHTML = '<span class="select-ask-translation-streaming"></span>';
     }
 
-    // 在 Range 结束位置的文本节点后插入
+    // 在 Range 结束位置的文本节点后插入译文元素
     let separatorNode: Text | undefined;
     if (range && !range.collapsed) {
       separatorNode = insertAfterRange(range, translationEl);
@@ -246,6 +246,21 @@ export function insertTranslation(
       });
       // 复制内联样式
       clonedParagraph.style.cssText = paragraph.style.cssText;
+
+      // 使用 getComputedStyle 获取计算后的样式并应用
+      const computedStyle = window.getComputedStyle(paragraph);
+      const styleProperties = [
+        'font-family', 'font-size', 'font-weight', 'font-style',
+        'line-height', 'color', 'text-transform', 'letter-spacing',
+        'text-align', 'text-decoration', 'text-indent'
+      ];
+
+      for (const prop of styleProperties) {
+        const value = computedStyle.getPropertyValue(prop);
+        if (value) {
+          (clonedParagraph.style as any)[prop.replace(/-./g, x => x[1].toUpperCase())] = value;
+        }
+      }
     }
 
     if (paragraph.nextSibling) {
