@@ -215,6 +215,9 @@ export function insertTranslation(
     newParagraph.appendChild(translationEl);
     newParagraph.classList.add('select-ask-translation-inline-wrapper');
 
+    // 强制设置为 inline，防止块级标签（如 h1）换行
+    newParagraph.style.display = 'inline';
+
     // 继承原文样式类名和 style 属性
     if (inheritStyles) {
       // 复制所有 class（排除可能冲突的类）

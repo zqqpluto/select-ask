@@ -2,12 +2,12 @@
 
 /* 行内模式 wrapper - 短文本时创建与原文相同标签的 wrapper，用于继承样式 */
 .select-ask-translation-inline-wrapper {
-  display: inline;
+  display: inline !important;
   margin-left: 8px;
   vertical-align: baseline;
 }
 
-/* 行内模式 - 短文本显示在原文右侧，直接嵌入原文标签内 */
+/* 行内模式 wrapper 内的译文容器 */
 .select-ask-translation-inline-wrapper .select-ask-translation.inline {
   margin-left: 0;
   padding: 2px 6px;
@@ -31,22 +31,13 @@
   text-transform: inherit;
   letter-spacing: inherit;
   text-align: inherit;
+  display: inline;
 }
 
-/* 特殊标签样式继承 - 行内模式 */
-.select-ask-translation-inline-wrapper h1 .select-ask-translation-content,
-.select-ask-translation-inline-wrapper h2 .select-ask-translation-content,
-.select-ask-translation-inline-wrapper h3 .select-ask-translation-content,
-.select-ask-translation-inline-wrapper h4 .select-ask-translation-content,
-.select-ask-translation-inline-wrapper h5 .select-ask-translation-content,
-.select-ask-translation-inline-wrapper h6 .select-ask-translation-content {
-  font-weight: inherit;
-  margin: 0;
-}
-
-/* 行内模式 wrapper 悬停效果 */
-.select-ask-translation-inline-wrapper:hover {
-  /* 可以添加一些悬停效果 */
+/* 行内模式 wrapper 内的关闭按钮 */
+.select-ask-translation-inline-wrapper .select-ask-translation-close {
+  display: inline-flex;
+  vertical-align: middle;
 }
 
 /* 块级模式 - 长文本显示在原文下方 */
