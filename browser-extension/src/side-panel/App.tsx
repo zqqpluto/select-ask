@@ -624,7 +624,10 @@ export default function App() {
                     <>
                       {/* 操作类型标签 + 展开按钮（长文本时） */}
                       {selectedTextNeedsExpand && (
-                        <div className="side-panel-selected-text-header">
+                        <div
+                          className="side-panel-selected-text-header"
+                          onClick={() => setSelectedTextExpanded(!selectedTextExpanded)}
+                        >
                           <span className="side-panel-selected-text-label">{msg.content}</span>
                           <svg
                             className={`side-panel-selected-text-chevron ${selectedTextExpanded ? '' : 'collapsed'}`}
@@ -632,7 +635,6 @@ export default function App() {
                             fill="none"
                             stroke="currentColor"
                             strokeWidth="2"
-                            onClick={() => setSelectedTextExpanded(!selectedTextExpanded)}
                           >
                             <path d="M6 9l6 6 6-6"/>
                           </svg>

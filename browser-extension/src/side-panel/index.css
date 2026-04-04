@@ -190,13 +190,18 @@ body {
   gap: 6px;
   margin-top: 8px;
   margin-bottom: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.side-panel-message-user-wrapper .side-panel-selected-text-header:hover {
+  opacity: 0.8;
 }
 
 .side-panel-message-user-wrapper .side-panel-selected-text-header .side-panel-selected-text-chevron {
   width: 14px;
   height: 14px;
   color: rgba(99, 102, 241, 0.6);
-  cursor: pointer;
   transition: transform 0.2s ease-out;
 }
 
