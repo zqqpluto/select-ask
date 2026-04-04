@@ -619,9 +619,8 @@ export default function App() {
               // 用户消息
               <div className="side-panel-message-wrapper side-panel-message-user-wrapper">
                 <div className="side-panel-message-content">
-                  {escapeHtml(msg.content)}
-                  {/* 第一条用户消息气泡内显示选中文本引用 */}
-                  {index === 0 && pageInfo && pageInfo.selectedText && (
+                  {/* 第一条用户消息：只显示选中文本引用，不显示单独的消息内容 */}
+                  {index === 0 && pageInfo && pageInfo.selectedText ? (
                     <div className="side-panel-selected-text-quote">
                       {/* 根据文本是否能在当前宽度一行显示来决定是否展示展开按钮 */}
                       {selectedTextNeedsExpand && (
@@ -654,6 +653,9 @@ export default function App() {
                         {pageInfo.selectedText}
                       </blockquote>
                     </div>
+                  ) : (
+                    // 非第一条消息或没有选中文本时，正常显示消息内容
+                    escapeHtml(msg.content)
                   )}
                 </div>
                 {/* 操作按钮 - 始终显示 */}
