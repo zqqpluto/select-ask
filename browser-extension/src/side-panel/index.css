@@ -611,6 +611,7 @@ body {
   border: 1px solid rgba(59, 130, 246, 0.1);
   border-radius: 12px;
   transition: all 0.15s ease-out;
+  position: relative;
 }
 
 .side-panel-input-box:focus-within {
@@ -618,11 +619,67 @@ body {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
 }
 
+/* 模型选择器 - 左上角紧凑设计 */
+.side-panel-model-selector {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 10;
+}
+
+.side-panel-model-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease-out;
+  white-space: nowrap;
+  max-width: 140px;
+}
+
+.side-panel-model-btn:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+.side-panel-model-btn:active {
+  transform: scale(0.98);
+}
+
+.side-panel-model-btn .model-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: #6366f1;
+}
+
+.side-panel-model-btn svg:last-child {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  opacity: 0.5;
+  transition: transform 0.2s ease-out;
+}
+
+.side-panel-model-btn:hover svg:last-child {
+  opacity: 1;
+  transform: rotate(180deg);
+}
+
 /* 输入框上栏：文本输入区域 */
 .side-panel-input-row {
   display: flex;
   align-items: flex-start;
   gap: 8px;
+  padding-left: 140px; /* 为左上角模型选择器预留空间 */
 }
 
 .side-panel-input-box textarea {
@@ -643,82 +700,13 @@ body {
   color: #c9cdd4;
 }
 
-/* 输入框下栏：模型选择 + 发送按钮 */
+/* 输入框下栏：发送按钮 */
 .side-panel-input-controls {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 8px;
-  padding-top: 6px;
-}
-
-/* 模型选择器 - 简约现代设计 */
-.side-panel-model-selector {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.side-panel-model-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  color: #6b7280;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s ease-out;
-}
-
-.side-panel-model-btn:hover {
-  background: #f9fafb;
-  border-color: #d1d5db;
-  color: #374151;
-}
-
-.side-panel-model-btn:active {
-  transform: scale(0.98);
-}
-
-.side-panel-model-btn .model-icon {
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-  color: #6366f1;
-}
-
-.side-panel-model-btn svg:last-child {
-  width: 12px;
-  height: 12px;
-  flex-shrink: 0;
-  opacity: 0.5;
-  transition: transform 0.2s ease-out;
-}
-
-.side-panel-model-btn:hover svg:last-child {
-  opacity: 1;
-  transform: rotate(180deg);
-}
-
-/* 下拉菜单 - 简约浮层设计 */
-.side-panel-model-dropdown {
-  position: fixed;
-  min-width: 180px;
-  max-height: 300px;
-  overflow-y: auto;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  box-shadow:
-    0 10px 40px rgba(0, 0, 0, 0.1),
-    0 0 0 1px rgba(0, 0, 0, 0.02);
-  padding: 6px;
-  z-index: 10000;
-  animation: dropdown-fade-in 0.15s ease-out;
+  padding-top: 4px;
 }
 
 @keyframes dropdown-fade-in {
