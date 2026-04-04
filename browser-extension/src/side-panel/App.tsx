@@ -607,83 +607,6 @@ export default function App() {
 
   return (
     <div className="side-panel-container">
-      {/* 模型选择器 - 位于侧边栏左上角 */}
-      <div className="side-panel-model-selector">
-        <button
-          ref={modelButtonRef}
-          className="side-panel-model-btn"
-          onClick={toggleModelSelector}
-          title="切换模型"
-        >
-          {/* 科技感神经元图标 */}
-          <svg className="model-icon" viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
-            <circle cx="12" cy="5" r="2.5"/>
-            <circle cx="6" cy="12" r="2.5"/>
-            <circle cx="18" cy="12" r="2.5"/>
-            <circle cx="12" cy="19" r="2.5"/>
-            <path d="M12 7.5v2M7.5 12h2M14.5 12h2M12 14.5v2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-            <path d="M7.5 13.5l3 3M13.5 7.5l3-3M16.5 13.5l-3 3M7.5 10.5l3-3" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.6"/>
-          </svg>
-          <span>{currentModel?.name || '选择模型'}</span>
-          <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M6 9l6 6 6-6"/>
-          </svg>
-        </button>
-
-        {showModelSelector && dropdownPosition && (
-          <div
-            className="side-panel-model-dropdown"
-            style={{
-              top: dropdownPosition.top,
-              left: dropdownPosition.left,
-            }}
-          >
-            {availableModels.map(model => (
-              <button
-                key={model.id}
-                className={`side-panel-model-option ${currentModel?.id === model.id ? 'active' : ''}`}
-                onClick={() => handleModelSelect(model.id)}
-              >
-                {model.name}
-              </button>
-            ))}
-            {availableModels.length === 0 && (
-              <div className="side-panel-model-empty">
-                请先在配置中添加模型
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* 页面信息栏 */}
-      {pageInfo && (
-        <div className="side-panel-page-info">
-          <div className="side-panel-page-info-header">
-            <div className="side-panel-page-info-title">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="17 8 12 3 7 8"/>
-                <line x1="12" y1="3" x2="12" y2="15"/>
-              </svg>
-              <span>选中的文本</span>
-            </div>
-          </div>
-          <div className={`side-panel-page-info-content ${pageInfo.expanded ? 'expanded' : ''}`}>
-            {pageInfo.selectedText}
-          </div>
-          <div className="side-panel-page-url">
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-            </svg>
-            <a href={pageInfo.pageUrl} target="_blank" rel="noopener noreferrer">
-              {pageInfo.pageUrl}
-            </a>
-          </div>
-        </div>
-      )}
-
       {/* 内容区域 */}
       <div className="side-panel-content" ref={messagesContainerRef}>
         {/* 消息列表 */}
@@ -700,27 +623,28 @@ export default function App() {
                   {index === 0 && pageInfo && pageInfo.selectedText ? (
                     <>
                       {/* 操作类型标签 + 展开按钮（长文本时） */}
-                      <div className="side-panel-selected-text-operation">
-                        <span className="side-panel-selected-text-label">{msg.content}</span>
-                        {selectedTextNeedsExpand && (
-                          <button
-                            className="side-panel-quote-toggle-btn"
+                      {selectedTextNeedsExpand && (
+                        <div className="side-panel-selected-text-header">
+                          <span className="side-panel-selected-text-label">{msg.content}</span>
+                          <svg
+                            className={`side-panel-selected-text-chevron ${selectedTextExpanded ? '' : 'collapsed'}`}
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
                             onClick={() => setSelectedTextExpanded(!selectedTextExpanded)}
-                            title={selectedTextExpanded ? '收起' : '展开'}
                           >
-                            <svg
-                              className={`side-panel-selected-text-chevron ${selectedTextExpanded ? '' : 'collapsed'}`}
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                            >
-                              <path d="M6 9l6 6 6-6"/>
-                            </svg>
-                          </button>
-                        )}
-                      </div>
-                      {/* Markdown 引用格式展示选中文本 */}
+                            <path d="M6 9l6 6 6-6"/>
+                          </svg>
+                        </div>
+                      )}
+                      {/* 短文本直接显示标签 */}
+                      {!selectedTextNeedsExpand && (
+                        <div className="side-panel-selected-text-short">
+                          <span className="side-panel-selected-text-label">{msg.content}</span>
+                        </div>
+                      )}
+                      {/* Markdown 引用格式显示选中的文本 */}
                       <blockquote
                         ref={selectedTextRef}
                         className={`side-panel-selected-text-blockquote ${selectedTextExpanded ? 'expanded' : ''}`}
@@ -866,8 +790,57 @@ export default function App() {
             />
           </div>
 
-          {/* 下栏：发送按钮 */}
+          {/* 下栏：模型选择 + 发送按钮 */}
           <div className="side-panel-input-controls">
+            {/* 模型选择器 */}
+            <div className="side-panel-model-selector">
+              <button
+                ref={modelButtonRef}
+                className="side-panel-model-btn"
+                onClick={toggleModelSelector}
+                title="切换模型"
+              >
+                {/* 科技感神经元图标 - 缩小版 */}
+                <svg className="model-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                  <circle cx="12" cy="5" r="2.5"/>
+                  <circle cx="6" cy="12" r="2.5"/>
+                  <circle cx="18" cy="12" r="2.5"/>
+                  <circle cx="12" cy="19" r="2.5"/>
+                  <path d="M12 7.5v2M7.5 12h2M14.5 12h2M12 14.5v2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+                  <path d="M7.5 13.5l3 3M13.5 7.5l3-3M16.5 13.5l-3 3M7.5 10.5l3-3" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.6"/>
+                </svg>
+                <span>{currentModel?.name || '选择模型'}</span>
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M6 9l6 6 6-6"/>
+                </svg>
+              </button>
+
+              {showModelSelector && dropdownPosition && (
+                <div
+                  className="side-panel-model-dropdown"
+                  style={{
+                    top: dropdownPosition.top,
+                    left: dropdownPosition.left,
+                  }}
+                >
+                  {availableModels.map(model => (
+                    <button
+                      key={model.id}
+                      className={`side-panel-model-option ${currentModel?.id === model.id ? 'active' : ''}`}
+                      onClick={() => handleModelSelect(model.id)}
+                    >
+                      {model.name}
+                    </button>
+                  ))}
+                  {availableModels.length === 0 && (
+                    <div className="side-panel-model-empty">
+                      请先在配置中添加模型
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <button
               className="side-panel-send"
               onClick={isLoading ? handleStopGeneration : handleSend}
