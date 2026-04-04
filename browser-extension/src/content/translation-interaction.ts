@@ -65,25 +65,23 @@ export function closeTranslation(id: string): void {
     entry.sourceElement.dataset.hasTranslationInteraction = 'false';
   }
 
-  // 如果是长文本（复制标签模式），需要移除整个克隆标签
-  const cloneContainer = entry.sourceElement.classList.contains('select-ask-translation-clone')
-    ? entry.sourceElement
-    : null;
+  // 容器是译文所在的段落元素（可能是原文段落或新建的译文段落）
+  const container = entry.sourceElement;
 
-  // 如果是短文本且有分隔符，移除分隔符
-  if (!cloneContainer && entry.separatorNode) {
+  // 如果是行内文本且有分隔符，移除分隔符
+  if (!container.classList.contains('select-ask-translation-clone') && entry.separatorNode) {
     entry.separatorNode.remove();
   }
 
   // 淡出并移除译文元素
   removeTranslation(entry.translationElement);
 
-  // 如果是克隆标签，也移除整个标签
-  if (cloneContainer) {
-    cloneContainer.style.transition = 'all 0.2s ease';
-    cloneContainer.style.opacity = '0';
+  // 如果是独立的译文段落（块级模式），也移除整个段落
+  if (container.classList.contains('select-ask-translation-clone')) {
+    container.style.transition = 'all 0.2s ease';
+    container.style.opacity = '0';
     setTimeout(() => {
-      cloneContainer.remove();
+      container.remove();
     }, 200);
   }
 

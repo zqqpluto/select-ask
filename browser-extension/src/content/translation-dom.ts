@@ -207,7 +207,7 @@ export function insertTranslation(
   translationEl.dataset.originalText = originalText;
 
   if (isInline) {
-    // 短文本：直接在原文标签内插入译文（行内形式）
+    // 短文本：在选中的文本节点后面插入译文
     const streamingSpan = translationEl.querySelector('.select-ask-translation-streaming');
     if (streamingSpan) {
       streamingSpan.remove();
@@ -228,12 +228,12 @@ export function insertTranslation(
 
     return { translationEl, container: paragraph, separatorNode };
   } else {
-    // 长文本：复制一份标签，插入到原文后面
-    const clonedParagraph = paragraph.cloneNode(false) as HTMLElement;
-    clonedParagraph.id = translationId + '-clone';
-    clonedParagraph.innerHTML = '';
-    clonedParagraph.appendChild(translationEl);
-    clonedParagraph.classList.add('select-ask-translation-clone');
+    // 长文本：创建一个与原文标签相同的新标签，用于容纳译文
+    // 不直接插入到 DOM，而是返回给调用者决定如何插入
+    const newParagraph = document.createElement(paragraph.tagName);
+    newParagraph.id = translationId + '-clone';
+    newParagraph.appendChild(translationEl);
+    newParagraph.classList.add('select-ask-translation-clone');
 
     // 继承原文样式类名和 style 属性
     if (inheritStyles) {
@@ -241,11 +241,11 @@ export function insertTranslation(
       const originalClasses = Array.from(paragraph.classList);
       originalClasses.forEach(cls => {
         if (!cls.startsWith('select-ask-')) {
-          clonedParagraph.classList.add(cls);
+          newParagraph.classList.add(cls);
         }
       });
       // 复制内联样式
-      clonedParagraph.style.cssText = paragraph.style.cssText;
+      newParagraph.style.cssText = paragraph.style.cssText;
 
       // 使用 getComputedStyle 获取计算后的样式并应用
       const computedStyle = window.getComputedStyle(paragraph);
@@ -258,18 +258,19 @@ export function insertTranslation(
       for (const prop of styleProperties) {
         const value = computedStyle.getPropertyValue(prop);
         if (value) {
-          (clonedParagraph.style as any)[prop.replace(/-./g, x => x[1].toUpperCase())] = value;
+          (newParagraph.style as any)[prop.replace(/-./g, x => x[1].toUpperCase())] = value;
         }
       }
     }
 
+    // 将新标签插入到原文后面
     if (paragraph.nextSibling) {
-      paragraph.parentNode?.insertBefore(clonedParagraph, paragraph.nextSibling);
+      paragraph.parentNode?.insertBefore(newParagraph, paragraph.nextSibling);
     } else {
-      paragraph.parentNode?.appendChild(clonedParagraph);
+      paragraph.parentNode?.appendChild(newParagraph);
     }
 
-    return { translationEl, container: clonedParagraph };
+    return { translationEl, container: newParagraph };
   }
 }
 
