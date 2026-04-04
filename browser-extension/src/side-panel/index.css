@@ -219,7 +219,7 @@ body {
 .side-panel-message-user-wrapper .side-panel-selected-text-label {
   font-size: 12px;
   font-weight: 600;
-  color: rgba(99, 102, 241, 0.9);
+  color: #000000;
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
