@@ -595,10 +595,10 @@ body {
   flex-shrink: 0;
 }
 
-/* 模型选择器 - 整个对话框左上角 */
+/* 模型选择器 - 输入框左下角 */
 .side-panel-model-selector {
   position: absolute;
-  top: 14px;
+  bottom: 58px;
   left: 10px;
   z-index: 100;
 }
