@@ -703,7 +703,6 @@ export default function App() {
                 handleTextareaChange();
               }}
               onKeyDown={handleKeyDown}
-              disabled={isLoading}
             />
           </div>
 
