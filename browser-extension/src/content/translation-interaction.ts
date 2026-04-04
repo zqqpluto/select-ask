@@ -36,8 +36,13 @@ export function setupSourceElementInteraction(
     return;
   }
 
-  // 双击原文关闭译文
-  paragraph.addEventListener('dblclick', () => {
+  // 双击原文关闭译文 - 只在原文的文本内容上触发，不在译文上触发
+  paragraph.addEventListener('dblclick', (e) => {
+    // 如果点击的是译文元素本身，不处理
+    if ((e.target as HTMLElement).closest('.select-ask-translation')) {
+      return;
+    }
+
     const entry = TranslationManager.get(translationId);
     if (entry && entry.isVisible) {
       closeTranslation(translationId);
@@ -60,8 +65,27 @@ export function closeTranslation(id: string): void {
     entry.sourceElement.dataset.hasTranslationInteraction = 'false';
   }
 
-  // 淡出并移除
+  // 如果是长文本（复制标签模式），需要移除整个克隆标签
+  const cloneContainer = entry.sourceElement.classList.contains('select-ask-translation-clone')
+    ? entry.sourceElement
+    : null;
+
+  // 如果是短文本且有分隔符，移除分隔符
+  if (!cloneContainer && entry.separatorNode) {
+    entry.separatorNode.remove();
+  }
+
+  // 淡出并移除译文元素
   removeTranslation(entry.translationElement);
+
+  // 如果是克隆标签，也移除整个标签
+  if (cloneContainer) {
+    cloneContainer.style.transition = 'all 0.2s ease';
+    cloneContainer.style.opacity = '0';
+    setTimeout(() => {
+      cloneContainer.remove();
+    }, 200);
+  }
 
   // 从管理器中移除
   TranslationManager.remove(id);

@@ -1,20 +1,38 @@
 /* 行内翻译样式 - 沉浸式对照翻译 */
 
-/* 译文容器 - 无边框、无背景，像普通页面内容一样 */
-.select-ask-translation {
-  /* 布局 */
-  margin-top: 2px;
-  margin-bottom: 8px;
-  padding: 4px 0;
+/* 译文容器 - 分为行内模式和块级模式 */
 
-  /* 字体 - 与页面内容融为一体 */
+/* 行内模式 - 短文本显示在原文右侧 */
+.select-ask-translation.inline {
+  display: inline;
+  margin-left: 8px;
+  padding: 2px 6px;
+  background: #f3f4f6;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #6b7280;
+  opacity: 0;
+  animation: selectAskTranslationFadeIn 0.2s ease forwards;
+}
+
+/* 块级模式 - 长文本显示在原文下方 */
+.select-ask-translation.block {
+  display: block;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border-radius: 6px;
   font-size: 14px;
   line-height: 1.6;
   color: #6b7280;
-
-  /* 过渡动画 */
   opacity: 0;
   animation: selectAskTranslationFadeIn 0.25s ease forwards;
+}
+
+/* 复制的标签样式 - 长文本时复制原文标签用于显示译文 */
+.select-ask-translation-clone {
+  margin-top: 4px;
+  margin-bottom: 8px;
 }
 
 @keyframes selectAskTranslationFadeIn {
@@ -23,17 +41,49 @@
   }
 }
 
-/* 翻译标识 - 小型角标，放在译文前面 */
-.select-ask-translation-badge {
-  font-size: 10px;
-  font-weight: 500;
-  color: #9ca3af;
-  margin-right: 6px;
-  display: inline-block;
+/* 悬停效果 */
+.select-ask-translation.inline:hover {
+  background: #e5e7eb;
 }
 
-.select-ask-translation-badge::before {
-  content: '[译] ';
+.select-ask-translation.block:hover {
+  background: #f3f4f6;
+}
+
+/* 关闭按钮 - 悬浮显示在右侧 */
+.select-ask-translation-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  color: #9ca3af;
+  transition: all 0.12s ease;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.select-ask-translation-close:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: #374151;
+}
+
+/* 块级模式的关闭按钮绝对定位 */
+.select-ask-translation.block .select-ask-translation-close {
+  position: absolute;
+  right: 8px;
+  top: 6px;
+}
+
+.select-ask-translation.block {
+  position: relative;
 }
 
 /* 流式加载时的光标效果 */
@@ -53,22 +103,32 @@
   }
 }
 
-/* 译文内容中的 Markdown 样式 - 保持简洁 */
+/* 译文内容中的 Markdown 样式 */
 .select-ask-translation-content p {
+  margin: 0;
+  display: inline;
+}
+
+.select-ask-translation.block .select-ask-translation-content p {
   margin: 0 0 6px 0;
 }
 
-.select-ask-translation-content p:last-child {
+.select-ask-translation.block .select-ask-translation-content p:last-child {
   margin-bottom: 0;
 }
 
 .select-ask-translation-content code {
-  background: #f3f4f6;
+  background: #e5e7eb;
   padding: 1px 4px;
   border-radius: 3px;
-  font-size: 13px;
+  font-size: 12px;
   font-family: ui-monospace, 'SF Mono', 'Monaco', Consolas, monospace;
   color: #4b5563;
+}
+
+.select-ask-translation.block .select-ask-translation-content code {
+  background: #f3f4f6;
+  font-size: 13px;
 }
 
 .select-ask-translation-content pre {
@@ -106,52 +166,61 @@
   font-size: 13px;
 }
 
-/* 关闭按钮 - 悬浮显示在右侧 */
-.select-ask-translation-close {
-  position: absolute;
-  right: 0;
-  top: 0;
-  width: 20px;
-  height: 20px;
-  border: none;
-  border-radius: 3px;
-  background: rgba(0, 0, 0, 0.04);
-  cursor: pointer;
+/* 加载状态 */
+.select-ask-translation-loading {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
   color: #9ca3af;
-  transition: all 0.12s ease;
-  padding: 0;
-  opacity: 0;
+  font-size: 13px;
 }
 
-.select-ask-translation:hover .select-ask-translation-close {
-  opacity: 1;
+.select-ask-loading-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: selectAskSpin 0.8s linear infinite;
 }
 
-.select-ask-translation-close:hover {
-  background: rgba(0, 0, 0, 0.08);
-  color: #374151;
+@keyframes selectAskSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* 暗色模式适配 */
 @media (prefers-color-scheme: dark) {
-  .select-ask-translation {
+  .select-ask-translation.inline {
+    background: #374151;
     color: #9ca3af;
   }
 
-  .select-ask-translation-badge {
-    color: #6b7280;
+  .select-ask-translation.inline:hover {
+    background: #4b5563;
+  }
+
+  .select-ask-translation.block {
+    background: #1f2937;
+    color: #9ca3af;
+  }
+
+  .select-ask-translation.block:hover {
+    background: #374151;
   }
 
   .select-ask-translation-content code {
-    background: #374151;
+    background: #4b5563;
     color: #e5e7eb;
   }
 
+  .select-ask-translation.block .select-ask-translation-content code {
+    background: #374151;
+  }
+
   .select-ask-translation-content pre {
-    background: #1f2937;
+    background: #111827;
     border-color: #4b5563;
   }
 
@@ -159,15 +228,24 @@
     color: #f9fafb;
   }
 
+  .select-ask-translation-close:hover {
+    background: rgba(255, 255, 255, 0.12);
+  }
+
   .select-ask-translation-streaming::after {
     color: #6b7280;
   }
 
-  .select-ask-translation-close {
-    background: rgba(255, 255, 255, 0.08);
+  .select-ask-translation-loading {
+    color: #6b7280;
   }
 
-  .select-ask-translation-close:hover {
-    background: rgba(255, 255, 255, 0.12);
+  .select-ask-loading-spinner {
+    border-color: #374151;
+    border-top-color: #818cf8;
+  }
+
+  .select-ask-translation-error {
+    color: #f87171;
   }
 }

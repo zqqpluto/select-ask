@@ -12,6 +12,7 @@ export interface TranslationEntry {
   originalText: string;          // 原文
   sourceElement: HTMLElement;    // 原文所在段落
   translationElement: HTMLElement; // 译文容器
+  separatorNode?: Text;          // 分隔符文本节点（行内模式使用）
   isVisible: boolean;            // 是否可见
   createdAt: number;             // 创建时间
   streamCompleted: boolean;      // 流式传输是否完成

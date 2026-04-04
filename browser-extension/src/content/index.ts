@@ -3792,13 +3792,14 @@ async function generateQuestions(text: string, context: any): Promise<string[]> 
 }
 
 /**
- * 行内翻译 - 在原文下方直接插入译文
+ * 行内翻译 - 短文本显示在原文右侧，长文本显示在原文下方
+ * 支持单段和多段文本选择
  */
 async function showInPlaceTranslation(text: string, context: any): Promise<void> {
   console.log('=== showInPlaceTranslation called ===');
 
   // 动态导入翻译模块
-  const { findParagraphContainer, generateTranslationId, insertTranslationAfter, removeTranslation } = await import('./translation-dom');
+  const { findParagraphContainer, getAllParagraphsInRange, generateTranslationId, insertTranslation, shouldUseInlineMode, removeTranslation } = await import('./translation-dom');
   const { TranslationManager } = await import('./translation-manager');
   const { setupTranslationInteraction, setupSourceElementInteraction, closeTranslation } = await import('./translation-interaction');
 
@@ -3813,9 +3814,31 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
   }
 
   const range = selection.getRangeAt(0);
-  const paragraph = findParagraphContainer(range);
 
-  if (!paragraph) {
+  // 检测是否是多段选择
+  const paragraphs = getAllParagraphsInRange(range);
+  console.log('Paragraphs in selection:', paragraphs.length, paragraphs);
+
+  // 判断使用行内模式还是块级模式（基于总文本长度）
+  const isInline = shouldUseInlineMode(text);
+
+  if (paragraphs.length > 1) {
+    // 多段选择：每段单独翻译，一起发送，分别插入
+    console.log('Multi-paragraph selection detected, translating each paragraph separately');
+    await translateMultipleParagraphs(paragraphs, isInline, {
+      generateTranslationId,
+      insertTranslation,
+      TranslationManager,
+      setupTranslationInteraction,
+      setupSourceElementInteraction,
+    });
+    return;
+  }
+
+  // 单段选择
+  const targetParagraph = findParagraphContainer(range);
+
+  if (!targetParagraph) {
     console.warn('Could not find paragraph container, falling back to floating box');
     // 降级：使用浮动框
     await showResponseFloatingBox('翻译', text, context, null);
@@ -3824,14 +3847,15 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
 
   // 生成唯一 ID 并创建译文容器
   const translationId = generateTranslationId(text);
-  const translationEl = insertTranslationAfter(paragraph, translationId);
+  const { translationEl, container, separatorNode } = insertTranslation(targetParagraph, translationId, isInline, text, isInline ? range : undefined);
 
   // 创建译文条目
   const entry = {
     id: translationId,
     originalText: text,
-    sourceElement: paragraph,
+    sourceElement: container,
     translationElement: translationEl,
+    separatorNode,
     isVisible: true,
     createdAt: Date.now(),
     streamCompleted: false,
@@ -3842,7 +3866,7 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
 
   // 设置交互
   setupTranslationInteraction(translationEl, translationId);
-  setupSourceElementInteraction(paragraph, translationId);
+  setupSourceElementInteraction(container, translationId);
 
   // 获取内容元素用于流式显示
   const contentEl = translationEl.querySelector('.select-ask-translation-content');
@@ -3882,6 +3906,158 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
   } catch (error) {
     contentEl.innerHTML = `<span class="select-ask-translation-error">翻译失败：${error instanceof Error ? error.message : String(error)}</span>`;
   }
+}
+
+/**
+ * 翻译多个段落
+ * 每段单独请求 API 翻译，并行度为 10
+ * 翻译时显示加载状态，完成后显示结果
+ */
+async function translateMultipleParagraphs(
+  paragraphs: HTMLElement[],
+  isInline: boolean,
+  deps: {
+    generateTranslationId: (text: string) => string;
+    insertTranslation: (paragraph: HTMLElement, translationId: string, isInline: boolean, originalText: string, range?: Range) => { translationEl: HTMLElement; container: HTMLElement; separatorNode?: Text };
+    TranslationManager: typeof import('./translation-manager').TranslationManager;
+    setupTranslationInteraction: (translationEl: HTMLElement, entryId: string) => void;
+    setupSourceElementInteraction: (paragraph: HTMLElement, translationId: string) => void;
+  }
+): Promise<void> {
+  const { generateTranslationId, insertTranslation, TranslationManager, setupTranslationInteraction, setupSourceElementInteraction } = deps;
+
+  console.log('=== translateMultipleParagraphs ===');
+  console.log('Paragraphs count:', paragraphs.length);
+
+  // 限制最大段落数量，防止过多请求
+  const MAX_PARAGRAPHS = 100;
+  let targetParagraphs = paragraphs;
+
+  if (paragraphs.length > MAX_PARAGRAPHS) {
+    console.warn('Too many paragraphs detected, using first', MAX_PARAGRAPHS);
+    targetParagraphs = paragraphs.slice(0, MAX_PARAGRAPHS);
+  }
+
+  // 提取每段的纯文本
+  const paragraphTexts = targetParagraphs.map(p => p.textContent?.trim() || '');
+
+  console.log('Translating', paragraphTexts.length, 'paragraphs with concurrency 10');
+
+  // 为每个段落创建加载状态的译文容器
+  const loadingEntries: Array<{
+    paragraph: HTMLElement;
+    paragraphIdx: number;
+    translationId: string;
+    translationEl: HTMLElement;
+    container: HTMLElement;
+  }> = [];
+
+  for (let i = 0; i < targetParagraphs.length; i++) {
+    const paragraph = targetParagraphs[i];
+    const translationId = generateTranslationId('loading-' + i);
+    const { translationEl, container } = insertTranslation(paragraph, translationId, false, paragraphTexts[i], undefined);
+
+    // 显示加载状态（转圈）
+    const contentEl = translationEl.querySelector('.select-ask-translation-content');
+    if (contentEl) {
+      contentEl.innerHTML = '<div class="select-ask-translation-loading"><div class="select-ask-loading-spinner"></div><span>翻译中...</span></div>';
+    }
+
+    loadingEntries.push({
+      paragraph,
+      paragraphIdx: i,
+      translationId,
+      translationEl,
+      container,
+    });
+  }
+
+  // 设置交互
+  for (const entry of loadingEntries) {
+    setupTranslationInteraction(entry.translationEl, entry.translationId);
+    setupSourceElementInteraction(entry.container, entry.translationId);
+  }
+
+  // 并行翻译，并发度为 10
+  const CONCURRENCY = 10;
+
+  // 批次处理
+  for (let i = 0; i < paragraphTexts.length; i += CONCURRENCY) {
+    const batch = paragraphTexts.slice(i, Math.min(i + CONCURRENCY, paragraphTexts.length));
+    const batchIndices = Array.from({ length: batch.length }, (_, idx) => i + idx);
+
+    console.log('Processing batch:', i, '-', Math.min(i + CONCURRENCY, paragraphTexts.length));
+
+    // 并行翻译当前批次
+    const batchResults = await Promise.all(
+      batch.map(async (text, batchIdx) => {
+        try {
+          const prompt = `你是一个专业的翻译助手。请将以下英文文本翻译成中文。
+
+文本：${text}
+
+要求：
+1. 只返回翻译结果，不要任何其他内容
+2. 保持简洁，不要解释
+
+翻译结果：`;
+
+          let fullResponse = '';
+          let isReasoning = false;
+
+          for await (const chunk of streamTranslate(prompt)) {
+            if (chunk === '[REASONING]') {
+              isReasoning = true;
+              continue;
+            }
+            if (chunk === '[REASONING_DONE]') {
+              isReasoning = false;
+              continue;
+            }
+            if (isReasoning) continue;
+
+            fullResponse += chunk;
+          }
+
+          return fullResponse.trim();
+        } catch (error) {
+          console.error('Translation failed for paragraph', i + batchIdx, ':', error);
+          return null;
+        }
+      })
+    );
+
+    // 更新当前批次的译文
+    for (let j = 0; j < batch.length; j++) {
+      const paragraphIdx = batchIndices[j];
+      const translationText = batchResults[j];
+
+      // 找到对应的加载条目
+      const loadingEntry = loadingEntries.find(e => e.paragraphIdx === paragraphIdx);
+      if (!loadingEntry) continue;
+
+      const { translationEl, container } = loadingEntry;
+
+      const contentEl = translationEl.querySelector('.select-ask-translation-content');
+      if (contentEl) {
+        if (translationText && translationText.trim()) {
+          // 翻译成功，显示结果
+          contentEl.innerHTML = await marked(translationText) as string;
+        } else {
+          // 翻译失败，显示错误
+          contentEl.innerHTML = '<span class="select-ask-translation-error">翻译失败</span>';
+        }
+      }
+
+      // 更新 TranslationManager 中的条目
+      const entry = TranslationManager.get(loadingEntry.translationId);
+      if (entry) {
+        entry.streamCompleted = true;
+      }
+    }
+  }
+
+  console.log('All translations completed');
 }
 
 /**
