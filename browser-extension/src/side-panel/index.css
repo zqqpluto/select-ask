@@ -587,28 +587,20 @@ body {
   flex-shrink: 0;
 }
 
-.side-panel-input-box {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+/* 输入区域 */
+.side-panel-input {
   padding: 8px 10px;
-  background: #f8fafc;
-  border: 1px solid rgba(59, 130, 246, 0.1);
-  border-radius: 12px;
-  transition: all 0.15s ease-out;
+  background: #ffffff;
+  border-top: 1px solid rgba(59, 130, 246, 0.08);
+  flex-shrink: 0;
   position: relative;
 }
 
-.side-panel-input-box:focus-within {
-  border-color: rgba(59, 130, 246, 0.3);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
-}
-
-/* 模型选择器 - 左上角紧凑设计 */
+/* 模型选择器 - 整个对话框左上角设计 */
 .side-panel-model-selector {
   position: absolute;
-  top: 6px;
-  left: 6px;
+  top: 14px;
+  left: 10px;
   z-index: 10;
 }
 
@@ -659,12 +651,29 @@ body {
   transform: rotate(180deg);
 }
 
+/* 输入框 */
+.side-panel-input-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  padding-top: 40px; /* 为左上角模型选择器预留空间 */
+  background: #f8fafc;
+  border: 1px solid rgba(59, 130, 246, 0.1);
+  border-radius: 12px;
+  transition: all 0.15s ease-out;
+}
+
+.side-panel-input-box:focus-within {
+  border-color: rgba(59, 130, 246, 0.3);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+}
+
 /* 输入框上栏：文本输入区域 */
 .side-panel-input-row {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  padding-left: 140px; /* 为左上角模型选择器预留空间 */
 }
 
 .side-panel-input-box textarea {

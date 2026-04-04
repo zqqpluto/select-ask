@@ -774,6 +774,55 @@ export default function App() {
 
       {/* 输入区域 */}
       <div className="side-panel-input">
+        {/* 模型选择器 - 整个对话框左上角 */}
+        <div className="side-panel-model-selector">
+          <button
+            ref={modelButtonRef}
+            className="side-panel-model-btn"
+            onClick={toggleModelSelector}
+            title="切换模型"
+          >
+            {/* 科技感神经元图标 - 缩小版 */}
+            <svg className="model-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+              <circle cx="12" cy="5" r="2.5"/>
+              <circle cx="6" cy="12" r="2.5"/>
+              <circle cx="18" cy="12" r="2.5"/>
+              <circle cx="12" cy="19" r="2.5"/>
+              <path d="M12 7.5v2M7.5 12h2M14.5 12h2M12 14.5v2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+              <path d="M7.5 13.5l3 3M13.5 7.5l3-3M16.5 13.5l-3 3M7.5 10.5l3-3" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.6"/>
+            </svg>
+            <span>{currentModel?.name || '选择模型'}</span>
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </button>
+
+          {showModelSelector && dropdownPosition && (
+            <div
+              className="side-panel-model-dropdown"
+              style={{
+                top: dropdownPosition.top,
+                left: dropdownPosition.left,
+              }}
+            >
+              {availableModels.map(model => (
+                <button
+                  key={model.id}
+                  className={`side-panel-model-option ${currentModel?.id === model.id ? 'active' : ''}`}
+                  onClick={() => handleModelSelect(model.id)}
+                >
+                  {model.name}
+                </button>
+              ))}
+              {availableModels.length === 0 && (
+                <div className="side-panel-model-empty">
+                  请先在配置中添加模型
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="side-panel-input-box">
           {/* 上栏：文本输入 */}
           <div className="side-panel-input-row">
@@ -790,57 +839,8 @@ export default function App() {
             />
           </div>
 
-          {/* 下栏：模型选择 + 发送按钮 */}
+          {/* 下栏：发送按钮 */}
           <div className="side-panel-input-controls">
-            {/* 模型选择器 */}
-            <div className="side-panel-model-selector">
-              <button
-                ref={modelButtonRef}
-                className="side-panel-model-btn"
-                onClick={toggleModelSelector}
-                title="切换模型"
-              >
-                {/* 科技感神经元图标 - 缩小版 */}
-                <svg className="model-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-                  <circle cx="12" cy="5" r="2.5"/>
-                  <circle cx="6" cy="12" r="2.5"/>
-                  <circle cx="18" cy="12" r="2.5"/>
-                  <circle cx="12" cy="19" r="2.5"/>
-                  <path d="M12 7.5v2M7.5 12h2M14.5 12h2M12 14.5v2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-                  <path d="M7.5 13.5l3 3M13.5 7.5l3-3M16.5 13.5l-3 3M7.5 10.5l3-3" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.6"/>
-                </svg>
-                <span>{currentModel?.name || '选择模型'}</span>
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M6 9l6 6 6-6"/>
-                </svg>
-              </button>
-
-              {showModelSelector && dropdownPosition && (
-                <div
-                  className="side-panel-model-dropdown"
-                  style={{
-                    top: dropdownPosition.top,
-                    left: dropdownPosition.left,
-                  }}
-                >
-                  {availableModels.map(model => (
-                    <button
-                      key={model.id}
-                      className={`side-panel-model-option ${currentModel?.id === model.id ? 'active' : ''}`}
-                      onClick={() => handleModelSelect(model.id)}
-                    >
-                      {model.name}
-                    </button>
-                  ))}
-                  {availableModels.length === 0 && (
-                    <div className="side-panel-model-empty">
-                      请先在配置中添加模型
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
             <button
               className="side-panel-send"
               onClick={isLoading ? handleStopGeneration : handleSend}
