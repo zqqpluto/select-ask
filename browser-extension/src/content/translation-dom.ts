@@ -199,34 +199,57 @@ export function insertTranslation(
     return { translationEl: existing, container: existing };
   }
 
-  const translationEl = createTranslationElement(translationId, isInline);
-
   // 存储关联关系
   translationEl.dataset.translationFor = paragraph.tagName.toLowerCase();
   translationEl.dataset.sourceElement = paragraph.tagName.toLowerCase();
   translationEl.dataset.originalText = originalText;
 
   if (isInline) {
-    // 短文本：在选中的文本节点后面插入译文
-    const streamingSpan = translationEl.querySelector('.select-ask-translation-streaming');
-    if (streamingSpan) {
-      streamingSpan.remove();
-    }
-    const contentEl = translationEl.querySelector('.select-ask-translation-content');
-    if (contentEl) {
-      contentEl.innerHTML = '<span class="select-ask-translation-streaming"></span>';
+    // 短文本：创建一个与原文标签相同的新标签，用于容纳译文
+    // 这样译文可以继承原文的样式（如 h1、h2 等）
+    const newParagraph = document.createElement(paragraph.tagName);
+    newParagraph.id = translationId + '-inline';
+    newParagraph.appendChild(translationEl);
+    newParagraph.classList.add('select-ask-translation-inline-wrapper');
+
+    // 继承原文样式类名和 style 属性
+    if (inheritStyles) {
+      // 复制所有 class（排除可能冲突的类）
+      const originalClasses = Array.from(paragraph.classList);
+      originalClasses.forEach(cls => {
+        if (!cls.startsWith('select-ask-')) {
+          newParagraph.classList.add(cls);
+        }
+      });
+      // 复制内联样式
+      newParagraph.style.cssText = paragraph.style.cssText;
+
+      // 使用 getComputedStyle 获取计算后的样式并应用
+      const computedStyle = window.getComputedStyle(paragraph);
+      const styleProperties = [
+        'font-family', 'font-size', 'font-weight', 'font-style',
+        'line-height', 'color', 'text-transform', 'letter-spacing',
+        'text-align', 'text-decoration', 'text-indent'
+      ];
+
+      for (const prop of styleProperties) {
+        const value = computedStyle.getPropertyValue(prop);
+        if (value) {
+          (newParagraph.style as any)[prop.replace(/-./g, x => x[1].toUpperCase())] = value;
+        }
+      }
     }
 
     // 在 Range 结束位置的文本节点后插入译文元素
     let separatorNode: Text | undefined;
     if (range && !range.collapsed) {
-      separatorNode = insertAfterRange(range, translationEl);
+      separatorNode = insertAfterRange(range, newParagraph);
     } else {
       // 兜底：直接追加到段落末尾
-      paragraph.appendChild(translationEl);
+      paragraph.appendChild(newParagraph);
     }
 
-    return { translationEl, container: paragraph, separatorNode };
+    return { translationEl, container: newParagraph, separatorNode };
   } else {
     // 长文本：创建一个与原文标签相同的新标签，用于容纳译文
     // 不直接插入到 DOM，而是返回给调用者决定如何插入

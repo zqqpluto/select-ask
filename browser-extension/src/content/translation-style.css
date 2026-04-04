@@ -1,20 +1,52 @@
 /* 行内翻译样式 - 沉浸式对照翻译 */
 
-/* 译文容器 - 分为行内模式和块级模式 */
-
-/* 行内模式 - 短文本显示在原文右侧，直接嵌入原文标签内 */
-.select-ask-translation.inline {
+/* 行内模式 wrapper - 短文本时创建与原文相同标签的 wrapper，用于继承样式 */
+.select-ask-translation-inline-wrapper {
   display: inline;
   margin-left: 8px;
+  vertical-align: baseline;
+}
+
+/* 行内模式 - 短文本显示在原文右侧，直接嵌入原文标签内 */
+.select-ask-translation-inline-wrapper .select-ask-translation.inline {
+  margin-left: 0;
   padding: 2px 6px;
   background: #f3f4f6;
   border-radius: 4px;
-  font-size: inherit;
+  font-size: 1em;
   line-height: inherit;
   color: #6b7280;
   opacity: 0;
   animation: selectAskTranslationFadeIn 0.2s ease forwards;
-  vertical-align: baseline;
+}
+
+/* 行内模式 wrapper 内的内容继承原文样式 */
+.select-ask-translation-inline-wrapper .select-ask-translation-content {
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  font-style: inherit;
+  line-height: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+}
+
+/* 特殊标签样式继承 - 行内模式 */
+.select-ask-translation-inline-wrapper h1 .select-ask-translation-content,
+.select-ask-translation-inline-wrapper h2 .select-ask-translation-content,
+.select-ask-translation-inline-wrapper h3 .select-ask-translation-content,
+.select-ask-translation-inline-wrapper h4 .select-ask-translation-content,
+.select-ask-translation-inline-wrapper h5 .select-ask-translation-content,
+.select-ask-translation-inline-wrapper h6 .select-ask-translation-content {
+  font-weight: inherit;
+  margin: 0;
+}
+
+/* 行内模式 wrapper 悬停效果 */
+.select-ask-translation-inline-wrapper:hover {
+  /* 可以添加一些悬停效果 */
 }
 
 /* 块级模式 - 长文本显示在原文下方 */
