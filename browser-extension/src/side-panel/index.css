@@ -315,45 +315,6 @@ body {
 }
 
 /* AI 回答中的引用样式 - DeepSeek 风格：圆点 + 细线 */
-.side-panel-answer-content blockquote {
-  margin: 12px 0;
-  padding: 0;
-  border: none;
-  position: relative;
-  padding-left: 16px;
-}
-
-.side-panel-answer-content blockquote::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 6px;
-  height: 6px;
-  background: #6366f1;
-  border-radius: 50%;
-}
-
-.side-panel-answer-content blockquote::after {
-  content: '';
-  position: absolute;
-  left: 3px;
-  top: 10px;
-  bottom: 0;
-  width: 1px;
-  background: linear-gradient(to bottom, #e5e6eb, transparent);
-}
-
-.side-panel-answer-content blockquote p {
-  margin: 0 0 8px 0;
-  color: #6b7280;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.side-panel-answer-content blockquote p:last-child {
-  margin-bottom: 0;
-}
 
 /* 下拉菜单选项 */
 .side-panel-model-option {
@@ -945,4 +906,50 @@ body {
 .side-panel-message-content li {
   margin: 4px 0;
   line-height: 1.6;
+}
+
+/* 通用 Markdown 引用样式 - DeepSeek 风格 */
+.side-panel-message-content blockquote,
+.side-panel-answer-content blockquote {
+  margin: 12px 0;
+  padding: 0;
+  border: none;
+  position: relative;
+  padding-left: 16px;
+}
+
+.side-panel-message-content blockquote::before,
+.side-panel-answer-content blockquote::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 6px;
+  height: 6px;
+  background: #6366f1;
+  border-radius: 50%;
+}
+
+.side-panel-message-content blockquote::after,
+.side-panel-answer-content blockquote::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 10px;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(to bottom, #e5e6eb, transparent);
+}
+
+.side-panel-message-content blockquote p,
+.side-panel-answer-content blockquote p {
+  margin: 0 0 8px 0;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.side-panel-message-content blockquote p:last-child,
+.side-panel-answer-content blockquote p:last-child {
+  margin-bottom: 0;
 }
