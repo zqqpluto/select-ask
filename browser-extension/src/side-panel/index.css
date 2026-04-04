@@ -597,9 +597,9 @@ body {
 
 /* 模型选择器 - 输入框左下角 */
 .side-panel-model-selector {
-  position: relative;
-  bottom: auto;
-  left: auto;
+  position: absolute;
+  bottom: 0;
+  left: 0;
   z-index: 10;
 }
 
@@ -696,6 +696,7 @@ body {
 .side-panel-input-controls {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
   padding-top: 4px;
   position: relative;
