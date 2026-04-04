@@ -169,84 +169,151 @@ body {
   align-items: flex-start;
 }
 
-/* 用户消息内容 - 浅蓝色渐变气泡 */
+/* ========== 用户消息气泡 - 现代简洁设计 ========== */
+
+/* 用户消息内容 - 浅蓝色渐变气泡，增强质感 */
 .side-panel-message-user-wrapper .side-panel-message-content {
-  background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%);
+  background: linear-gradient(135deg, #e8f4f8 0%, #dbeafe 100%);
   color: #1d2129;
-  border-radius: 16px 16px 4px 16px;
-  padding: 10px 12px;
+  border-radius: 18px 18px 5px 18px;
+  padding: 12px 14px;
   font-size: 14px;
   line-height: 1.5;
   max-width: 100%;
+  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.08);
+  transition: box-shadow 0.2s ease;
 }
 
-/* 用户消息气泡内的选中文本引用区域 */
+.side-panel-message-user-wrapper .side-panel-message-content:hover {
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.12);
+}
+
+/* ========== 选中文本引用区域 - 优化层次结构 ========== */
 .side-panel-message-user-wrapper .side-panel-selected-text-quote {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(99, 102, 241, 0.2);
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(59, 130, 246, 0.15);
 }
 
+/* 引用区域头部 - 简化设计 */
 .side-panel-message-user-wrapper .side-panel-selected-text-quote-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   font-size: 11px;
-  color: rgba(99, 102, 241, 0.8);
+  color: #64748b;
   font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
+.side-panel-message-user-wrapper .side-panel-selected-text-quote-header::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  border-radius: 2px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+/* 展开/收起按钮 - 图标按钮设计 */
 .side-panel-message-user-wrapper .side-panel-quote-toggle-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 3px;
-  padding: 2px 6px;
-  background: rgba(99, 102, 241, 0.15);
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
   border: none;
-  border-radius: 4px;
-  color: rgba(99, 102, 241, 0.9);
-  font-size: 11px;
+  border-radius: 6px;
+  color: #94a3b8;
   cursor: pointer;
   transition: all 0.15s ease-out;
 }
 
 .side-panel-message-user-wrapper .side-panel-quote-toggle-btn:hover {
-  background: rgba(99, 102, 241, 0.25);
-  color: #6366f1;
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.side-panel-message-user-wrapper .side-panel-quote-toggle-btn:active {
+  transform: scale(0.92);
 }
 
 .side-panel-message-user-wrapper .side-panel-quote-toggle-btn svg {
   flex-shrink: 0;
-  transition: transform 0.2s ease-out;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* 引用文本块 - 增强视觉区分 */
 .side-panel-message-user-wrapper .side-panel-selected-text-blockquote {
   margin: 0;
-  padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.6);
-  border-left: 3px solid rgba(99, 102, 241, 0.4);
-  border-radius: 6px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.7) 0%, rgba(248, 250, 252, 0.5) 100%);
+  border-left: 4px solid #3b82f6;
+  border-radius: 8px;
   font-size: 12px;
-  line-height: 1.5;
-  color: #4e5969;
-  max-height: 24px;
+  line-height: 1.6;
+  color: #475569;
+  max-height: 72px; /* 默认显示约 3 行 */
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
-  -webkit-line-clamp: 1;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
-  transition: all 0.3s ease-out;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: pre-wrap;
   word-break: break-word;
+  position: relative;
+}
+
+/* 收起状态下的渐变遮罩效果 */
+.side-panel-message-user-wrapper .side-panel-selected-text-blockquote:not(.expanded)::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 24px;
+  background: linear-gradient(to bottom, transparent 0%, rgba(255, 255, 255, 0.85) 100%);
+  pointer-events: none;
+  border-radius: 0 0 8px 8px;
 }
 
 .side-panel-message-user-wrapper .side-panel-selected-text-blockquote.expanded {
-  max-height: 500px;
+  max-height: 600px;
   overflow-y: auto;
   -webkit-line-clamp: unset;
-  border-left-color: rgba(99, 102, 241, 0.6);
-  background: rgba(255, 255, 255, 0.8);
+  border-left-color: #2563eb;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(241, 245, 249, 0.7) 100%);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.side-panel-message-user-wrapper .side-panel-selected-text-blockquote.expanded::after {
+  display: none;
+}
+
+/* 引用文本块滚动条样式 */
+.side-panel-message-user-wrapper .side-panel-selected-text-blockquote.expanded::-webkit-scrollbar {
+  width: 4px;
+}
+
+.side-panel-message-user-wrapper .side-panel-selected-text-blockquote.expanded::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 2px;
+}
+
+.side-panel-message-user-wrapper .side-panel-selected-text-blockquote.expanded::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 2px;
+}
+
+.side-panel-message-user-wrapper .side-panel-selected-text-blockquote.expanded::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 /* 用户消息气泡包装器 - 整体气泡样式 */
@@ -254,6 +321,7 @@ body {
 .side-panel-message-user-wrapper .side-panel-selected-text-quote {
   margin-right: 0;
 }
+
 
 /* AI 消息内容 - 平铺无气泡 */
 .side-panel-ai-content-flat {

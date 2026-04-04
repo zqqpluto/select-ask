@@ -62,20 +62,28 @@ function buildMessages(
 
 /**
  * 处理 LLM 流式请求
+ * 支持两种请求格式：
+ * 1. content script 格式：action/text/context/modelId
+ * 2. Side Panel 格式：messages 数组 + modelId
  */
 export async function handleLLMStream(
   port: chrome.runtime.Port,
   request: {
-    action: 'explain' | 'translate' | 'question' | 'generateQuestions';
-    text: string;
+    action?: 'explain' | 'translate' | 'question' | 'generateQuestions';
+    text?: string;
     question?: string;
     context?: LLMContext;
     modelId: string;
+    messages?: { role: string; content: string }[];
   }
 ): Promise<void> {
   try {
+    console.log('=== Background: Handling LLM stream request ===', request.modelId);
+
     // 获取模型配置
     const model = await getModelConfig(request.modelId);
+    console.log('=== Background: Model config ===', model ? { provider: model.provider, modelId: model.modelId } : 'NOT FOUND');
+
     if (!model) {
       port.postMessage({ type: 'LLM_STREAM_ERROR', error: '模型配置不存在' });
       port.postMessage({ type: 'LLM_STREAM_END' });
@@ -89,19 +97,43 @@ export async function handleLLMStream(
       modelId: model.modelId,
     });
 
-    // 构建消息
-    const messages = buildMessages(request.action, request.text, request.question, request.context);
+    console.log('=== Background: Created provider for', model.provider);
+
+    // 构建消息 - 支持两种格式
+    let messages: LLMMessage[];
+
+    if (request.messages && request.messages.length > 0) {
+      // Side Panel 格式：直接使用 messages 数组
+      messages = request.messages.map((m) => ({
+        role: m.role as 'user' | 'assistant' | 'system',
+        content: m.content
+      }));
+      console.log('=== Background: Using Side Panel message format, count:', messages.length);
+    } else if (request.action && request.text) {
+      // content script 格式：使用 buildMessages 构建
+      messages = buildMessages(request.action, request.text, request.question, request.context);
+      console.log('=== Background: Using content script message format ===');
+    } else {
+      port.postMessage({ type: 'LLM_STREAM_ERROR', error: '无效的请求格式' });
+      port.postMessage({ type: 'LLM_STREAM_END' });
+      return;
+    }
+
+    console.log('=== Background: Starting streamChat ===');
 
     // 流式获取响应
+    let chunkCount = 0;
     for await (const chunk of provider.streamChat(messages)) {
       // 检查端口是否仍然连接
       if (!port.name) {
         console.log('Port disconnected, stopping stream');
         return;
       }
+      chunkCount++;
       port.postMessage({ type: 'LLM_STREAM_CHUNK', chunk });
     }
 
+    console.log('=== Background: Stream completed, chunks sent:', chunkCount);
     port.postMessage({ type: 'LLM_STREAM_END' });
   } catch (error) {
     console.error('LLM stream error:', error);

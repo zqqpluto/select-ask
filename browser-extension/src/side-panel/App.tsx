@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { useEffect, useState, useRef } from 'react';
 import { marked } from 'marked';
 import type { HistoryMessage, ModelConfig } from '../types';
@@ -208,6 +209,72 @@ export default function App() {
             console.warn('No models available!');
           }
         }
+=======
+import React, { useEffect, useState } from 'react';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
+import hljs from 'highlight.js';
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
+import { useSidePanelStore } from './store';
+import FileUpload from '../components/FileUpload';
+import './style.css';
+
+// Import highlight.js themes
+import 'highlight.js/styles/github.css'; // Light theme
+import 'highlight.js/styles/github-dark.css'; // Dark theme (will be toggled via CSS)
+
+// Configure marked options with code highlighting
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+  highlight: function(code: string, lang: string) {
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        return hljs.highlight(code, { language: lang }).value;
+      } catch (err) {
+        console.error('Highlight.js error:', err);
+      }
+    }
+    // Auto-detect language if not specified
+    return hljs.highlightAuto(code).value;
+  }
+});
+
+const SidePanelApp: React.FC = () => {
+  const {
+    currentConversation,
+    conversations,
+    isLoading,
+    error,
+    theme,
+    createConversation,
+    addMessage,
+    setCurrentConversation,
+    deleteConversation,
+    clearAllConversations,
+    setLoading,
+    setError,
+    updateLastMessage,
+    setTheme
+  } = useSidePanelStore();
+
+  const [inputValue, setInputValue] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
+  const [selectedModelId, setSelectedModelId] = useState<string>('');
+  const [enabledModels, setEnabledModels] = useState<any[]>([]);
+
+  // 加载模型配置
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        const result = await chrome.storage.sync.get('app_config');
+        const config = result?.app_config;
+        const models = config?.models?.filter((m: any) => m.enabled) || [];
+        const selectedId = config?.selectedChatModelIds?.[0] || '';
+        setEnabledModels(models);
+        setSelectedModelId(selectedId);
+>>>>>>> 336296e16762d442fbf2cafa7d870fd6cd2a780e
       } catch (error) {
         console.error('Failed to load models:', error);
       }
@@ -215,6 +282,7 @@ export default function App() {
     loadModels();
   }, []);
 
+<<<<<<< HEAD
   // 监听来自 content script 的消息
   useEffect(() => {
     let initMessage: any = null;
@@ -419,11 +487,103 @@ export default function App() {
               modelName: modelToUse.name,
             },
           ]);
+=======
+  // 暴露 store 到 window 对象以便测试访问
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).__ZUSTAND_STORE__ = useSidePanelStore;
+    }
+  }, []);
+
+  // Apply theme to root element
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  // 监听来自 content script 的消息
+  useEffect(() => {
+    const handleMessage = (message: any, sender: any, sendResponse: any) => {
+      if (message.type === 'START_CHAT') {
+        handleNewChat(message.payload);
+      }
+    };
+
+    chrome.runtime.onMessage.addListener(handleMessage);
+
+    return () => {
+      chrome.runtime.onMessage.removeListener(handleMessage);
+    };
+  }, []);
+
+  const handleNewChat = async (payload: { action: string; selectedText: string; context?: any }) => {
+    try {
+      // 创建新对话
+      createConversation(payload);
+
+      // 等待状态更新后发送消息
+      setTimeout(() => {
+        sendAIMessage();
+      }, 100);
+    } catch (error: any) {
+      setError(error.message || 'Failed to start conversation');
+    }
+  };
+
+  const sendAIMessage = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const conversation = useSidePanelStore.getState().currentConversation;
+      if (!conversation) return;
+
+      // 从 chrome.storage.sync 读取模型配置
+      const result = await chrome.storage.sync.get('app_config');
+      const config = result?.app_config;
+      const selectedModelId = config?.selectedChatModelIds?.[0];
+
+      if (!selectedModelId) {
+        setError('请先在设置中配置模型');
+        setLoading(false);
+        return;
+      }
+
+      // 获取模型配置（包含 API Key 等）
+      const models = config?.models || [];
+      const selectedModel = models.find((m: any) => m.id === selectedModelId);
+      if (!selectedModel) {
+        setError('模型配置不存在，请在设置中重新配置');
+        setLoading(false);
+        return;
+      }
+
+      // Call LLM via background
+      const port = chrome.runtime.connect({ name: 'sidepanel-llm-stream' });
+      let responseText = '';
+
+      console.log('=== Side Panel: Connected to LLM stream port ===');
+
+      port.onMessage.addListener((message) => {
+        console.log('=== Side Panel: Received message ===', message.type);
+        if (message.type === 'LLM_STREAM_CHUNK') {
+          responseText += message.chunk;
+          useSidePanelStore.getState().updateLastMessage(responseText);
+        } else if (message.type === 'LLM_STREAM_END') {
+          console.log('=== Side Panel: LLM stream ended ===');
+          setLoading(false);
+          port.disconnect();
+        } else if (message.type === 'LLM_STREAM_ERROR') {
+          console.error('=== Side Panel: LLM stream error ===', message.error);
+          setError(message.error);
+          setLoading(false);
+>>>>>>> 336296e16762d442fbf2cafa7d870fd6cd2a780e
           port.disconnect();
         }
       });
 
       port.onDisconnect.addListener(() => {
+<<<<<<< HEAD
         setIsLoading(false);
         currentPortRef.current = null;
       });
@@ -589,10 +749,167 @@ export default function App() {
       if (inputValue.trim() && !isLoading) {
         handleSend();
       }
+=======
+        console.log('=== Side Panel: Port disconnected ===');
+      });
+
+      port.postMessage({
+        type: 'LLM_REQUEST',
+        payload: {
+          messages: conversation.messages.map((m) => ({
+            role: m.role,
+            content: m.content
+          })),
+          modelId: selectedModelId
+        }
+      });
+
+      console.log('=== Side Panel: Sent LLM REQUEST ===', {
+        modelId: selectedModelId,
+        messagesCount: conversation.messages.length
+      });
+    } catch (error: any) {
+      setError(error.message || 'Failed to get response');
+      setLoading(false);
+    }
+  };
+
+  const handleSend = async () => {
+    if (!inputValue.trim() || isLoading) return;
+
+    const content = inputValue.trim();
+    setInputValue('');
+
+    // Add user message
+    addMessage(content, 'user');
+
+    // Add empty assistant message
+    addMessage('', 'assistant');
+
+    // Wait for state update
+    setTimeout(() => {
+      sendAIMessage();
+    }, 100);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  /**
+   * 处理文件上传
+   * 将提取的文本添加到输入框
+   */
+  const handleFileSelect = (text: string, imageData?: string) => {
+    // 将提取的文本添加到输入框
+    setInputValue(prev => {
+      if (prev.trim()) {
+        return prev + '\n\n' + text;
+      }
+      return text;
+    });
+
+    // TODO: 如果有图片数据且当前模型支持 Vision，可以显示图片预览
+    // 并在发送消息时包含图片数据
+    if (imageData) {
+      console.log('Image data received, Vision support can be added later');
+    }
+  };
+
+  /**
+   * 渲染数学公式
+   * 支持块级公式 $$...$$ 和行内公式 $...$
+   */
+  const renderMath = (text: string): string => {
+    // 先处理块级公式 $$...$$
+    text = text.replace(/\$\$([^$]+)\$\$/g, (match, formula) => {
+      try {
+        return `<div class="katex-block">${katex.renderToString(formula.trim(), {
+          displayMode: true,
+          throwOnError: false,
+          errorColor: '#cc0000'
+        })}</div>`;
+      } catch (error) {
+        console.error('KaTeX rendering error:', error);
+        return `<div class="katex-error">公式语法错误: ${formula}</div>`;
+      }
+    });
+
+    // 再处理行内公式 $...$
+    text = text.replace(/\$([^$]+)\$/g, (match, formula) => {
+      try {
+        return katex.renderToString(formula.trim(), {
+          displayMode: false,
+          throwOnError: false,
+          errorColor: '#cc0000'
+        });
+      } catch (error) {
+        console.error('KaTeX rendering error:', error);
+        return `<span class="katex-error">公式语法错误: ${formula}</span>`;
+      }
+    });
+
+    return text;
+  };
+
+  /**
+   * 为代码块添加复制按钮
+   */
+  useEffect(() => {
+    if (!currentConversation) return;
+
+    // 为所有代码块添加复制按钮
+    const codeBlocks = document.querySelectorAll('.markdown-body pre');
+    codeBlocks.forEach((block) => {
+      // 避免重复添加
+      if (block.querySelector('.copy-code-btn')) return;
+
+      const button = document.createElement('button');
+      button.className = 'copy-code-btn';
+      button.textContent = '复制';
+      button.onclick = async () => {
+        const code = block.querySelector('code')?.textContent || '';
+        try {
+          await navigator.clipboard.writeText(code);
+          button.textContent = '已复制!';
+          setTimeout(() => {
+            button.textContent = '复制';
+          }, 2000);
+        } catch (err) {
+          console.error('Failed to copy code:', err);
+          button.textContent = '复制失败';
+          setTimeout(() => {
+            button.textContent = '复制';
+          }, 2000);
+        }
+      };
+
+      // 设置代码块的相对定位
+      (block as HTMLElement).style.position = 'relative';
+      block.appendChild(button);
+    });
+  }, [currentConversation?.messages]);
+
+  const renderMarkdown = (content: string) => {
+    if (!content) return '';
+    try {
+      // 先渲染数学公式，再渲染 Markdown
+      const mathRendered = renderMath(content);
+      const rawHtml = marked(mathRendered) as string;
+      const cleanHtml = DOMPurify.sanitize(rawHtml);
+      return { __html: cleanHtml };
+    } catch (error) {
+      console.error('Markdown render error:', error);
+      return { __html: DOMPurify.sanitize(content) };
+>>>>>>> 336296e16762d442fbf2cafa7d870fd6cd2a780e
     }
   };
 
   return (
+<<<<<<< HEAD
     <div className="side-panel-container">
       {/* 内容区域 */}
       <div className="side-panel-content" ref={messagesContainerRef}>
@@ -611,7 +928,7 @@ export default function App() {
                   {index === 0 && pageInfo && pageInfo.selectedText && (
                     <div className="side-panel-selected-text-quote">
                       <div className="side-panel-selected-text-quote-header">
-                        <span>选中文本</span>
+                        <span>Selected Text</span>
                         {pageInfo.selectedText.length > 100 && (
                           <button
                             className="side-panel-quote-toggle-btn"
@@ -619,19 +936,13 @@ export default function App() {
                             title={selectedTextExpanded ? '收起' : '展开'}
                           >
                             {selectedTextExpanded ? (
-                              <>
-                                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M6 9l6-6 6 6"/>
-                                </svg>
-                                <span>收起</span>
-                              </>
+                              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M6 9l6-6 6 6"/>
+                              </svg>
                             ) : (
-                              <>
-                                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M6 9l6 6 6-6"/>
-                                </svg>
-                                <span>展开</span>
-                              </>
+                              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M6 9l6 6 6-6"/>
+                              </svg>
                             )}
                           </button>
                         )}
@@ -842,8 +1153,249 @@ export default function App() {
               )}
             </button>
           </div>
+=======
+    <div className="side-panel select-ask-chat-box">
+      {/* 顶部标题栏 */}
+      <div className="header select-ask-chat-header">
+        <div className="select-ask-chat-header-title">
+          <svg className="select-ask-chat-header-logo" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+            <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1v-1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
+          </svg>
+          <span className="select-ask-chat-header-name">select ask</span>
+          <span className="select-ask-chat-header-divider">·</span>
+          <span className="select-ask-chat-header-slogan">选中即问，知识自来</span>
+        </div>
+        <div className="select-ask-chat-header-actions">
+          <button
+            className="select-ask-fullscreen-btn"
+            onClick={() => {/* TODO: 实现全屏功能 */}}
+            title="全屏"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+            </svg>
+          </button>
+          <button
+            className="select-ask-history-btn"
+            onClick={() => setShowHistory(!showHistory)}
+            title="历史记录"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </button>
+          {/* 主题切换按钮 - 保留的改进功能 */}
+          <button
+            className="icon-btn"
+            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+            title={theme === 'light' ? '切换到暗色主题' : '切换到亮色主题'}
+          >
+            {theme === 'light' ? '🌙' : '☀️'}
+          </button>
+          {/* 设置按钮 - 保留的改进功能 */}
+          <button
+            className="icon-btn"
+            onClick={() => chrome.runtime.openOptionsPage()}
+            title="设置"
+          >
+            ⚙️
+          </button>
+        </div>
+      </div>
+
+      {/* 主内容区 */}
+      <div className="main-content">
+        {/* 历史记录侧边栏 */}
+        {showHistory && (
+          <div className="history-sidebar">
+            <div className="history-header">
+              <h2>历史记录</h2>
+              <button onClick={clearAllConversations} className="clear-btn">
+                清空
+              </button>
+            </div>
+            <div className="history-list">
+              {conversations.map((conv) => (
+                <div
+                  key={conv.id}
+                  className={`history-item ${currentConversation?.id === conv.id ? 'active' : ''}`}
+                  onClick={() => setCurrentConversation(conv)}
+                >
+                  <div className="history-title">{conv.title}</div>
+                  <div className="history-date">
+                    {new Date(conv.createdAt).toLocaleDateString()}
+                  </div>
+                  <button
+                    className="delete-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteConversation(conv.id);
+                    }}
+                  >
+                    🗑️
+                  </button>
+                </div>
+              ))}
+              {conversations.length === 0 && (
+                <div className="empty-history">暂无历史记录</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 对话区域 */}
+        <div className="chat-area">
+          {currentConversation ? (
+            <>
+              {/* 消息列表 */}
+              <div className="messages select-ask-chat-container">
+                {currentConversation.messages.map((msg, index) => (
+                  <div key={msg.id} className={`message select-ask-message ${msg.role === 'user' ? 'select-ask-message-user' : 'select-ask-message-ai'}`}>
+                    {msg.role === 'user' ? (
+                      <>
+                        <div className="avatar avatar-user select-ask-message-avatar select-ask-avatar-user">
+                          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                          </svg>
+                        </div>
+                        <div className="message-content user-content select-ask-message-content">
+                          <div className="message-time select-ask-message-time">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                          <div className="user-content-wrapper select-ask-message-body">
+                            <div className="user-content-text select-ask-message-text">
+                              {msg.content}
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="avatar avatar-ai select-ask-message-avatar select-ask-avatar-ai">
+                          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                            <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1v-1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2zM7.5 13A2.5 2.5 0 0 0 5 15.5 2.5 2.5 0 0 0 7.5 18 2.5 2.5 0 0 0 10 15.5 2.5 2.5 0 0 0 7.5 13zm9 0a2.5 2.5 0 0 0-2.5 2.5 2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5 2.5 2.5 0 0 0-2.5-2.5z"/>
+                          </svg>
+                        </div>
+                        <div className="message-content assistant-content select-ask-message-content select-ask-ai-content">
+                          <div className="assistant-header select-ask-ai-header">
+                            <span className="message-time select-ask-message-time">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            <span className="ai-divider select-ask-ai-divider">·</span>
+                            <span className="model-name select-ask-ai-model-name">AI</span>
+                            <span className="ai-divider select-ask-ai-divider">·</span>
+                            <span className="ai-time select-ask-ai-time"></span>
+                          </div>
+                          <div
+                            className="markdown-body select-ask-answer-text"
+                            dangerouslySetInnerHTML={renderMarkdown(msg.content)}
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+                {isLoading && currentConversation.messages[currentConversation.messages.length - 1]?.role === 'assistant' && (
+                  <div className="loading-indicator">
+                    <div className="typing-dots">
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 文件上传区域 */}
+              <FileUpload
+                onFileSelect={handleFileSelect}
+                onError={setError}
+                disabled={isLoading}
+              />
+
+              {/* 输入框 */}
+              <div className="input-area select-ask-input-area">
+                <div className="input-box select-ask-input-box">
+                  <div className="controls-row select-ask-controls-row">
+                    {/* 模型选择器 */}
+                    <div className="select-ask-model-selector-wrapper">
+                      <select
+                        className="select-ask-model-selector"
+                        value={selectedModelId}
+                        onChange={async (e) => {
+                          const newModelId = e.target.value;
+                          setSelectedModelId(newModelId);
+                          // 保存到配置
+                          const result = await chrome.storage.sync.get('app_config');
+                          const config = result?.app_config;
+                          if (config) {
+                            config.selectedChatModelIds = [newModelId];
+                            await chrome.storage.sync.set({ app_config: config });
+                          }
+                        }}
+                      >
+                        {enabledModels.length === 0 ? (
+                          <option value="">暂无可用模型</option>
+                        ) : (
+                          enabledModels.map(model => (
+                            <option key={model.id} value={model.id}>{model.name}</option>
+                          ))
+                        )}
+                      </select>
+                      <span className="select-ask-model-selector-arrow">▼</span>
+                    </div>
+                    <button
+                      onClick={handleSend}
+                      disabled={!inputValue.trim() || isLoading}
+                      className="send-btn select-ask-send-icon"
+                    >
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 19V5M5 12l7-7 7 7"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="input-row select-ask-input-row">
+                    <textarea
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      onKeyDown={handleKeyPress}
+                      placeholder="追问或提出新问题..."
+                      disabled={isLoading}
+                      rows={1}
+                      className="select-ask-textarea"
+                    />
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="empty-state">
+              <div className="empty-icon">🤖</div>
+              <h2>Select Ask</h2>
+              <p>选择网页文本即可开始对话</p>
+              <p className="hint">支持：</p>
+              <ul>
+                <li>🔍 AI搜索</li>
+                <li>💡 解释说明</li>
+                <li>🌐 智能翻译</li>
+                <li>📄 内容总结</li>
+              </ul>
+            </div>
+          )}
+
+          {/* 错误提示 */}
+          {error && (
+            <div className="error-banner">
+              <span>{error}</span>
+              <button onClick={() => setError(null)}>✕</button>
+            </div>
+          )}
+>>>>>>> 336296e16762d442fbf2cafa7d870fd6cd2a780e
         </div>
       </div>
     </div>
   );
+<<<<<<< HEAD
 }
+=======
+};
+
+export default SidePanelApp;
+>>>>>>> 336296e16762d442fbf2cafa7d870fd6cd2a780e
