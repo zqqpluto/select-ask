@@ -172,8 +172,8 @@ body {
 
 /* 用户消息内容 - 浅蓝色渐变气泡 */
 .side-panel-message-user-wrapper .side-panel-message-content {
-  background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%);
-  color: #1d2129;
+  background: #edf3fe;
+  color: #000000;
   border-radius: 16px 16px 4px 16px;
   padding: 10px 12px;
   font-size: 14px;
@@ -658,7 +658,7 @@ body {
   gap: 6px;
   padding: 8px 10px;
   padding-top: 40px; /* 为左上角模型选择器预留空间 */
-  background: #f8fafc;
+  background: #ffffff;
   border: 1px solid rgba(59, 130, 246, 0.1);
   border-radius: 12px;
   transition: all 0.15s ease-out;
