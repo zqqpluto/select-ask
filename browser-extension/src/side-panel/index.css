@@ -908,9 +908,8 @@ body {
   line-height: 1.6;
 }
 
-/* 通用 Markdown 引用样式 - DeepSeek 风格 */
-.side-panel-message-content blockquote,
-.side-panel-answer-content blockquote {
+/* AI 思考过程中的引用样式 - DeepSeek 风格：圆点 + 细线 */
+.side-panel-reasoning-quote-text blockquote {
   margin: 12px 0;
   padding: 0;
   border: none;
@@ -918,8 +917,7 @@ body {
   padding-left: 16px;
 }
 
-.side-panel-message-content blockquote::before,
-.side-panel-answer-content blockquote::before {
+.side-panel-reasoning-quote-text blockquote::before {
   content: '';
   position: absolute;
   left: 0;
@@ -930,8 +928,7 @@ body {
   border-radius: 50%;
 }
 
-.side-panel-message-content blockquote::after,
-.side-panel-answer-content blockquote::after {
+.side-panel-reasoning-quote-text blockquote::after {
   content: '';
   position: absolute;
   left: 3px;
@@ -941,15 +938,13 @@ body {
   background: linear-gradient(to bottom, #e5e6eb, transparent);
 }
 
-.side-panel-message-content blockquote p,
-.side-panel-answer-content blockquote p {
+.side-panel-reasoning-quote-text blockquote p {
   margin: 0 0 8px 0;
   color: #6b7280;
   font-size: 14px;
   line-height: 1.6;
 }
 
-.side-panel-message-content blockquote p:last-child,
-.side-panel-answer-content blockquote p:last-child {
+.side-panel-reasoning-quote-text blockquote p:last-child {
   margin-bottom: 0;
 }
