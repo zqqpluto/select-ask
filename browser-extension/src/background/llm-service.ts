@@ -20,10 +20,10 @@ function buildMessages(
     case 'explain':
       if (context && (context.before || context.after)) {
         return [
-          { role: 'user', content: `"${text}"是什么？\n\n上下文：\n...${context.before}【${text}】${context.after}...` },
+          { role: 'user', content: `请解释以下内容：\n\n${text}\n\n上下文：\n...${context.before}【${text}】${context.after}...` },
         ];
       }
-      return [{ role: 'user', content: `"${text}"是什么？` }];
+      return [{ role: 'user', content: `请解释以下内容：\n\n${text}` }];
 
     case 'translate': {
       // 获取目标语言
@@ -34,7 +34,7 @@ function buildMessages(
         'ja': '日语', 'ko': '韩语',
       };
       const targetLang = langMap[browserLang] || langMap[browserLang.split('-')[0]] || '中文';
-      return [{ role: 'user', content: `将"${text}"翻译成${targetLang}` }];
+      return [{ role: 'user', content: `请将以下内容翻译成${targetLang}：\n\n${text}` }];
     }
 
     case 'question':

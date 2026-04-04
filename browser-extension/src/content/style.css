@@ -11,9 +11,16 @@
   cursor: pointer;
   z-index: 2147483647;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s, opacity 0.3s;
   pointer-events: auto;
   border: 1px solid rgba(0, 0, 0, 0.08);
+  opacity: 1;
+}
+
+.select-ask-icon-menu.fade-out {
+  opacity: 0;
+  transform: scale(0.9);
+  pointer-events: none;
 }
 
 .select-ask-icon-menu:hover {

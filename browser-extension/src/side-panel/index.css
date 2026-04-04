@@ -180,6 +180,81 @@ body {
   max-width: 100%;
 }
 
+/* 用户消息气泡内的选中文本引用区域 */
+.side-panel-message-user-wrapper .side-panel-selected-text-quote {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.side-panel-message-user-wrapper .side-panel-selected-text-quote-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 11px;
+  color: rgba(99, 102, 241, 0.8);
+  font-weight: 600;
+}
+
+.side-panel-message-user-wrapper .side-panel-quote-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  background: rgba(99, 102, 241, 0.15);
+  border: none;
+  border-radius: 4px;
+  color: rgba(99, 102, 241, 0.9);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease-out;
+}
+
+.side-panel-message-user-wrapper .side-panel-quote-toggle-btn:hover {
+  background: rgba(99, 102, 241, 0.25);
+  color: #6366f1;
+}
+
+.side-panel-message-user-wrapper .side-panel-quote-toggle-btn svg {
+  flex-shrink: 0;
+  transition: transform 0.2s ease-out;
+}
+
+.side-panel-message-user-wrapper .side-panel-selected-text-blockquote {
+  margin: 0;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.6);
+  border-left: 3px solid rgba(99, 102, 241, 0.4);
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #4e5969;
+  max-height: 24px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  transition: all 0.3s ease-out;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.side-panel-message-user-wrapper .side-panel-selected-text-blockquote.expanded {
+  max-height: 500px;
+  overflow-y: auto;
+  -webkit-line-clamp: unset;
+  border-left-color: rgba(99, 102, 241, 0.6);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+/* 用户消息气泡包装器 - 整体气泡样式 */
+.side-panel-message-user-wrapper .side-panel-message-content,
+.side-panel-message-user-wrapper .side-panel-selected-text-quote {
+  margin-right: 0;
+}
+
 /* AI 消息内容 - 平铺无气泡 */
 .side-panel-ai-content-flat {
   background: transparent;
@@ -511,7 +586,7 @@ body {
 
 /* 输入区域 */
 .side-panel-input {
-  padding: 16px 20px;
+  padding: 8px 10px;
   background: #ffffff;
   border-top: 1px solid rgba(59, 130, 246, 0.08);
   flex-shrink: 0;
@@ -702,10 +777,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   background: #f8fafc;
   border: 1px solid rgba(59, 130, 246, 0.1);
-  border-radius: 14px;
+  border-radius: 12px;
   transition: all 0.15s ease-out;
 }
 
@@ -799,8 +874,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   border: none;
@@ -808,7 +883,7 @@ body {
   color: white;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 3px 10px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
   position: relative;
 }
 
@@ -829,6 +904,11 @@ body {
 }
 
 /* Stop 按钮样式 */
+.side-panel-send svg {
+  width: 18px;
+  height: 18px;
+}
+
 .side-panel-send svg rect {
   transition: all 0.2s ease-out;
   rx: 3;

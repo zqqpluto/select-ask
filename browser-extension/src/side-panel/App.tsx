@@ -50,7 +50,7 @@ export default function App() {
   const [availableModels, setAvailableModels] = useState<ModelConfig[]>([]);
   const [showModelSelector, setShowModelSelector] = useState(false);
   const [pageInfo, setPageInfo] = useState<PageInfo | null>(null);
-  const [isTextExpanded, setIsTextExpanded] = useState(false);
+  const [selectedTextExpanded, setSelectedTextExpanded] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -269,9 +269,9 @@ export default function App() {
             setMessages([userMsg]);
             // 清除 pending 状态
             await chrome.storage.local.remove(['pending_sidebar_init']);
-            // 启动 AI 响应 - 传入当前模型作为参数
+            // 启动 AI 响应 - 传入当前模型和选中文本、上下文
             console.log('Starting AI response with loaded model:', currentModel.id, currentModel.name);
-            getAIResponse(userMessage, currentModel);
+            getAIResponse(userMessage, currentModel, selectedText || '', context || null);
           }
         }
       };
@@ -280,11 +280,12 @@ export default function App() {
   }, [currentModel?.id, availableModels.length]); // 只依赖 model.id 和 length，避免重复触发
 
   // 获取 AI 响应
-  const getAIResponse = async (question: string, model?: ModelConfig) => {
+  const getAIResponse = async (question: string, model?: ModelConfig, initSelectedText?: string, initContext?: { before: string; after: string } | null) => {
     // 如果未传入模型，使用当前模型
     const modelToUse = model || currentModel;
 
     console.log('getAIResponse called, modelToUse:', modelToUse, 'currentModel:', currentModel);
+    console.log('initSelectedText:', initSelectedText, 'selectedText state:', selectedText);
 
     if (!modelToUse) {
       console.warn('No model selected, showing error message');
@@ -427,14 +428,33 @@ export default function App() {
         currentPortRef.current = null;
       });
 
+      // 根据问题内容判断 action 类型
+      let actionType: 'explain' | 'translate' | 'question' = 'question';
+      if (question === '解释' || question === 'explain') {
+        actionType = 'explain';
+      } else if (question === '翻译' || question === 'translate') {
+        actionType = 'translate';
+      }
+
+      // 使用传入的 selectedText 和 context，如果没有则使用 state 中的值
+      const textToUse = initSelectedText !== undefined ? initSelectedText : selectedText;
+      const contextToUse = initContext !== undefined ? initContext : context;
+
+      console.log('Sending to LLM:', {
+        action: actionType,
+        text: textToUse,
+        question: actionType === 'question' ? question : undefined,
+        context: contextToUse,
+      });
+
       // 发送请求
       port.postMessage({
         type: 'LLM_STREAM_START',
         payload: {
-          action: 'question',
-          text: selectedText,
-          question,
-          context: context || undefined,
+          action: actionType,
+          text: textToUse,
+          question: actionType === 'question' ? question : undefined,
+          context: contextToUse || undefined,
           modelId: modelToUse.id,
         },
       });
@@ -574,49 +594,6 @@ export default function App() {
 
   return (
     <div className="side-panel-container">
-      {/* 页面信息栏 - 显示选中文本和页面 URL */}
-      {pageInfo && (
-        <div className="side-panel-page-info">
-          <div className="side-panel-page-info-header">
-            <div className="side-panel-page-info-title">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-              </svg>
-              <span>选中文本</span>
-              <button
-                className="side-panel-expand-btn"
-                onClick={() => setIsTextExpanded(!isTextExpanded)}
-                title={isTextExpanded ? '收起' : '展开'}
-              >
-                {isTextExpanded ? (
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M6 9l6-6 6 6"/>
-                  </svg>
-                ) : (
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M6 9l6 6 6-6"/>
-                  </svg>
-                )}
-              </button>
-            </div>
-          </div>
-          <div className={`side-panel-page-info-content ${isTextExpanded ? 'expanded' : ''}`}>
-            {pageInfo.selectedText}
-          </div>
-          <div className="side-panel-page-url">
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M2 12h20"/>
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-            </svg>
-            <a href={pageInfo.pageUrl} target="_blank" rel="noopener noreferrer" title={pageInfo.pageTitle}>
-              {pageInfo.pageTitle || pageInfo.pageUrl}
-            </a>
-          </div>
-        </div>
-      )}
-
       {/* 内容区域 */}
       <div className="side-panel-content" ref={messagesContainerRef}>
         {/* 消息列表 */}
@@ -628,7 +605,43 @@ export default function App() {
             {msg.role === 'user' ? (
               // 用户消息
               <div className="side-panel-message-wrapper side-panel-message-user-wrapper">
-                <div className="side-panel-message-content">{escapeHtml(msg.content)}</div>
+                <div className="side-panel-message-content">
+                  {escapeHtml(msg.content)}
+                  {/* 第一条用户消息气泡内显示选中文本引用 */}
+                  {index === 0 && pageInfo && pageInfo.selectedText && (
+                    <div className="side-panel-selected-text-quote">
+                      <div className="side-panel-selected-text-quote-header">
+                        <span>选中文本</span>
+                        {pageInfo.selectedText.length > 100 && (
+                          <button
+                            className="side-panel-quote-toggle-btn"
+                            onClick={() => setSelectedTextExpanded(!selectedTextExpanded)}
+                            title={selectedTextExpanded ? '收起' : '展开'}
+                          >
+                            {selectedTextExpanded ? (
+                              <>
+                                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M6 9l6-6 6 6"/>
+                                </svg>
+                                <span>收起</span>
+                              </>
+                            ) : (
+                              <>
+                                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M6 9l6 6 6-6"/>
+                                </svg>
+                                <span>展开</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                      <blockquote className={`side-panel-selected-text-blockquote ${selectedTextExpanded ? 'expanded' : ''}`}>
+                        {pageInfo.selectedText}
+                      </blockquote>
+                    </div>
+                  )}
+                </div>
                 {/* 操作按钮 - 始终显示 */}
                 <div className="side-panel-message-actions side-panel-message-actions-always">
                   <button

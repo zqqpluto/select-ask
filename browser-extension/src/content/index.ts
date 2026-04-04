@@ -1441,6 +1441,10 @@ function createIconMenu(x: number, y: number): HTMLElement {
   menu.style.left = `${x}px`;
   menu.style.top = `${y}px`;
 
+  // 用于检测鼠标是"经过"还是"停留"
+  let mouseEnterTimer: number | null = null;
+  let hasClicked = false;
+
   // 使用 search.png 图标
   const img = document.createElement('img');
   img.src = chrome.runtime.getURL('public/icons/search.png');
@@ -1453,8 +1457,13 @@ function createIconMenu(x: number, y: number): HTMLElement {
     e.stopPropagation();
     e.preventDefault(); // 阻止默认行为，保持选区
     isIconClicking = true;
+    hasClicked = true;
 
-    // 点击时清除 2 秒定时器
+    // 点击时清除所有定时器
+    if (mouseEnterTimer) {
+      clearTimeout(mouseEnterTimer);
+      mouseEnterTimer = null;
+    }
     if (selectionTimeout) {
       clearTimeout(selectionTimeout);
     }
@@ -1466,11 +1475,27 @@ function createIconMenu(x: number, y: number): HTMLElement {
     e.preventDefault();
   });
 
-  // 鼠标移过图标时隐藏图标（没有点击）
+  // 鼠标移入图标时，开始计时
   menu.addEventListener('mouseenter', (e) => {
-    // 如果鼠标只是移过而没有点击，隐藏图标
-    if (!isIconClicking) {
-      menu.style.display = 'none';
+    hasClicked = false;
+    // 0.8 秒后检查，如果鼠标还在图标上且没有点击，渐变隐藏图标
+    mouseEnterTimer = window.setTimeout(() => {
+      if (!hasClicked && menu.matches(':hover')) {
+        // 鼠标仍在图标上但没有点击，渐变隐藏图标
+        fadeOutIcon(menu);
+      }
+    }, 800) as unknown as number;
+  });
+
+  // 鼠标离开图标时，清除定时器
+  menu.addEventListener('mouseleave', (e) => {
+    if (mouseEnterTimer) {
+      clearTimeout(mouseEnterTimer);
+      mouseEnterTimer = null;
+    }
+    // 如果鼠标离开图标且没有点击，渐变隐藏图标
+    if (!hasClicked) {
+      fadeOutIcon(menu);
     }
   });
 
@@ -1740,8 +1765,8 @@ function handleMenuClick(e: MouseEvent, iconMenu: HTMLElement): void {
   const dropdownX = rect.left + window.scrollX;
   const dropdownY = rect.bottom + window.scrollY + 4;
 
-  // 隐藏图标（不删除，保持选中文本状态）
-  iconMenu.style.display = 'none';
+  // 渐变隐藏图标（不删除，保持选中文本状态）
+  iconMenu.classList.add('fade-out');
 
   // 立即恢复选区高亮
   restoreSelectionRange();
@@ -1758,6 +1783,7 @@ function handleMenuClick(e: MouseEvent, iconMenu: HTMLElement): void {
         currentDropdown = null;
         // 恢复图标显示
         if (currentIconMenu && currentIconMenu.parentElement) {
+          currentIconMenu.classList.remove('fade-out');
           currentIconMenu.style.display = 'flex';
         }
         // 恢复选中文本
@@ -4385,14 +4411,27 @@ function showIconMenu(): void {
 
     // 2 秒后自动隐藏图标（如果还没有被点击）
     selectionTimeout = window.setTimeout(() => {
-      if (currentIconMenu) {
-        currentIconMenu.style.display = 'none';
+      if (currentIconMenu && !currentDropdown) {
+        fadeOutIcon(currentIconMenu);
       }
     }, 2000) as unknown as number;
   }
 
   // 清除鼠标位置记录
   mouseUpPosition = null;
+}
+
+/**
+ * 图标渐变消失
+ */
+function fadeOutIcon(menu: HTMLElement): void {
+  menu.classList.add('fade-out');
+  // 等待过渡动画完成后移除
+  setTimeout(() => {
+    if (currentIconMenu === menu) {
+      currentIconMenu = null;
+    }
+  }, 300);
 }
 
 /**
@@ -4474,7 +4513,8 @@ function init(): void {
 
     // 滚动时立即隐藏图标
     if (currentIconMenu && !currentDropdown) {
-      currentIconMenu.style.display = 'none';
+      fadeOutIcon(currentIconMenu);
+      currentIconMenu = null;
     }
   }, true);
 
