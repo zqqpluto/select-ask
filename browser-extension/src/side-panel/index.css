@@ -219,14 +219,14 @@ body {
 /* 选中文本内容 - Markdown 块引用格式，默认收起显示一行 */
 .side-panel-message-user-wrapper .side-panel-selected-text-blockquote {
   margin: 0;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.5);
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.8);
   border-left: 3px solid rgba(99, 102, 241, 0.5);
   border-radius: 4px;
   font-size: 12px;
-  line-height: 1.6;
+  line-height: 1.5;
   color: #4e5969;
-  max-height: 20px;
+  max-height: 22px;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -241,7 +241,7 @@ body {
   max-height: 400px;
   overflow-y: auto;
   -webkit-line-clamp: unset;
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.9);
 }
 
 /* 用户消息气泡包装器 - 整体气泡样式 */
