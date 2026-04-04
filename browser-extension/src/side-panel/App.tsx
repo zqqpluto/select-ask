@@ -610,22 +610,30 @@ export default function App() {
                   {/* 第一条用户消息气泡内显示选中文本引用 */}
                   {index === 0 && pageInfo && pageInfo.selectedText && (
                     <div className="side-panel-selected-text-quote">
-                      {/* 展开/收起标题栏 - 参考思考过程样式 */}
-                      <div
-                        className="side-panel-selected-text-header"
-                        onClick={() => setSelectedTextExpanded(!selectedTextExpanded)}
-                      >
-                        <span className="side-panel-selected-text-label">选中文本</span>
-                        <svg
-                          className={`side-panel-selected-text-chevron ${selectedTextExpanded ? '' : 'collapsed'}`}
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
+                      {/* 只在文本超过一定长度时显示展开/收起按钮 */}
+                      {pageInfo.selectedText.length > 150 && (
+                        <div
+                          className="side-panel-selected-text-header"
+                          onClick={() => setSelectedTextExpanded(!selectedTextExpanded)}
                         >
-                          <path d="M6 9l6 6 6-6"/>
-                        </svg>
-                      </div>
+                          <span className="side-panel-selected-text-label">{msg.content}</span>
+                          <svg
+                            className={`side-panel-selected-text-chevron ${selectedTextExpanded ? '' : 'collapsed'}`}
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <path d="M6 9l6 6 6-6"/>
+                          </svg>
+                        </div>
+                      )}
+                      {/* 短文本直接显示，不显示按钮 */}
+                      {pageInfo.selectedText.length <= 150 && (
+                        <div className="side-panel-selected-text-short">
+                          <span className="side-panel-selected-text-label">{msg.content}</span>
+                        </div>
+                      )}
                       <blockquote className={`side-panel-selected-text-blockquote ${selectedTextExpanded ? 'expanded' : ''}`}>
                         {pageInfo.selectedText}
                       </blockquote>
