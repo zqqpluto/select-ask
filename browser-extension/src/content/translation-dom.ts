@@ -199,6 +199,9 @@ export function insertTranslation(
     return { translationEl: existing, container: existing };
   }
 
+  // 创建译文容器元素
+  const translationEl = createTranslationElement(translationId, isInline);
+
   // 存储关联关系
   translationEl.dataset.translationFor = paragraph.tagName.toLowerCase();
   translationEl.dataset.sourceElement = paragraph.tagName.toLowerCase();
