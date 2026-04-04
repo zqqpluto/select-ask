@@ -21,17 +21,20 @@ export function getAllParagraphsInRange(range: Range): HTMLElement[] {
 
   let node: Node | null = elementWalker.currentNode;
   while (node) {
-    const el = node as HTMLElement;
+    // 确保是 HTMLElement
+    if (node.nodeType === Node.ELEMENT_NODE && node instanceof HTMLElement) {
+      const el = node;
 
-    // 检查元素是否在选区内（通过文本内容判断）
-    if (el.textContent?.trim()) {
-      // 检查是否是语义化段落标签
-      if (semanticTags.includes(el.tagName)) {
-        // 检查该元素是否有选中的文本
-        if (isElementTextInRange(range, el)) {
-          // 只记录，不立即添加（需要检查是否已被父段落包含）
-          if (!paragraphs.has(el)) {
-            paragraphs.set(el, paragraphs.size);
+      // 检查元素是否在选区内（通过文本内容判断）
+      if (el.textContent?.trim()) {
+        // 检查是否是语义化段落标签
+        if (semanticTags.includes(el.tagName)) {
+          // 检查该元素是否有选中的文本
+          if (isElementTextInRange(range, el)) {
+            // 只记录，不立即添加（需要检查是否已被父段落包含）
+            if (!paragraphs.has(el)) {
+              paragraphs.set(el, paragraphs.size);
+            }
           }
         }
       }
@@ -53,16 +56,18 @@ export function getAllParagraphsInRange(range: Range): HTMLElement[] {
 
   node = blockWalker.currentNode;
   while (node) {
-    const el = node as HTMLElement;
-    const display = window.getComputedStyle(el).display;
+    if (node.nodeType === Node.ELEMENT_NODE && node instanceof HTMLElement) {
+      const el = node;
+      const display = window.getComputedStyle(el).display;
 
-    if (['block', 'list-item', 'table-cell', 'flex', 'grid'].includes(display)) {
-      if (el.textContent?.trim() && isElementTextInRange(range, el)) {
-        // 排除容器型元素，除非只有一个子元素
-        if (!['DIV', 'SECTION', 'ARTICLE', 'MAIN'].includes(el.tagName) ||
-            el.childElementCount <= 1) {
-          if (!paragraphs.has(el)) {
-            paragraphs.set(el, paragraphs.size);
+      if (['block', 'list-item', 'table-cell', 'flex', 'grid'].includes(display)) {
+        if (el.textContent?.trim() && isElementTextInRange(range, el)) {
+          // 排除容器型元素，除非只有一个子元素
+          if (!['DIV', 'SECTION', 'ARTICLE', 'MAIN'].includes(el.tagName) ||
+              el.childElementCount <= 1) {
+            if (!paragraphs.has(el)) {
+              paragraphs.set(el, paragraphs.size);
+            }
           }
         }
       }
