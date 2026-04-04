@@ -21,10 +21,12 @@ body {
   flex-direction: column;
 }
 
+/* 侧边栏容器 */
 .side-panel-container {
   height: 100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 /* 页面信息栏 - 显示选中文本和页面 URL */
@@ -219,13 +221,13 @@ body {
 /* 选中文本内容 - Markdown 块引用格式，默认收起显示一行 */
 .side-panel-message-user-wrapper .side-panel-selected-text-blockquote {
   margin: 0;
-  padding: 6px 10px;
+  padding: 4px 10px;
   background: rgba(255, 255, 255, 0.8);
   border-left: 3px solid rgba(99, 102, 241, 0.5);
   border-radius: 4px;
   font-size: 12px;
   line-height: 1.5;
-  color: #4e5969;
+  color: #000000;
   max-height: 22px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -587,21 +589,12 @@ body {
   flex-shrink: 0;
 }
 
-/* 输入区域 */
-.side-panel-input {
-  padding: 8px 10px;
-  background: #ffffff;
-  border-top: 1px solid rgba(59, 130, 246, 0.08);
-  flex-shrink: 0;
-  position: relative;
-}
-
-/* 模型选择器 - 整个对话框左上角设计 */
+/* 模型选择器 - 整个对话框左上角 */
 .side-panel-model-selector {
   position: absolute;
-  top: 14px;
+  bottom: 70px;
   left: 10px;
-  z-index: 10;
+  z-index: 100;
 }
 
 .side-panel-model-btn {
@@ -657,7 +650,6 @@ body {
   flex-direction: column;
   gap: 6px;
   padding: 8px 10px;
-  padding-top: 40px; /* 为左上角模型选择器预留空间 */
   background: #ffffff;
   border: 1px solid rgba(59, 130, 246, 0.1);
   border-radius: 12px;
