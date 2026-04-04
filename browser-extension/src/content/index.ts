@@ -8,7 +8,7 @@ import {
   generateTitle,
   getHistory,
 } from '../utils/history-manager';
-import { getSelectedChatModel, getAppConfig, saveAppConfig, setSelectedChatModel, getSelectedChatModels, getDisplayMode, setDisplayMode } from '../utils/config-manager';
+import { getSelectedChatModel, getAppConfig, saveAppConfig, setSelectedChatModel, getSelectedChatModels, getDisplayMode, setDisplayMode, getTranslationMode } from '../utils/config-manager';
 import { extractMainContent, truncateContent, generateSummaryPrompt } from '../utils/content-extractor';
 import type { HistorySession, HistoryMessage } from '../types/history';
 import type { ProviderType } from '../types/llm';
@@ -18,6 +18,7 @@ import { marked } from 'marked';
 // 样式
 import styleContent from './style.css?inline';
 import chatStyleContent from './chat-style.css?inline';
+import translationStyleContent from './translation-style.css?inline';
 
 /**
  * 注入样式到页面（作为 manifest.json CSS 注入的备用方案）
@@ -31,7 +32,7 @@ function injectStyles(): void {
 
   const style = document.createElement('style');
   style.id = 'select-ask-styles';
-  style.textContent = styleContent + '\n' + chatStyleContent;
+  style.textContent = styleContent + '\n' + chatStyleContent + '\n' + translationStyleContent;
 
   // 尝试插入到 head 中，如果 head 不存在则插入到 body
   const target = document.head || document.body || document.documentElement;
@@ -3791,6 +3792,145 @@ async function generateQuestions(text: string, context: any): Promise<string[]> 
 }
 
 /**
+ * 行内翻译 - 在原文下方直接插入译文
+ */
+async function showInPlaceTranslation(text: string, context: any): Promise<void> {
+  console.log('=== showInPlaceTranslation called ===');
+
+  // 动态导入翻译模块
+  const { findParagraphContainer, generateTranslationId, insertTranslationAfter, removeTranslation } = await import('./translation-dom');
+  const { TranslationManager } = await import('./translation-manager');
+  const { setupTranslationInteraction, setupSourceElementInteraction, closeTranslation } = await import('./translation-interaction');
+
+  // 恢复选区
+  restoreSelectionRange();
+
+  // 获取选区
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) {
+    console.warn('No selection found');
+    return;
+  }
+
+  const range = selection.getRangeAt(0);
+  const paragraph = findParagraphContainer(range);
+
+  if (!paragraph) {
+    console.warn('Could not find paragraph container, falling back to floating box');
+    // 降级：使用浮动框
+    await showResponseFloatingBox('翻译', text, context, null);
+    return;
+  }
+
+  // 生成唯一 ID 并创建译文容器
+  const translationId = generateTranslationId(text);
+  const translationEl = insertTranslationAfter(paragraph, translationId);
+
+  // 创建译文条目
+  const entry = {
+    id: translationId,
+    originalText: text,
+    sourceElement: paragraph,
+    translationElement: translationEl,
+    isVisible: true,
+    createdAt: Date.now(),
+    streamCompleted: false,
+  };
+
+  // 注册到管理器
+  TranslationManager.register(entry);
+
+  // 设置交互
+  setupTranslationInteraction(translationEl, translationId);
+  setupSourceElementInteraction(paragraph, translationId);
+
+  // 获取内容元素用于流式显示
+  const contentEl = translationEl.querySelector('.select-ask-translation-content');
+  if (!contentEl) return;
+
+  // 流式翻译
+  let fullTranslation = '';
+
+  try {
+    for await (const chunk of streamTranslate(text)) {
+      fullTranslation += chunk;
+      // 渲染 Markdown
+      contentEl.innerHTML = await marked(fullTranslation) as string;
+      // 保持流式光标效果
+      if (!contentEl.querySelector('.select-ask-translation-streaming')) {
+        const streamingSpan = document.createElement('span');
+        streamingSpan.className = 'select-ask-translation-streaming';
+        contentEl.appendChild(streamingSpan);
+      }
+      // 滚动到译文可见
+      translationEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // 流式完成，移除光标
+    const streamingSpan = contentEl.querySelector('.select-ask-translation-streaming');
+    if (streamingSpan) {
+      streamingSpan.remove();
+    }
+
+    // 更新状态
+    TranslationManager.update(translationId, { streamCompleted: true });
+
+    // 添加复制按钮
+    addActionButtons(translationEl, fullTranslation);
+
+    // 保存历史记录
+    await saveTranslationHistory(entry);
+
+  } catch (error) {
+    const streamingSpan = contentEl.querySelector('.select-ask-translation-streaming');
+    if (streamingSpan) {
+      streamingSpan.remove();
+    }
+    contentEl.innerHTML = `<div class="select-ask-translation-error">翻译失败：${error instanceof Error ? error.message : String(error)}</div>`;
+  }
+}
+
+/**
+ * 保存翻译历史
+ */
+async function saveTranslationHistory(entry: any): Promise<void> {
+  // 可选：保存翻译历史到 chrome.storage.local
+  // 这里暂不实现，留待后续扩展
+}
+
+/**
+ * 添加操作按钮（复制等）
+ */
+function addActionButtons(translationEl: HTMLElement, text: string): void {
+  const actionsDiv = translationEl.querySelector('.select-ask-translation-actions');
+  if (!actionsDiv) return;
+
+  // 复制按钮
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'select-ask-translation-action';
+  copyBtn.title = '复制译文';
+  copyBtn.innerHTML = `
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+    </svg>
+  `;
+  copyBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      copyBtn.style.color = '#10b981';
+      setTimeout(() => {
+        copyBtn.style.color = '';
+      }, 2000);
+    } catch (error) {
+      console.error('Failed to copy:', error);
+    }
+  });
+
+  actionsDiv.insertBefore(copyBtn, actionsDiv.firstChild);
+}
+
+/**
  * 处理菜单动作
  */
 async function handleMenuAction(action: string): Promise<void> {
@@ -3860,9 +4000,21 @@ async function handleMenuAction(action: string): Promise<void> {
     // 统计总结功能使用
     // 显示页面总结
     await showPageSummary(dropdownRect);
-  } else if (action === 'explain' || action === 'translate') {
-    console.log('=== Handling explain/translate action ===');
-    // 显示响应浮动框
+  } else if (action === 'translate') {
+    console.log('=== Handling translate action ===');
+    // 检查翻译模式配置
+    const translationMode = await getTranslationMode();
+
+    if (translationMode === 'inline') {
+      // 行内翻译模式
+      await showInPlaceTranslation(text, context);
+    } else {
+      // 浮动框或侧边栏模式
+      await showResponseFloatingBox(title, text, context, dropdownRect);
+    }
+  } else if (action === 'explain') {
+    console.log('=== Handling explain action ===');
+    // 解释功能使用浮动框或侧边栏
     await showResponseFloatingBox(title, text, context, dropdownRect);
   } else {
     console.log('=== Unknown action:', action);
@@ -5317,4 +5469,20 @@ async function createChatBoxFromHistory(session: HistorySession): Promise<void> 
 
     chatContainer.scrollTop = chatContainer.scrollHeight;
   });
+}
+
+// ============= 初始化全局翻译交互监听 =============
+// 在 DOM 加载完成后初始化全局 ESC 键监听
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', async () => {
+      const { initGlobalInteractions } = await import('./translation-interaction');
+      initGlobalInteractions();
+    });
+  } else {
+    (async () => {
+      const { initGlobalInteractions } = await import('./translation-interaction');
+      initGlobalInteractions();
+    })();
+  }
 }

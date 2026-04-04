@@ -26,12 +26,35 @@ export interface ModelConfig {
 export type DisplayMode = 'floating' | 'sidebar';
 
 /**
+ * 翻译显示模式
+ */
+export type TranslationMode = 'inline' | 'floating' | 'sidebar';
+
+/**
+ * 翻译重叠模式
+ */
+export type TranslationOverlapMode = 'replace' | 'stack';
+
+/**
+ * 翻译配置
+ */
+export interface TranslationConfig {
+  mode: TranslationMode;               // 翻译显示模式
+  overlapMode: TranslationOverlapMode; // 同一段落多次翻译的处理方式
+  showCloseButton: boolean;            // 显示关闭按钮
+  doubleClickToClose: boolean;         // 双击原文关闭
+  autoScroll: boolean;                 // 自动滚动到译文
+  hideOnScrollAway: boolean;           // 滚动离开时淡出
+}
+
+/**
  * 用户偏好设置
  */
 export interface UserPreferences {
-  sendWithEnter: boolean;        // 是否使用Enter发送消息，默认false(Ctrl+Enter发送)
-  sidebarWidth: number;          // 侧边栏宽度，默认420px
-  autoGenerateQuestions: boolean; // 是否自动生成问题推荐，默认true
+  sendWithEnter: boolean;
+  sidebarWidth: number;
+  autoGenerateQuestions: boolean;
+  translation: TranslationConfig;
 }
 
 /**
@@ -124,7 +147,7 @@ export const PROVIDER_NAMES: Record<ProviderType, string> = {
   'anthropic': 'Anthropic',
   'qwen': '通义千问',
   'deepseek': 'DeepSeek',
-  'glm': '智谱AI',
+  'glm': '智谱 AI',
   'openai-compat': 'OpenAI 兼容',
 };
 
@@ -190,3 +213,15 @@ export function createModelConfig(
     updatedAt: now,
   };
 }
+
+/**
+ * 翻译配置默认值
+ */
+export const DEFAULT_TRANSLATION_CONFIG: TranslationConfig = {
+  mode: 'inline',
+  overlapMode: 'replace',
+  showCloseButton: true,
+  doubleClickToClose: true,
+  autoScroll: true,
+  hideOnScrollAway: false,
+};

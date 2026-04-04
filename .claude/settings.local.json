@@ -65,7 +65,11 @@
       "Bash(git -C /Users/zhaoqiqiang/code/select-ask/select-ask show 27ed647:browser-extension/src/side-panel/App.tsx)",
       "Bash(git -C /Users/zhaoqiqiang/code/select-ask/select-ask show 27ed647:browser-extension/src/side-panel/index.css)",
       "Bash(git -C /Users/zhaoqiqiang/code/select-ask/select-ask/browser-extension add src/side-panel/App.tsx src/side-panel/index.css)",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "WebFetch(domain:immersivetranslate.com)",
+      "mcp__plugin_claude-mem_mcp-search__smart_outline",
+      "Read(//Users/zhaoqiqiang/.claude/plans/**)",
+      "Bash(mkdir -p /Users/zhaoqiqiang/.claude/plans)"
     ]
   }
 }

@@ -3,9 +3,10 @@
  * 管理模型配置和应用设置
  */
 
-import type { AppConfig, ModelConfig, DisplayMode } from '../types/config';
+import type { AppConfig, ModelConfig, DisplayMode, TranslationConfig, TranslationMode, TranslationOverlapMode } from '../types/config';
 import { encryptApiKey, decryptApiKey } from '../services/llm/crypto';
 import { getStorageSync, setStorageSync } from '../utils/storage';
+import { DEFAULT_TRANSLATION_CONFIG } from '../types/config';
 
 const CONFIG_KEY = 'app_config';
 
@@ -18,9 +19,10 @@ const DEFAULT_CONFIG: AppConfig = {
   models: [],
   displayMode: 'sidebar',
   preferences: {
-    sendWithEnter: false,          // 默认使用Ctrl+Enter发送
-    sidebarWidth: 420,             // 默认侧边栏宽度420px
-    autoGenerateQuestions: true,   // 默认自动生成问题推荐
+    sendWithEnter: false,
+    sidebarWidth: 420,
+    autoGenerateQuestions: true,
+    translation: DEFAULT_TRANSLATION_CONFIG,
   },
 };
 
@@ -300,4 +302,57 @@ export async function setDisplayMode(mode: DisplayMode): Promise<void> {
 export async function getDisplayMode(): Promise<DisplayMode> {
   const config = await getAppConfig();
   return config.displayMode || 'sidebar';
+}
+
+// ============= 翻译配置相关函数 =============
+
+/**
+ * 获取翻译配置
+ */
+export async function getTranslationConfig(): Promise<TranslationConfig> {
+  const config = await getAppConfig();
+  return config.preferences.translation || DEFAULT_TRANSLATION_CONFIG;
+}
+
+/**
+ * 保存翻译配置
+ */
+export async function saveTranslationConfig(translation: TranslationConfig): Promise<void> {
+  const config = await getAppConfig();
+  config.preferences.translation = translation;
+  await saveAppConfig(config);
+}
+
+/**
+ * 获取翻译显示模式
+ */
+export async function getTranslationMode(): Promise<TranslationMode> {
+  const translationConfig = await getTranslationConfig();
+  return translationConfig.mode || 'inline';
+}
+
+/**
+ * 设置翻译显示模式
+ */
+export async function setTranslationMode(mode: TranslationMode): Promise<void> {
+  const translationConfig = await getTranslationConfig();
+  translationConfig.mode = mode;
+  await saveTranslationConfig(translationConfig);
+}
+
+/**
+ * 获取翻译重叠模式
+ */
+export async function getTranslationOverlapMode(): Promise<TranslationOverlapMode> {
+  const translationConfig = await getTranslationConfig();
+  return translationConfig.overlapMode || 'replace';
+}
+
+/**
+ * 设置翻译重叠模式
+ */
+export async function setTranslationOverlapMode(mode: TranslationOverlapMode): Promise<void> {
+  const translationConfig = await getTranslationConfig();
+  translationConfig.overlapMode = mode;
+  await saveTranslationConfig(translationConfig);
 }
