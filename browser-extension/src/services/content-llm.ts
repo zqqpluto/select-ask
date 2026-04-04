@@ -26,6 +26,14 @@ async function* streamViaBackground(
     throw new Error(action === 'generateQuestions' ? '请先在设置中选择问题生成模型' : '请先在设置中选择问答模型');
   }
 
+  console.log('[content-llm] Sending request to background:', {
+    action,
+    modelId: model.id,
+    modelName: model.name,
+    provider: model.provider,
+    textLength: text.length
+  });
+
   // 创建端口连接
   const port = chrome.runtime.connect({ name: LLM_STREAM_PORT_NAME });
 
@@ -45,6 +53,7 @@ async function* streamViaBackground(
         messageQueue.push(message);
       }
     } else if (message.type === 'LLM_STREAM_ERROR') {
+      console.error('[content-llm] Background error:', message.error);
       error = new Error(message.error);
       if (resolveNext) {
         resolveNext({ value: '', done: true });

@@ -82,7 +82,14 @@ export async function handleLLMStream(
 
     // 获取模型配置
     const model = await getModelConfig(request.modelId);
-    console.log('=== Background: Model config ===', model ? { provider: model.provider, modelId: model.modelId } : 'NOT FOUND');
+    console.log('=== Background: Model config ===', model ? {
+      id: model.id,
+      name: model.name,
+      provider: model.provider,
+      modelId: model.modelId,
+      baseUrl: model.baseUrl?.substring(0, 50),
+      apiKeyLength: model.apiKey?.length
+    } : 'NOT FOUND');
 
     if (!model) {
       port.postMessage({ type: 'LLM_STREAM_ERROR', error: '模型配置不存在' });
@@ -98,6 +105,7 @@ export async function handleLLMStream(
     });
 
     console.log('=== Background: Created provider for', model.provider);
+    console.log('=== Background: API Key first 5 chars ===', model.apiKey?.substring(0, 5) + '...');
 
     // 构建消息 - 支持两种格式
     let messages: LLMMessage[];
