@@ -1,6 +1,6 @@
 import { getContextData } from '../utils/context';
 import { isValidSelection, getSelectionPosition, removeIconMenus } from './utils';
-import { streamExplain, streamTranslate, streamQuestion, generateQuestions as llmGenerateQuestions } from '../services/content-llm';
+import { streamExplain, streamTranslate, streamQuestion, streamSearch } from '../services/content-llm';
 import {
   addSession,
   updateSession,
@@ -561,7 +561,6 @@ function setupClickOutsideClose(box: HTMLElement, delay: number = 100): () => vo
     if (!isInsideBox) {
       // 点击在 box 外部，关闭对话框
       box.remove();
-      currentFloatingBox = null;
       if (cleanup) cleanup();
     }
   };
@@ -645,9 +644,6 @@ async function createChatHeader(box: HTMLElement): Promise<HTMLElement> {
  * 使用移动DOM的方式，保持所有事件绑定和流式响应
  */
 async function toggleDisplayMode(box: HTMLElement): Promise<void> {
-  const currentMode = await getDisplayMode();
-  const newMode: DisplayMode = currentMode === 'sidebar' ? 'floating' : 'sidebar';
-
   // 保存当前聊天内容和输入区域的引用
   const chatContainer = box.querySelector('.select-ask-chat-container') as HTMLElement;
   const inputArea = box.querySelector('.select-ask-input-area') as HTMLElement;
@@ -656,7 +652,7 @@ async function toggleDisplayMode(box: HTMLElement): Promise<void> {
   const scrollTop = chatContainer?.scrollTop || 0;
 
   // 保存新的显示模式
-  await setDisplayMode(newMode);
+  await setDisplayMode('sidebar');
 
   // 先将旧容器设置为透明，避免闪烁
   box.style.opacity = '0';
@@ -665,115 +661,50 @@ async function toggleDisplayMode(box: HTMLElement): Promise<void> {
   // 等待过渡完成
   await new Promise(resolve => setTimeout(resolve, 150));
 
-  // 根据新模式创建新容器
-  let newBox: HTMLElement;
+  // 创建侧边栏容器
+  const newBox = document.createElement('div');
+  newBox.className = 'select-ask-sidebar';
+  newBox.style.opacity = '0';
 
-  if (newMode === 'sidebar') {
-    // 创建侧边栏容器
-    newBox = document.createElement('div');
-    newBox.className = 'select-ask-sidebar';
-    newBox.style.opacity = '0';
+  // 创建新的头部
+  const newHeader = await createChatHeader(newBox);
+  newBox.appendChild(newHeader);
 
-    // 创建新的头部
-    const newHeader = await createChatHeader(newBox);
-    newBox.appendChild(newHeader);
+  // 设置事件
+  setupDraggable(newBox, newHeader);
+  setupHistoryButton(newHeader, newBox);
+  setupFullscreenButton(newHeader, newBox);
 
-    // 设置事件
-    setupDraggable(newBox, newHeader);
-    setupHistoryButton(newHeader, newBox);
-    setupFullscreenButton(newHeader, newBox);
-
-    // 移动聊天内容到新容器
-    if (chatContainer) {
-      newBox.appendChild(chatContainer);
-    }
-
-    // 移动输入区域到新容器
-    if (inputArea) {
-      newBox.appendChild(inputArea);
-    }
-
-    // 先添加新容器到 DOM
-    document.body.appendChild(newBox);
-    currentSidebar = newBox;
-
-    // 调整页面布局，为侧边栏腾出空间
-    openSidebarLayout();
-
-    // 移除旧的 box
-    box.remove();
-    currentFloatingBox = null;
-
-    // 淡入新容器
-    requestAnimationFrame(() => {
-      newBox.style.transition = 'opacity 0.2s ease-out';
-      newBox.style.opacity = '1';
-      if (chatContainer) {
-        chatContainer.scrollTop = scrollTop;
-      }
-    });
-
-  } else {
-    // 创建浮动窗口容器
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const scrollX = window.scrollX || window.pageXOffset;
-    const scrollY = window.scrollY || window.pageYOffset;
-
-    // 计算浮动窗口位置
-    const boxWidth = Math.min(viewportWidth * 0.5, 700);
-    const boxHeight = Math.min(viewportHeight * 0.77, 770);
-    const x = scrollX + (viewportWidth - boxWidth) / 2;
-    const y = scrollY + (viewportHeight - boxHeight) / 2;
-
-    newBox = document.createElement('div');
-    newBox.className = 'select-ask-chat-box';
-    newBox.style.left = `${x}px`;
-    newBox.style.top = `${y}px`;
-    newBox.style.opacity = '0';
-
-    // 创建新的头部
-    const newHeader = await createChatHeader(newBox);
-    newBox.appendChild(newHeader);
-
-    // 设置事件
-    setupDraggable(newBox, newHeader);
-    setupHistoryButton(newHeader, newBox);
-    setupFullscreenButton(newHeader, newBox);
-
-    // 移动聊天内容到新容器
-    if (chatContainer) {
-      newBox.appendChild(chatContainer);
-    }
-
-    // 移动输入区域到新容器
-    if (inputArea) {
-      newBox.appendChild(inputArea);
-    }
-
-    // 先添加新容器到 DOM
-    document.body.appendChild(newBox);
-    currentFloatingBox = newBox;
-
-    // 移除旧的 box
-    box.remove();
-    // 如果从侧边栏切换到浮动框，恢复页面布局
-    if (currentSidebar) {
-      closeSidebarLayout();
-    }
-    currentSidebar = null;
-
-    // 淡入新容器
-    requestAnimationFrame(() => {
-      newBox.style.transition = 'opacity 0.2s ease-out';
-      newBox.style.opacity = '1';
-      if (chatContainer) {
-        chatContainer.scrollTop = scrollTop;
-      }
-    });
+  // 移动聊天内容到新容器
+  if (chatContainer) {
+    newBox.appendChild(chatContainer);
   }
 
-  showToast(newMode === 'sidebar' ? '已切换到侧边栏模式' : '已切换到浮动窗口模式', 'info');
+  // 移动输入区域到新容器
+  if (inputArea) {
+    newBox.appendChild(inputArea);
+  }
+
+  // 先添加新容器到 DOM
+  document.body.appendChild(newBox);
+  currentSidebar = newBox;
+
+  // 调整页面布局，为侧边栏腾出空间
+  openSidebarLayout();
+
+  // 移除旧的 box
+  box.remove();
+
+  // 淡入新容器
+  requestAnimationFrame(() => {
+    newBox.style.transition = 'opacity 0.2s ease-out';
+    newBox.style.opacity = '1';
+    if (chatContainer) {
+      chatContainer.scrollTop = scrollTop;
+    }
+  });
+
+  showToast('已切换到侧边栏模式', 'info');
 }
 
 /**
@@ -1103,7 +1034,6 @@ function setupCloseButton(header: HTMLElement, box: HTMLElement): void {
     if (currentSidebar === box) {
       closeSidebarLayout();
     }
-    currentFloatingBox = null;
     currentSidebar = null;
   });
 }
@@ -1280,7 +1210,6 @@ let mouseUpPosition: { x: number; y: number } | null = null;
 let currentSelectionData: { text: string; position: { x: number; y: number; width: number; height: number }; context: any } | null = null;
 let isIconClicking = false; // 标记是否正在点击图标
 let currentIconMenu: HTMLElement | null = null; // 当前图标菜单引用
-let currentFloatingBox: HTMLElement | null = null; // 当前浮动框
 let currentDropdown: HTMLElement | null = null; // 当前下拉菜单
 let savedRange: Range | null = null; // 保存的选中文本范围
 let currentQuestionText: string = ''; // 当前问题的文本内容
@@ -1288,8 +1217,6 @@ let currentQuestionContext: any = null; // 当前问题的上下文
 
 // 缓存接口
 interface CachedResponse {
-  questions: string[];
-  customQuestions: string[]; // 用户自定义的问题
   explain: string;
   explainReasoning: string;
   translate: string;
@@ -1364,15 +1291,11 @@ function getCachedResponse(text: string): CachedResponse | null {
 function saveToCache(text: string, data: Partial<CachedResponse>): void {
   const hash = getTextHash(text);
   const existing = responseCache.get(hash) || {
-    questions: [],
-    customQuestions: [],
     explain: '',
     translate: '',
     timestamp: Date.now(),
   };
 
-  if (data.questions) existing.questions = data.questions;
-  if (data.customQuestions) existing.customQuestions = data.customQuestions;
   if (data.explain) existing.explain = data.explain;
   if (data.translate) existing.translate = data.translate;
 
@@ -1396,21 +1319,6 @@ function clearCache(): void {
   responseCache.clear();
 }
 
-/**
- * 添加用户自定义问题到缓存
- */
-function addCustomQuestion(text: string, question: string): void {
-  const hash = getTextHash(text);
-  const existing = responseCache.get(hash);
-
-  if (existing) {
-    // 避免重复添加
-    if (!existing.customQuestions.includes(question)) {
-      existing.customQuestions.push(question);
-      saveCache();
-    }
-  }
-}
 
 /**
  * 保存选中文本范围
@@ -1511,9 +1419,9 @@ function createIconMenu(x: number, y: number): HTMLElement {
 }
 
 /**
- * 显示二级菜单（解释、翻译、提问）- 包含加载进度
+ * 显示二级菜单（解释、翻译、搜索、提问、总结页面）
  */
-function showDropdownMenu(x: number, y: number, showLoading: boolean = false): HTMLElement {
+function showDropdownMenu(x: number, y: number): HTMLElement {
   const dropdown = document.createElement('div');
   dropdown.className = 'select-ask-dropdown-menu';
   dropdown.style.left = `${x}px`;
@@ -1522,6 +1430,7 @@ function showDropdownMenu(x: number, y: number, showLoading: boolean = false): H
   const menuItems = [
     { key: 'explain', label: '解释', icon: '💡' },
     { key: 'translate', label: '翻译', icon: '🌐' },
+    { key: 'search', label: '搜索', icon: '🔍' },
     { key: 'question', label: '提问', icon: '❓' },
     { key: 'summarize', label: '总结页面', icon: '📄' },
   ];
@@ -1552,210 +1461,13 @@ function showDropdownMenu(x: number, y: number, showLoading: boolean = false): H
     dropdown.appendChild(button);
   });
 
-  // 如果显示加载状态，添加分隔线和加载指示器
-  if (showLoading) {
-    const divider = document.createElement('div');
-    divider.className = 'select-ask-dropdown-divider';
-    dropdown.appendChild(divider);
-
-    const loadingSection = document.createElement('div');
-    loadingSection.className = 'select-ask-dropdown-loading';
-
-    const spinner = document.createElement('div');
-    spinner.className = 'select-ask-dropdown-spinner';
-    loadingSection.appendChild(spinner);
-
-    const loadingText = document.createElement('div');
-    loadingText.className = 'select-ask-dropdown-loading-text';
-    loadingText.textContent = 'AI 正在生成问题...';
-    loadingSection.appendChild(loadingText);
-
-    dropdown.appendChild(loadingSection);
-  }
-
   document.body.appendChild(dropdown);
   return dropdown;
 }
 
-/**
- * 更新下拉菜单 - 移除加载状态，显示问题列表（包含AI生成的问题和用户自定义问题）
- */
-function updateDropdownMenuWithQuestions(aiQuestions: string[]): void {
-  if (!currentDropdown) return;
-
-  // 获取缓存的自定义问题
-  let customQuestions: string[] = [];
-  if (currentSelectionData) {
-    const cached = getCachedResponse(currentSelectionData.text);
-    if (cached && cached.customQuestions.length > 0) {
-      customQuestions = cached.customQuestions;
-    }
-  }
-
-  // 移除现有的加载部分
-  const loadingSection = currentDropdown.querySelector('.select-ask-dropdown-loading');
-  if (loadingSection) {
-    loadingSection.remove();
-  }
-
-  // 移除分隔线
-  const divider = currentDropdown.querySelector('.select-ask-dropdown-divider');
-  if (divider) {
-    divider.remove();
-  }
-
-  // 合并所有问题
-  const allQuestions = [...aiQuestions, ...customQuestions];
-
-  if (allQuestions.length === 0) {
-    // 没有问题时不显示任何内容
-    return;
-  }
-
-  // 添加新的分隔线
-  const newDivider = document.createElement('div');
-  newDivider.className = 'select-ask-dropdown-divider';
-  currentDropdown.appendChild(newDivider);
-
-  // 添加问题列表
-  const questionsSection = document.createElement('div');
-  questionsSection.className = 'select-ask-dropdown-questions';
-
-  const questionsHeader = document.createElement('div');
-  questionsHeader.className = 'select-ask-dropdown-questions-header';
-  questionsHeader.innerHTML = `
-    <span>常见问题</span>
-    <button class="select-ask-regenerate-mini-button" title="重新生成问题">↻</button>
-  `;
-  questionsSection.appendChild(questionsHeader);
-
-  // 重新生成按钮事件
-  const regenerateBtn = questionsHeader.querySelector('.select-ask-regenerate-mini-button');
-  if (regenerateBtn) {
-    regenerateBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      regenerateDropdownQuestions(questionsList, questionsHeader, aiQuestions);
-    });
-  }
-
-  const questionsList = document.createElement('div');
-  questionsList.className = 'select-ask-dropdown-questions-list';
-
-  allQuestions.forEach((question, index) => {
-    const questionItem = document.createElement('button');
-    questionItem.className = 'select-ask-dropdown-question-item';
-
-    // 如果是自定义问题，添加标记
-    const isCustom = index >= aiQuestions.length;
-    if (isCustom) {
-      questionItem.innerHTML = `<span class="select-ask-question-badge">🔖</span> ${question}`;
-      questionItem.classList.add('select-ask-custom-question');
-    } else {
-      questionItem.textContent = question;
-    }
-
-    questionItem.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      e.preventDefault(); // 阻止默认行为，保持选区
-      await handleQuestionClick(question);
-    });
-    questionsList.appendChild(questionItem);
-  });
-
-  questionsSection.appendChild(questionsList);
-  currentDropdown.appendChild(questionsSection);
-}
 
 /**
- * 在下拉菜单中重新生成问题
- */
-async function regenerateDropdownQuestions(
-  questionsListElement: HTMLElement,
-  questionsHeader: HTMLElement,
-  originalAIQuestions: string[]
-): Promise<void> {
-  if (!currentSelectionData) return;
-
-  const { text, context } = currentSelectionData;
-
-  // 显示加载状态
-  questionsListElement.innerHTML = `
-    <div style="padding: 14px 18px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-      <span class="select-ask-dropdown-spinner"></span>
-      <span class="select-ask-dropdown-loading-text">重新生成中...</span>
-    </div>
-  `;
-
-  // 禁用重新生成按钮
-  const regenerateBtn = questionsHeader.querySelector('.select-ask-regenerate-mini-button');
-  if (regenerateBtn) {
-    regenerateBtn.disabled = true;
-    regenerateBtn.style.opacity = '0.5';
-  }
-
-  try {
-    const newQuestions = await generateQuestions(text, context);
-
-    // 清空加载状态
-    questionsListElement.innerHTML = '';
-
-    if (newQuestions.length > 0) {
-      // 获取缓存的自定义问题
-      const cached = getCachedResponse(text);
-      const customQuestions = (cached && cached.customQuestions) || [];
-
-      // 合并所有问题
-      const allQuestions = [...newQuestions, ...customQuestions];
-
-      // 清除该文本的缓存并保存新问题
-      clearTextCache(text);
-      saveToCache(text, { questions: newQuestions, customQuestions: customQuestions });
-
-      // 显示新问题
-      allQuestions.forEach((question, index) => {
-        const questionItem = document.createElement('button');
-        questionItem.className = 'select-ask-dropdown-question-item';
-
-        const isCustom = index >= newQuestions.length;
-        if (isCustom) {
-          questionItem.innerHTML = `<span class="select-ask-question-badge">🔖</span> ${question}`;
-          questionItem.classList.add('select-ask-custom-question');
-        } else {
-          questionItem.textContent = question;
-        }
-
-        questionItem.addEventListener('click', async (e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          await handleQuestionClick(question);
-        });
-        questionsListElement.appendChild(questionItem);
-      });
-    } else {
-      questionsListElement.innerHTML = `
-        <div style="padding: 14px 18px; text-align: center; color: #999; font-size: 13px;">
-          未能生成问题，请稍后重试
-        </div>
-      `;
-    }
-  } catch (error) {
-    questionsListElement.innerHTML = `
-      <div style="padding: 14px 18px; display: flex; align-items: center; justify-content: center; gap: 8px; color: #ff4d4f; font-size: 13px; background: #fff1f0; border-radius: 8px; margin: 6px;">
-        <span>⚠️</span>
-        <span>${error.message || '生成问题失败，请稍后重试'}</span>
-      </div>
-    `;
-  } finally {
-    // 恢复重新生成按钮
-    if (regenerateBtn) {
-      regenerateBtn.disabled = false;
-      regenerateBtn.style.opacity = '1';
-    }
-  }
-}
-
-/**
- * 处理图标点击 - 显示下拉菜单并开始生成常见问题
+ * 处理图标点击 - 显示下拉菜单
  */
 function handleMenuClick(e: MouseEvent, iconMenu: HTMLElement): void {
   console.log('Icon clicked!', e.target);
@@ -1772,8 +1484,8 @@ function handleMenuClick(e: MouseEvent, iconMenu: HTMLElement): void {
   // 立即恢复选区高亮
   restoreSelectionRange();
 
-  // 显示二级菜单（带加载状态）
-  const dropdown = showDropdownMenu(dropdownX, dropdownY, true);
+  // 显示下拉菜单
+  const dropdown = showDropdownMenu(dropdownX, dropdownY);
   currentDropdown = dropdown;
 
   // 点击外部关闭
@@ -1793,321 +1505,6 @@ function handleMenuClick(e: MouseEvent, iconMenu: HTMLElement): void {
       }
     });
   }, 0);
-
-  // 后台自动生成常见问题
-  generateQuestionsInBackground();
-}
-
-/**
- * 后台生成常见问题 - 在下拉菜单中显示进度
- */
-function generateQuestionsInBackground(): void {
-  if (!currentSelectionData) return;
-
-  const { text, context } = currentSelectionData;
-
-  // 检查缓存
-  const cached = getCachedResponse(text);
-  if (cached && cached.questions.length > 0) {
-    console.log('Using cached questions:', cached.questions);
-    // 更新下拉菜单，显示问题列表
-    updateDropdownMenuWithQuestions(cached.questions);
-    return;
-  }
-
-  // 后台生成问题
-  generateQuestions(text, context).then((questions) => {
-    if (questions.length > 0) {
-      // 保存到缓存
-      saveToCache(text, { questions });
-      // 更新下拉菜单，显示问题列表
-      updateDropdownMenuWithQuestions(questions);
-    }
-  }).catch((error) => {
-    console.error('Questions generation failed:', error);
-    // 显示错误状态
-    if (currentDropdown) {
-      const loadingSection = currentDropdown.querySelector('.select-ask-dropdown-loading');
-      if (loadingSection) {
-        loadingSection.innerHTML = `
-          <div class="select-ask-dropdown-error">
-            <span class="select-ask-error-icon">⚠️</span>
-            <span class="select-ask-error-text">${error.message || '生成问题失败，请稍后重试'}</span>
-          </div>
-        `;
-      }
-    }
-  });
-}
-
-/**
- * 重新生成问题
- */
-async function regenerateQuestions(questionsListElement: HTMLElement): Promise<void> {
-  if (!currentSelectionData) return;
-
-  const { text, context } = currentSelectionData;
-
-  // 清空当前问题列表，显示加载状态
-  questionsListElement.innerHTML = `
-    <div class="select-ask-questions-loading-inline">
-      <div class="select-ask-spinner-inline"></div>
-      <span>重新生成中...</span>
-    </div>
-  `;
-
-  try {
-    const questions = await generateQuestions(text, context);
-
-    // 清空加载状态
-    questionsListElement.innerHTML = '';
-
-    if (questions.length > 0) {
-      // 清除该文本的缓存并保存新问题
-      clearTextCache(text);
-      saveToCache(text, { questions });
-
-      // 显示新问题
-      questions.forEach((question) => {
-        const questionItem = document.createElement('button');
-        questionItem.className = 'select-ask-question-item-inline';
-        questionItem.textContent = question;
-        questionItem.addEventListener('click', async () => {
-          await handleQuestionClick(question);
-        });
-        questionsListElement.appendChild(questionItem);
-      });
-    } else {
-      questionsListElement.innerHTML = `
-        <div class="select-ask-questions-empty-inline">
-          <span>未能生成问题，请稍后重试</span>
-        </div>
-      `;
-    }
-  } catch (error) {
-    questionsListElement.innerHTML = `
-      <div class="select-ask-questions-error-inline">
-        ${error instanceof Error ? error.message : '生成问题失败，请稍后重试'}
-      </div>
-    `;
-  }
-}
-
-/**
- * 显示问题生成加载框
- */
-function showLoadingQuestionsBox(position: { x: number; y: number }): void {
-  // 如果已有浮动框，先关闭
-  if (currentFloatingBox) {
-    currentFloatingBox.remove();
-  }
-
-  const box = document.createElement('div');
-  box.className = 'select-ask-floating-box select-ask-questions-box';
-  box.style.left = `${position.x}px`;
-  box.style.top = `${position.y + 50}px`;
-  box.style.width = '400px';
-
-  const header = document.createElement('div');
-  header.className = 'select-ask-floating-box-header';
-  header.innerHTML = `
-    <span class="select-ask-floating-box-title">常见问题</span>
-    <button class="select-ask-floating-box-close">×</button>
-  `;
-  box.appendChild(header);
-
-  const content = document.createElement('div');
-  content.className = 'select-ask-floating-box-content';
-  content.innerHTML = `
-    <div class="select-ask-loading">
-      <div class="select-ask-loading-spinner"></div>
-      <div class="select-ask-loading-text">AI 正在分析并生成问题...</div>
-      <div class="select-ask-loading-subtext">这通常需要几秒钟</div>
-    </div>
-  `;
-  box.appendChild(content);
-
-  // 关闭按钮事件
-  const closeBtn = header.querySelector('.select-ask-floating-box-close');
-  if (closeBtn) {
-    closeBtn.addEventListener('click', () => {
-      box.remove();
-      currentFloatingBox = null;
-    });
-  }
-
-  document.body.appendChild(box);
-  currentFloatingBox = box;
-
-  // 设置点击外部关闭对话框
-  setupClickOutsideClose(box);
-
-  // 调整位置确保不超出视口
-  setTimeout(() => {
-    adjustBoxPosition(box, parseInt(box.style.left), parseInt(box.style.top));
-  }, 0);
-}
-
-/**
- * 创建问题列表浮动框
- */
-async function showQuestionsFloatingBox(questions: string[], position: { x: number; y: number }): Promise<void> {
-  // 如果已有浮动框，先关闭
-  if (currentFloatingBox) {
-    currentFloatingBox.remove();
-  }
-
-  // 计算位置
-  let x = 100, y = 100;
-  if (currentSelectionData && currentSelectionData.position) {
-    x = currentSelectionData.position.x + 150;
-    y = currentSelectionData.position.y;
-  }
-
-  const box = document.createElement('div');
-  box.className = 'select-ask-chat-box';
-  box.style.left = `${x}px`;
-  box.style.top = `${y}px`;
-
-  // 添加可拖拽标题栏
-  const header = await createChatHeader(box);
-  box.appendChild(header);
-  setupDraggable(box, header);
-  setupHistoryButton(header, box);
-  setupFullscreenButton(header, box);
-  setupCloseButton(header, box);
-
-  // 聊天容器
-  const chatContainer = document.createElement('div');
-  chatContainer.className = 'select-ask-chat-container';
-
-  // AI 消息 - 问题列表
-  const aiMessage = document.createElement('div');
-  aiMessage.className = 'select-ask-message select-ask-message-ai';
-
-  const aiContent = document.createElement('div');
-  aiContent.className = 'select-ask-message-content';
-  aiContent.innerHTML = `
-    <div class="select-ask-ai-content">
-      <div class="select-ask-questions-header-inline">
-        <span class="select-ask-questions-title">相关问题</span>
-        <button class="select-ask-regenerate-mini-btn" title="重新生成">↻</button>
-      </div>
-      <div class="select-ask-questions-list-inline"></div>
-    </div>
-  `;
-  aiMessage.appendChild(aiContent);
-
-  const questionsList = aiMessage.querySelector('.select-ask-questions-list-inline') as HTMLElement;
-
-  // 显示加载状态或问题
-  if (questions.length === 0) {
-    questionsList.innerHTML = `
-      <div class="select-ask-questions-loading-inline">
-        <div class="select-ask-spinner-inline"></div>
-        <span>正在生成问题...</span>
-      </div>
-    `;
-  } else {
-    questions.forEach((question) => {
-      const questionItem = document.createElement('button');
-      questionItem.className = 'select-ask-question-item-inline';
-      questionItem.textContent = question;
-      questionItem.addEventListener('click', async () => {
-        await handleQuestionClick(question);
-      });
-      questionsList.appendChild(questionItem);
-    });
-  }
-
-  chatContainer.appendChild(aiMessage);
-  box.appendChild(chatContainer);
-
-  // 输入区域
-  const inputArea = document.createElement('div');
-  inputArea.className = 'select-ask-input-area';
-
-  // 输入框容器（圆角卡片）
-  const inputBox = document.createElement('div');
-  inputBox.className = 'select-ask-input-box';
-
-  // 输入行：文本框
-  const inputRow = document.createElement('div');
-  inputRow.className = 'select-ask-input-row';
-
-  const textarea = document.createElement('textarea');
-  textarea.className = 'select-ask-textarea';
-  textarea.placeholder = '输入自定义问题...';
-  textarea.rows = 1;
-  inputRow.appendChild(textarea);
-
-  inputBox.appendChild(inputRow);
-
-  // 控制行：模型选择 + 发送按钮（放在底部）
-  const controlsRow = document.createElement('div');
-  controlsRow.className = 'select-ask-controls-row';
-
-  // 创建模型选择器
-  const modelSelector = await createModelSelector();
-  controlsRow.appendChild(modelSelector);
-
-  const sendBtn = document.createElement('button');
-  sendBtn.className = 'select-ask-send-icon';
-  sendBtn.innerHTML = `
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M12 19V5M5 12l7-7 7 7"/>
-    </svg>
-  `;
-  controlsRow.appendChild(sendBtn);
-
-  inputBox.appendChild(controlsRow);
-  inputArea.appendChild(inputBox);
-
-  box.appendChild(inputArea);
-
-  document.body.appendChild(box);
-  currentFloatingBox = box;
-
-  // 重新生成按钮事件
-  const regenerateBtn = aiMessage.querySelector('.select-ask-regenerate-mini-btn');
-  if (regenerateBtn) {
-    regenerateBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      regenerateQuestions(questionsList);
-    });
-  }
-
-  // 自定义问题输入事件
-  textarea.addEventListener('input', () => {
-    sendBtn.disabled = !textarea.value.trim();
-  });
-
-  const sendCustomQuestion = async () => {
-    const question = textarea.value.trim();
-    if (!question) return;
-    textarea.value = '';
-    sendBtn.disabled = true;
-    await handleQuestionClick(question);
-  };
-
-  sendBtn.addEventListener('click', sendCustomQuestion);
-  textarea.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendCustomQuestion();
-    }
-  });
-
-  // 初始禁用发送按钮
-  sendBtn.disabled = true;
-
-  // 调整位置确保不超出视口
-  setTimeout(() => {
-    adjustBoxPosition(box, parseInt(box.style.left), parseInt(box.style.top));
-  }, 0);
-
-  // 设置点击外部关闭对话框
-  setupClickOutsideClose(box);
 }
 
 /**
@@ -2186,873 +1583,7 @@ function ensureBoxInViewport(box: HTMLElement): void {
   box.style.top = `${y}px`;
 }
 
-/**
- * 显示响应浮动框（解释/翻译） - 聊天样式
- */
-async function showResponseFloatingBox(title: string, text: string, context: any, dropdownRect: { left: number; top: number; right: number; bottom: number } | null = null): Promise<void> {
-  console.log('=== showResponseFloatingBox called ===');
-  console.log('Title:', title);
-  console.log('Text:', text);
-  console.log('Context:', context);
-  console.log('DropdownRect:', dropdownRect);
 
-  // 检查显示模式
-  const displayMode = await getDisplayMode();
-  if (displayMode === 'sidebar') {
-    // 侧边栏模式
-    await showResponseInSidebar(title, text, context);
-    return;
-  }
-
-  // 如果已有浮动框，先关闭
-  if (currentFloatingBox) {
-    currentFloatingBox.remove();
-  }
-
-  // 初始化历史会话
-  currentSessionId = generateSessionId();
-  currentSelectedText = text;
-  currentSessionType = title === '解释' ? 'explain' : title === '翻译' ? 'translate' : 'custom';
-  currentSessionMessages = [];
-
-  // 保存用户消息
-  let userMessageText = '';
-  const targetLang = getTargetLanguage();
-  if (title === '解释') {
-    userMessageText = `解释${text}是什么`;
-  } else if (title === '翻译') {
-    userMessageText = `将"${text}"翻译成${targetLang}`;
-  } else {
-    userMessageText = text;
-  }
-  currentSessionMessages.push({
-    role: 'user',
-    content: userMessageText,
-    timestamp: Date.now(),
-  });
-
-  // 获取视口信息
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
-  const scrollX = window.scrollX || window.pageXOffset;
-  const scrollY = window.scrollY || window.pageYOffset;
-
-  // 对话框的预估尺寸
-  const estimatedBoxWidth = Math.min(viewportWidth * 0.5, 700);
-  const estimatedBoxHeight = Math.min(viewportHeight * 0.77, 770);
-
-  // 计算位置
-  let x = 100, y = 100;
-  const margin = 20; // 与边缘的最小距离
-  const gap = 10; // 与下拉菜单的间距
-
-  if (dropdownRect) {
-    // 尝试将对话框放在下拉菜单右侧
-    const rightSideX = dropdownRect.right + gap;
-    const leftSideX = dropdownRect.left - estimatedBoxWidth - gap;
-
-    // 计算垂直位置：与下拉菜单顶部对齐
-    const topY = dropdownRect.top;
-    const bottomY = dropdownRect.bottom - estimatedBoxHeight;
-
-    // 优先放在右侧，如果空间不够则放左侧
-    if (rightSideX + estimatedBoxWidth < viewportWidth + scrollX - margin) {
-      x = rightSideX;
-    } else if (leftSideX > scrollX + margin) {
-      x = leftSideX;
-    } else {
-      // 如果左右都不够，放在视口中间偏左
-      x = scrollX + margin;
-    }
-
-    // 垂直位置：优先顶部对齐，确保不超出视口
-    if (topY + estimatedBoxHeight < viewportHeight + scrollY - margin) {
-      y = topY;
-    } else if (bottomY > scrollY + margin) {
-      y = bottomY;
-    } else {
-      y = scrollY + margin;
-    }
-  } else if (currentSelectionData && currentSelectionData.position) {
-    const selX = currentSelectionData.position.x;
-    const selY = currentSelectionData.position.y;
-
-    // 放在选区右侧
-    if (selX + 150 + estimatedBoxWidth < viewportWidth + scrollX - margin) {
-      x = selX + 150;
-    } else {
-      x = scrollX + margin;
-    }
-
-    if (selY + estimatedBoxHeight < viewportHeight + scrollY - margin) {
-      y = selY;
-    } else {
-      y = scrollY + margin;
-    }
-  }
-
-  const box = document.createElement('div');
-  box.className = 'select-ask-chat-box';
-  box.style.left = `${x}px`;
-  box.style.top = `${y}px`;
-
-  // 添加可拖拽标题栏
-  const header = await createChatHeader(box);
-  box.appendChild(header);
-  setupDraggable(box, header);
-  setupHistoryButton(header, box);
-  setupFullscreenButton(header, box);
-  setupCloseButton(header, box);
-
-  // 聊天容器
-  const chatContainer = document.createElement('div');
-  chatContainer.className = 'select-ask-chat-container';
-
-  // 用户消息
-  const userMessage = document.createElement('div');
-  userMessage.className = 'select-ask-message select-ask-message-user';
-  userMessage.innerHTML = `
-    <div class="select-ask-message-content">
-      <div class="select-ask-message-time">${formatTime()}</div>
-      <div class="select-ask-message-body">
-        <div class="select-ask-message-text">${escapeHtml(userMessageText)}</div>
-      </div>
-    </div>
-  `;
-  chatContainer.appendChild(userMessage);
-
-  // AI 消息
-  const aiMessage = document.createElement('div');
-  aiMessage.className = 'select-ask-message select-ask-message-ai';
-
-  const aiContent = document.createElement('div');
-  aiContent.className = 'select-ask-message-content';
-
-  // 获取当前模型配置并设置内容
-  const currentModel = await getSelectedChatModel();
-  const modelName = currentModel?.name || 'AI';
-  const modelNameDisplay = modelName;
-
-  // 始终创建思考过程区域，但初始隐藏
-  // 当收到推理内容时动态显示
-  aiContent.innerHTML = `
-    <div class="select-ask-ai-header">
-      <span class="select-ask-message-time">${formatTime()}</span>
-      <span class="select-ask-ai-divider">·</span>
-      <span class="select-ask-ai-model-name">${modelNameDisplay}</span>
-      <span class="select-ask-ai-divider">·</span>
-      <span class="select-ask-ai-time"></span>
-    </div>
-    <div class="select-ask-ai-content">
-      <div class="select-ask-reasoning-section" style="display: none;">
-        <button class="select-ask-reasoning-toggle" aria-expanded="true">
-          <span class="select-ask-reasoning-icon">💭</span>
-          <span class="select-ask-reasoning-title">思考中...</span>
-          <span class="select-ask-reasoning-chevron">▼</span>
-        </button>
-        <div class="select-ask-reasoning-content">
-          <div class="select-ask-reasoning-text"></div>
-        </div>
-      </div>
-      <div class="select-ask-answer-text select-ask-loading-placeholder">请求中...</div>
-    </div>
-  `;
-
-  aiMessage.appendChild(aiContent);
-
-  // 思考过程折叠/展开 - 在元素添加到 DOM 后绑定事件
-  const reasoningToggle = aiMessage.querySelector('.select-ask-reasoning-toggle');
-  const reasoningSection = aiMessage.querySelector('.select-ask-reasoning-section');
-
-  reasoningToggle?.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const isExpanded = reasoningSection?.classList.toggle('expanded');
-    reasoningToggle?.setAttribute('aria-expanded', String(!!isExpanded));
-  });
-
-  chatContainer.appendChild(aiMessage);
-
-  box.appendChild(chatContainer);
-
-  // 输入区域 - 添加到 box 而不是 chatContainer，使其固定在底部
-  const inputArea = document.createElement('div');
-  inputArea.className = 'select-ask-input-area';
-  inputArea.dataset.isLoading = 'true'; // 标记正在加载
-
-  // 输入框容器（圆角卡片）
-  const inputBox = document.createElement('div');
-  inputBox.className = 'select-ask-input-box';
-
-  // 输入行：文本框
-  const inputRow = document.createElement('div');
-  inputRow.className = 'select-ask-input-row';
-
-  const textarea = document.createElement('textarea');
-  textarea.className = 'select-ask-textarea';
-  textarea.placeholder = '追问或提出新问题...';
-  textarea.rows = 1;
-  inputRow.appendChild(textarea);
-
-  inputBox.appendChild(inputRow);
-
-  // 控制行：模型选择 + 发送按钮（放在底部）
-  const controlsRow = document.createElement('div');
-  controlsRow.className = 'select-ask-controls-row';
-
-  // 创建模型选择器
-  const modelSelector = await createModelSelector();
-  controlsRow.appendChild(modelSelector);
-
-  const sendBtn = document.createElement('button');
-  sendBtn.className = 'select-ask-send-icon';
-  sendBtn.disabled = true;
-  sendBtn.innerHTML = `
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M12 19V5M5 12l7-7 7 7"/>
-    </svg>
-  `;
-  controlsRow.appendChild(sendBtn);
-
-  inputBox.appendChild(controlsRow);
-  inputArea.appendChild(inputBox);
-
-  box.appendChild(inputArea);
-
-  document.body.appendChild(box);
-  currentFloatingBox = box;
-
-  // 为用户消息添加操作按钮
-  addUserMessageActions(userMessage, userMessageText, inputArea);
-
-  // 调整位置确保不超出视口
-  setTimeout(() => {
-    adjustBoxPosition(box, parseInt(box.style.left), parseInt(box.style.top));
-  }, 0);
-
-  // 设置点击外部关闭对话框
-  setupClickOutsideClose(box);
-
-  // 自动调整文本框高度
-  const adjustTextareaHeight = () => {
-    textarea.style.height = 'auto';
-    const newHeight = Math.min(textarea.scrollHeight, 120);
-    textarea.style.height = Math.max(newHeight, 24) + 'px';
-  };
-
-  textarea.addEventListener('focus', adjustTextareaHeight);
-  textarea.addEventListener('input', () => {
-    adjustTextareaHeight();
-    // 只有不在加载状态时才启用发送按钮
-    if (inputArea.dataset.isLoading !== 'true') {
-      sendBtn.disabled = !textarea.value.trim();
-    }
-  });
-
-  // 支持 Enter 发送，Shift+Enter 换行
-  textarea.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (textarea.value.trim() && !sendBtn.disabled) {
-        sendBtn.click();
-      }
-    }
-  });
-
-  // 发送按钮点击事件
-  sendBtn.addEventListener('click', async () => {
-    const question = textarea.value.trim();
-    if (!question) return;
-
-    // 添加新消息到聊天容器
-    const newMessage = createFollowUpMessage(question);
-    chatContainer.appendChild(newMessage);
-
-    // 清空输入框并重置状态
-    textarea.value = '';
-    textarea.style.height = '48px';
-    sendBtn.disabled = true;
-
-    // 调用后端 API
-    const aiResponseMessage = await createAIMessage();
-    chatContainer.appendChild(aiResponseMessage);
-
-    // 滚动到底部
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-
-    // 确保对话框在视口内
-    ensureBoxInViewport(box);
-
-    // 调用 API 获取回答
-    callFollowUpBackendAPI(question, text, context, aiResponseMessage, inputArea);
-  });
-
-  // 调用后端 API
-  callBackendAPI(title, text, context, aiMessage, box, inputArea);
-}
-
-/**
- * 创建追问用户消息
- */
-function createFollowUpMessage(question: string): HTMLElement {
-  const message = document.createElement('div');
-  message.className = 'select-ask-message select-ask-message-user';
-  message.innerHTML = `
-    <div class="select-ask-message-content">
-      <div class="select-ask-message-time">${formatTime()}</div>
-      <div class="select-ask-message-body">
-        <div class="select-ask-message-text">${escapeHtml(question)}</div>
-      </div>
-    </div>
-  `;
-  return message;
-}
-
-/**
- * 为用户消息添加操作按钮（复制、编辑）
- */
-function addUserMessageActions(
-  messageElement: HTMLElement,
-  messageText: string,
-  inputArea?: HTMLElement
-): void {
-  const messageBody = messageElement.querySelector('.select-ask-message-body');
-  if (!messageBody) return;
-
-  // 检查是否已有操作区
-  if (messageBody.querySelector('.select-ask-user-actions')) return;
-
-  const actionsArea = document.createElement('div');
-  actionsArea.className = 'select-ask-user-actions';
-  actionsArea.style.cssText = 'display: flex; gap: 6px; margin-top: 6px; justify-content: flex-end;';
-
-  // 复制按钮
-  const copyBtn = document.createElement('button');
-  copyBtn.className = 'select-ask-user-action-btn';
-  copyBtn.title = '复制';
-  copyBtn.innerHTML = `
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-    </svg>
-  `;
-  copyBtn.addEventListener('click', async () => {
-    await navigator.clipboard.writeText(messageText);
-    copyBtn.classList.add('copied');
-    showToast('✅复制成功', 'success');
-    setTimeout(() => copyBtn.classList.remove('copied'), 1500);
-  });
-
-  // 编辑按钮
-  const editBtn = document.createElement('button');
-  editBtn.className = 'select-ask-user-action-btn';
-  editBtn.title = '编辑并重新提问';
-  editBtn.innerHTML = `
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-    </svg>
-  `;
-  editBtn.addEventListener('click', () => {
-    if (inputArea) {
-      const textarea = inputArea.querySelector('.select-ask-textarea') as HTMLTextAreaElement;
-      if (textarea) {
-        textarea.value = messageText;
-        textarea.focus();
-        textarea.style.height = 'auto';
-        textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
-      }
-    }
-  });
-
-  actionsArea.appendChild(copyBtn);
-  actionsArea.appendChild(editBtn);
-  messageBody.appendChild(actionsArea);
-}
-
-/**
- * 创建 AI 消息（用于追问回复）
- */
-async function createAIMessage(): Promise<HTMLElement> {
-  const message = document.createElement('div');
-  message.className = 'select-ask-message select-ask-message-ai';
-
-  // 获取当前模型配置
-  const currentModel = await getSelectedChatModel();
-  const modelName = currentModel?.name || 'AI';
-
-  const aiContent = document.createElement('div');
-  aiContent.className = 'select-ask-message-content';
-
-  // 始终创建思考过程区域，但初始隐藏
-  // 当收到推理内容时动态显示
-  aiContent.innerHTML = `
-    <div class="select-ask-ai-header">
-      <span class="select-ask-message-time">${formatTime()}</span>
-      <span class="select-ask-ai-divider">·</span>
-      <span class="select-ask-ai-model-name">${modelName}</span>
-      <span class="select-ask-ai-divider">·</span>
-      <span class="select-ask-ai-time"></span>
-    </div>
-    <div class="select-ask-ai-content">
-      <div class="select-ask-reasoning-section" style="display: none;">
-        <button class="select-ask-reasoning-toggle" aria-expanded="true">
-          <span class="select-ask-reasoning-icon">💭</span>
-          <span class="select-ask-reasoning-title">思考中...</span>
-          <span class="select-ask-reasoning-chevron">▼</span>
-        </button>
-        <div class="select-ask-reasoning-content">
-          <div class="select-ask-reasoning-text"></div>
-        </div>
-      </div>
-      <div class="select-ask-answer-text select-ask-loading-placeholder">请求中...</div>
-    </div>
-  `;
-  message.appendChild(aiContent);
-
-  // 思考过程折叠/展开
-  const reasoningToggle = message.querySelector('.select-ask-reasoning-toggle');
-  const reasoningSection = message.querySelector('.select-ask-reasoning-section');
-
-  reasoningToggle?.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const isExpanded = reasoningSection?.classList.toggle('expanded');
-    reasoningToggle?.setAttribute('aria-expanded', String(!!isExpanded));
-  });
-
-  return message;
-}
-
-/**
- * 显示问题响应浮动框
- */
-async function showQuestionResponseFloatingBox(question: string, text: string, context: any, dropdownRect?: { left: number; top: number; right: number; bottom: number } | null): Promise<void> {
-  // 如果已有浮动框，先关闭
-  if (currentFloatingBox) {
-    currentFloatingBox.remove();
-  }
-
-  // 初始化历史会话
-  currentSessionId = generateSessionId();
-  currentSelectedText = text;
-  currentSessionType = 'question';
-  currentSessionMessages = [];
-
-  // 保存用户问题消息
-  currentSessionMessages.push({
-    role: 'user',
-    content: question,
-    timestamp: Date.now(),
-  });
-
-  // 获取视口信息
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
-  const scrollX = window.scrollX || window.pageXOffset;
-  const scrollY = window.scrollY || window.pageYOffset;
-
-  // 对话框的预估尺寸
-  const estimatedBoxWidth = Math.min(viewportWidth * 0.5, 700);
-  const estimatedBoxHeight = Math.min(viewportHeight * 0.77, 770);
-
-  // 计算位置：优先使用传入的下拉菜单位置，其次使用选区位置
-  let x = 100, y = 100;
-  const margin = 20; // 与边缘的最小距离
-  const gap = 10; // 与下拉菜单的间距
-
-  if (dropdownRect) {
-    // 尝试将对话框放在下拉菜单右侧
-    const rightSideX = dropdownRect.right + gap;
-    const leftSideX = dropdownRect.left - estimatedBoxWidth - gap;
-
-    // 计算垂直位置：与下拉菜单顶部对齐
-    const topY = dropdownRect.top;
-    const bottomY = dropdownRect.bottom - estimatedBoxHeight;
-
-    // 优先放在右侧，如果空间不够则放左侧
-    if (rightSideX + estimatedBoxWidth < viewportWidth + scrollX - margin) {
-      x = rightSideX;
-    } else if (leftSideX > scrollX + margin) {
-      x = leftSideX;
-    } else {
-      // 如果左右都不够，放在视口中间偏左
-      x = scrollX + margin;
-    }
-
-    // 垂直位置：优先顶部对齐，确保不超出视口
-    if (topY + estimatedBoxHeight < viewportHeight + scrollY - margin) {
-      y = topY;
-    } else if (bottomY > scrollY + margin) {
-      y = bottomY;
-    } else {
-      y = scrollY + margin;
-    }
-  } else if (currentSelectionData && currentSelectionData.position) {
-    // 使用选区位置
-    const selX = currentSelectionData.position.x;
-    const selY = currentSelectionData.position.y;
-
-    // 放在选区右侧
-    if (selX + 150 + estimatedBoxWidth < viewportWidth + scrollX - margin) {
-      x = selX + 150;
-    } else {
-      x = scrollX + margin;
-    }
-
-    if (selY + estimatedBoxHeight < viewportHeight + scrollY - margin) {
-      y = selY;
-    } else {
-      y = scrollY + margin;
-    }
-  }
-
-  const box = document.createElement('div');
-  box.className = 'select-ask-chat-box';
-  box.style.left = `${x}px`;
-  box.style.top = `${y}px`;
-
-  // 添加可拖拽标题栏
-  const header = await createChatHeader(box);
-  box.appendChild(header);
-  setupDraggable(box, header);
-  setupHistoryButton(header, box);
-  setupFullscreenButton(header, box);
-  setupCloseButton(header, box);
-
-  // 聊天容器
-  const chatContainer = document.createElement('div');
-  chatContainer.className = 'select-ask-chat-container';
-
-  // 用户消息
-  const userMessage = document.createElement('div');
-  userMessage.className = 'select-ask-message select-ask-message-user';
-  userMessage.innerHTML = `
-    <div class="select-ask-message-content">
-      <div class="select-ask-message-time">${formatTime()}</div>
-      <div class="select-ask-message-body">
-        <div class="select-ask-message-text">${escapeHtml(question)}</div>
-      </div>
-    </div>
-  `;
-  chatContainer.appendChild(userMessage);
-
-  // AI 消息
-  const aiMessage = document.createElement('div');
-  aiMessage.className = 'select-ask-message select-ask-message-ai';
-  aiMessage.innerHTML = `
-    <div class="select-ask-message-content">
-      <div class="select-ask-ai-header">
-        <span class="select-ask-message-time">${formatTime()}</span>
-        <span class="select-ask-ai-divider">·</span>
-        <span class="select-ask-ai-model-name"></span>
-        <span class="select-ask-ai-divider">·</span>
-        <span class="select-ask-ai-time"></span>
-      </div>
-      <div class="select-ask-ai-content">
-        <div class="select-ask-model-badge"></div>
-        <div class="select-ask-reasoning-section" style="display: none;">
-          <button class="select-ask-reasoning-toggle" aria-expanded="true">
-            <span class="select-ask-reasoning-icon">💭</span>
-            <span class="select-ask-reasoning-title">思考中...</span>
-            <span class="select-ask-reasoning-chevron">▼</span>
-          </button>
-          <div class="select-ask-reasoning-content">
-            <div class="select-ask-reasoning-text"></div>
-          </div>
-        </div>
-        <div class="select-ask-answer-text"></div>
-      </div>
-    </div>
-  `;
-
-  // 异步设置模型名称
-  getSelectedChatModel().then(currentModel => {
-    const modelName = currentModel?.name || 'AI';
-
-    const modelNameEl = aiMessage.querySelector('.select-ask-ai-model-name');
-    if (modelNameEl) {
-      modelNameEl.textContent = modelName;
-    }
-  });
-
-  chatContainer.appendChild(aiMessage);
-
-  box.appendChild(chatContainer);
-
-  // 输入区域 - 添加到 box 而不是 chatContainer，使其固定在底部
-  const inputArea = document.createElement('div');
-  inputArea.className = 'select-ask-input-area';
-  inputArea.dataset.isLoading = 'true'; // 标记正在加载
-
-  // 输入框容器（圆角卡片）
-  const inputBox = document.createElement('div');
-  inputBox.className = 'select-ask-input-box';
-
-  // 输入行：文本框
-  const inputRow = document.createElement('div');
-  inputRow.className = 'select-ask-input-row';
-
-  const textarea = document.createElement('textarea');
-  textarea.className = 'select-ask-textarea';
-  textarea.placeholder = '追问或提出新问题...';
-  textarea.rows = 1;
-  inputRow.appendChild(textarea);
-
-  inputBox.appendChild(inputRow);
-
-  // 控制行：模型选择 + 发送按钮（放在底部）
-  const controlsRow = document.createElement('div');
-  controlsRow.className = 'select-ask-controls-row';
-
-  // 创建模型选择器
-  const modelSelector = await createModelSelector();
-  controlsRow.appendChild(modelSelector);
-
-  const sendBtn = document.createElement('button');
-  sendBtn.className = 'select-ask-send-icon';
-  sendBtn.disabled = true;
-  sendBtn.innerHTML = `
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M12 19V5M5 12l7-7 7 7"/>
-    </svg>
-  `;
-  controlsRow.appendChild(sendBtn);
-
-  inputBox.appendChild(controlsRow);
-  inputArea.appendChild(inputBox);
-
-  box.appendChild(inputArea);
-
-  document.body.appendChild(box);
-  currentFloatingBox = box;
-
-  // 为用户消息添加操作按钮
-  addUserMessageActions(userMessage, question, inputArea);
-
-  // 调整位置确保不超出视口
-  setTimeout(() => {
-    adjustBoxPosition(box, parseInt(box.style.left), parseInt(box.style.top));
-  }, 0);
-
-  // 设置点击外部关闭对话框
-  setupClickOutsideClose(box);
-
-  // 思考过程折叠/展开
-  const reasoningToggle = aiMessage.querySelector('.select-ask-reasoning-toggle');
-  const reasoningSection = aiMessage.querySelector('.select-ask-reasoning-section');
-
-  reasoningToggle?.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const isExpanded = reasoningSection?.classList.toggle('expanded');
-    reasoningToggle?.setAttribute('aria-expanded', String(!!isExpanded));
-  });
-
-  // 自动调整文本框高度
-  const adjustTextareaHeight = () => {
-    textarea.style.height = 'auto';
-    const newHeight = Math.min(textarea.scrollHeight, 120);
-    textarea.style.height = Math.max(newHeight, 24) + 'px';
-  };
-
-  textarea.addEventListener('focus', adjustTextareaHeight);
-  textarea.addEventListener('input', () => {
-    adjustTextareaHeight();
-    // 只有不在加载状态时才启用发送按钮
-    if (inputArea.dataset.isLoading !== 'true') {
-      sendBtn.disabled = !textarea.value.trim();
-    }
-  });
-
-  // 支持 Enter 发送，Shift+Enter 换行
-  textarea.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (textarea.value.trim() && !sendBtn.disabled) {
-        sendBtn.click();
-      }
-    }
-  });
-
-  // 发送按钮点击事件
-  sendBtn.addEventListener('click', async () => {
-    const followUpQuestion = textarea.value.trim();
-    if (!followUpQuestion) return;
-
-    // 添加新消息到聊天容器
-    const newMessage = createFollowUpMessage(followUpQuestion);
-    chatContainer.appendChild(newMessage);
-
-    // 清空输入框并重置状态
-    textarea.value = '';
-    textarea.style.height = '48px';
-    sendBtn.disabled = true;
-
-    // 调用后端 API
-    const aiResponseMessage = await createAIMessage();
-    chatContainer.appendChild(aiResponseMessage);
-
-    // 滚动到底部
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-
-    // 确保对话框在视口内
-    ensureBoxInViewport(box);
-
-    // 调用 API 获取回答
-    callFollowUpBackendAPI(followUpQuestion, text, context, aiResponseMessage, inputArea);
-  });
-
-  // 调用后端 API
-  callQuestionBackendAPI(question, text, context, aiMessage, box, inputArea);
-}
-
-/**
- * 调用本地 LLM 获取问题回答（流式）
- */
-async function callQuestionBackendAPI(question: string, text: string, context: any, messageElement: HTMLElement, floatingBox: HTMLElement, inputArea: HTMLElement): Promise<void> {
-  const startTime = Date.now();
-  // 获取思考过程和回答元素
-  const reasoningText = messageElement.querySelector('.select-ask-reasoning-text') as HTMLElement;
-  const answerText = messageElement.querySelector('.select-ask-answer-text') as HTMLElement;
-  const reasoningToggle = messageElement.querySelector('.select-ask-reasoning-title') as HTMLElement;
-  const reasoningSection = messageElement.querySelector('.select-ask-reasoning-section') as HTMLElement;
-
-  // 初始化响应文本
-  let reasoningContent = '';
-  let answerContent = '';
-  let hasReasoning = false;
-  let hasAnswer = false;
-
-  try {
-    // 转换上下文格式
-    const llmContext = context ? {
-      selected: text,
-      before: context.before || '',
-      after: context.after || '',
-    } : undefined;
-
-    // 流式读取响应
-    for await (const chunk of streamQuestion(question, text, llmContext)) {
-      if (chunk === '[REASONING]') {
-        // 开始思考过程 - 显示并展开推理区域，移除请求中提示
-        hasReasoning = true;
-        if (reasoningSection) {
-          reasoningSection.style.display = 'block';
-          reasoningSection.classList.add('expanded');
-        }
-        // 移除请求中占位提示
-        if (answerText) {
-          answerText.innerHTML = '';
-          answerText.classList.remove('select-ask-loading-placeholder');
-        }
-        continue;
-      }
-      if (chunk === '[REASONING_DONE]') {
-        // 思考过程完成
-        if (reasoningToggle) {
-          reasoningToggle.textContent = '思考过程';
-        }
-        continue;
-      }
-      if (chunk.startsWith('[REASONING]')) {
-        // 首次收到推理内容时显示推理区域
-        if (!hasReasoning) {
-          hasReasoning = true;
-          if (reasoningSection) {
-            reasoningSection.style.display = 'block';
-            reasoningSection.classList.add('expanded');
-          }
-          // 移除请求中占位提示
-          if (answerText) {
-            answerText.innerHTML = '';
-            answerText.classList.remove('select-ask-loading-placeholder');
-          }
-        }
-        const text = chunk.slice(11);
-        reasoningContent += text;
-        if (reasoningText) {
-          // 移除多余空行，保留列表缩进
-          reasoningText.innerHTML = renderReasoningText(normalizeReasoningText(reasoningContent));
-        }
-      } else if (chunk.startsWith('[ERROR:')) {
-        throw new Error(chunk.slice(7, -1));
-      } else {
-        // 回答内容 - 首次收到时清除加载提示
-        if (!hasAnswer) {
-          hasAnswer = true;
-          if (answerText) {
-            answerText.innerHTML = '';
-            answerText.classList.remove('select-ask-loading-placeholder');
-          }
-        }
-        answerContent += chunk;
-        if (answerText) {
-          answerText.innerHTML = renderMarkdown(answerContent);
-        }
-      }
-    }
-
-    // 移除streaming类
-    if (answerText) {
-      answerText.classList.remove('streaming');
-    }
-
-    // 最终规范化思考过程文本
-    if (reasoningText && reasoningContent) {
-      reasoningText.innerHTML = renderReasoningText(normalizeReasoningText(reasoningContent));
-    }
-
-    // 添加操作按钮
-    const aiContent = messageElement.querySelector('.select-ask-ai-content') as HTMLElement;
-    if (aiContent && answerContent) {
-      const elapsed = (Date.now() - startTime) / 1000;
-      // 存储重新生成上下文
-      messageElement.dataset.regenerateType = 'question';
-      messageElement.dataset.regenerateText = text;
-      messageElement.dataset.regenerateContext = context ? JSON.stringify(context) : '';
-      messageElement.dataset.regenerateQuestion = question;
-
-      addActionButtonsToAnswer(aiContent, answerContent, messageElement, floatingBox, inputArea, elapsed, answerContent);
-    }
-
-    // 保存问题回答到当前会话
-    if (currentSessionId) {
-      // 添加 AI 回答（用户消息已在 showQuestionResponseFloatingBox 中添加）
-      currentSessionMessages.push({
-        role: 'assistant',
-        content: answerContent,
-        reasoning: reasoningContent || undefined,
-        timestamp: Date.now(),
-      });
-
-      // 首次保存会话到历史记录
-      const currentModel = await getSelectedChatModel();
-      const session: HistorySession = {
-        id: currentSessionId,
-        title: question,
-        type: currentSessionType,
-        selectedText: currentSelectedText,
-        messages: currentSessionMessages,
-        modelId: currentModel?.id || 'unknown',
-        modelName: currentModel?.name || 'AI',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-      await addSession(session);
-    }
-
-    // 启用输入功能
-    enableFollowUp(messageElement, text, context, floatingBox, inputArea);
-  } catch (error) {
-    console.error('Failed to call LLM:', error);
-    if (answerText) {
-      const errorMessage = error instanceof Error ? error.message : '请求失败，请稍后重试';
-      answerText.innerHTML = `<div class="select-ask-error-message">${errorMessage}</div>`;
-      answerText.classList.remove('streaming');
-    }
-  }
-}
 
 /**
  * 调用本地 LLM 获取响应（解释/翻译）- 流式
@@ -3728,79 +2259,18 @@ function enableFollowUp(
   };
 }
 
-/**
- * 处理问题点击
- */
-async function handleQuestionClick(question: string): Promise<void> {
-  if (!currentSelectionData) return;
 
-  const { text, context } = currentSelectionData;
-
-  // 获取当前选中的模型用于统计
-  const selectedModel = await getSelectedChatModel();
-
-  // 恢复选区高亮
-  restoreSelectionRange();
-
-  // 在移除下拉菜单之前获取菜单位置
-  let dropdownRect: { left: number; top: number; right: number; bottom: number } | null = null;
-  if (currentDropdown && currentDropdown.parentElement) {
-    const rect = currentDropdown.getBoundingClientRect();
-    dropdownRect = {
-      left: rect.left + window.scrollX,
-      top: rect.top + window.scrollY,
-      right: rect.right + window.scrollX,
-      bottom: rect.bottom + window.scrollY,
-    };
-  }
-
-  // 移除问题框和下拉菜单
-  if (currentFloatingBox) {
-    currentFloatingBox.remove();
-    currentFloatingBox = null;
-  }
-  if (currentDropdown) {
-    currentDropdown.remove();
-    currentDropdown = null;
-  }
-
-  // 显示问题响应浮动框
-  await showQuestionResponseFloatingBox(question, text, context, dropdownRect);
-
-  // 移除所有菜单
-  removeIconMenus();
-  currentIconMenu = null;
-}
-
-/**
- * 调用本地 LLM 生成问题
- */
-async function generateQuestions(text: string, context: any): Promise<string[]> {
-  try {
-    // 转换上下文格式
-    const llmContext = context ? {
-      selected: text,
-      before: context.before || '',
-      after: context.after || '',
-    } : undefined;
-
-    return await llmGenerateQuestions(text, llmContext);
-  } catch (error) {
-    console.error('Failed to generate questions:', error);
-    throw error;
-  }
-}
 
 /**
  * 行内翻译 - 短文本显示在原文右侧，长文本显示在原文下方
  * 支持单段和多段文本选择
- * loading 始终显示在选中文本后面（不换行），翻译完成后再根据文本长度决定译文显示位置
+ * loading 始终显示在段落尾部（不换行），翻译完成后再根据文本长度决定译文显示位置
  */
 async function showInPlaceTranslation(text: string, context: any): Promise<void> {
   console.log('=== showInPlaceTranslation called ===');
 
   // 动态导入翻译模块
-  const { findParagraphContainer, getAllParagraphsInRange, generateTranslationId, insertTranslation, insertInlineLoading, shouldUseInlineMode, removeTranslation } = await import('./translation-dom');
+  const { findParagraphContainer, getAllParagraphsInRange, generateTranslationId, insertTranslation, insertLoadingAtEnd, detectInlineMode, shouldUseInlineMode, removeTranslation } = await import('./translation-dom');
   const { TranslationManager } = await import('./translation-manager');
   const { setupTranslationInteraction, setupSourceElementInteraction, closeTranslation } = await import('./translation-interaction');
 
@@ -3820,18 +2290,17 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
   const paragraphs = getAllParagraphsInRange(range);
   console.log('Paragraphs in selection:', paragraphs.length, paragraphs);
 
-  // 判断使用行内模式还是块级模式（基于总文本长度）
-  const isInline = shouldUseInlineMode(text);
-
   if (paragraphs.length > 1) {
     // 多段选择：每段单独翻译，一起发送，分别插入
     console.log('Multi-paragraph selection detected, translating each paragraph separately');
-    await translateMultipleParagraphs(paragraphs, isInline, {
+    await translateMultipleParagraphs(paragraphs, {
       generateTranslationId,
       insertTranslation,
       TranslationManager,
       setupTranslationInteraction,
       setupSourceElementInteraction,
+      detectInlineMode,
+      shouldUseInlineMode,
     });
     return;
   }
@@ -3849,18 +2318,20 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
   // 生成唯一 ID
   const translationId = generateTranslationId(text);
 
-  // 翻译开始时：插入 inline loading（不换行）
-  const { loadingEl, container: loadingContainer } = insertInlineLoading(targetParagraph, isInline ? range : undefined);
+  // 翻译开始时：在段落后面插入 loading（作为兄弟元素）
+  const { loadingEl } = insertLoadingAtEnd(targetParagraph);
 
   // 创建临时条目用于管理 loading 状态
   let translationEl: HTMLElement | null = null;
+  let wrapper: HTMLElement | null = null;
   let container: HTMLElement | null = null;
   let separatorNode: Text | undefined;
+  let isInline = true; // 默认使用行内模式，等翻译完成后动态判断
 
   const tempEntry = {
     id: translationId,
     originalText: text,
-    sourceElement: loadingContainer,
+    sourceElement: targetParagraph,
     translationElement: loadingEl,
     isVisible: true,
     createdAt: Date.now(),
@@ -3896,19 +2367,23 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
       // 第一条内容到达时，移除 loading 并创建正式译文容器
       if (tempEntry.isVisible) {
         loadingEl.remove();
+
+        // 使用 shouldUseInlineMode 作为初始判断（基于原文长度）
+        isInline = shouldUseInlineMode(text);
+
         const result = insertTranslation(targetParagraph, translationId, isInline, text, isInline ? range : undefined);
         translationEl = result.translationEl;
+        wrapper = result.wrapper;
         container = result.container;
         separatorNode = result.separatorNode;
 
         // 更新条目
         tempEntry.translationElement = translationEl;
-        tempEntry.sourceElement = container;
+        tempEntry.sourceElement = targetParagraph;
         tempEntry.separatorNode = separatorNode;
 
         // 设置交互
         setupTranslationInteraction(translationEl, translationId);
-        setupSourceElementInteraction(container, translationId);
 
         // 标记为已切换
         tempEntry.isVisible = false;
@@ -3925,7 +2400,20 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
       }
     }
 
-    // 流式完成
+    // 流式完成，动态判断是否需要切换模式
+    if (translationEl && wrapper && fullTranslation.trim()) {
+      // 使用 detectInlineMode 动态判断
+      const shouldBeInline = detectInlineMode(targetParagraph, text, fullTranslation);
+
+      // 如果当前模式与应该使用的模式不同，切换 wrapper 的类名
+      if (shouldBeInline !== isInline) {
+        wrapper.classList.remove(isInline ? 'inline' : 'block');
+        wrapper.classList.add(shouldBeInline ? 'inline' : 'block');
+        translationEl.classList.remove(isInline ? 'inline' : 'block');
+        translationEl.classList.add(shouldBeInline ? 'inline' : 'block');
+      }
+    }
+
     TranslationManager.update(translationId, { streamCompleted: true });
 
   } catch (error) {
@@ -3947,16 +2435,18 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
  */
 async function translateMultipleParagraphs(
   paragraphs: HTMLElement[],
-  isInline: boolean,
   deps: {
     generateTranslationId: (text: string) => string;
-    insertTranslation: (paragraph: HTMLElement, translationId: string, isInline: boolean, originalText: string, range?: Range) => { translationEl: HTMLElement; container: HTMLElement; separatorNode?: Text };
+    insertTranslation: (paragraph: HTMLElement, translationId: string, isInline: boolean, originalText: string, range?: Range) => { translationEl: HTMLElement; wrapper: HTMLElement; container: HTMLElement; separatorNode?: Text };
+    insertLoadingAtEnd: (paragraph: HTMLElement) => { loadingEl: HTMLElement; container: HTMLElement };
     TranslationManager: typeof import('./translation-manager').TranslationManager;
     setupTranslationInteraction: (translationEl: HTMLElement, entryId: string) => void;
     setupSourceElementInteraction: (paragraph: HTMLElement, translationId: string) => void;
+    detectInlineMode: (sourceElement: HTMLElement, sourceText: string, translatedText: string) => boolean;
+    shouldUseInlineMode: (text: string) => boolean;
   }
 ): Promise<void> {
-  const { generateTranslationId, insertTranslation, TranslationManager, setupTranslationInteraction, setupSourceElementInteraction } = deps;
+  const { generateTranslationId, insertTranslation, insertLoadingAtEnd, TranslationManager, setupTranslationInteraction, setupSourceElementInteraction, detectInlineMode, shouldUseInlineMode } = deps;
 
   console.log('=== translateMultipleParagraphs ===');
   console.log('Paragraphs count:', paragraphs.length);
@@ -3975,39 +2465,32 @@ async function translateMultipleParagraphs(
 
   console.log('Translating', paragraphTexts.length, 'paragraphs with concurrency 10');
 
-  // 为每个段落创建加载状态的译文容器
+  // 为每个段落创建加载状态（inline loading）
   const loadingEntries: Array<{
     paragraph: HTMLElement;
     paragraphIdx: number;
     translationId: string;
-    translationEl: HTMLElement;
+    loadingEl: HTMLElement;
     container: HTMLElement;
+    // 翻译完成后填充
+    translationEl?: HTMLElement;
+    wrapper?: HTMLElement;
   }> = [];
 
   for (let i = 0; i < targetParagraphs.length; i++) {
     const paragraph = targetParagraphs[i];
     const translationId = generateTranslationId('loading-' + i);
-    const { translationEl, container } = insertTranslation(paragraph, translationId, false, paragraphTexts[i], undefined);
 
-    // 显示加载状态（转圈）
-    const contentEl = translationEl.querySelector('.select-ask-translation-content');
-    if (contentEl) {
-      contentEl.innerHTML = '<div class="select-ask-translation-loading"><div class="select-ask-loading-spinner"></div><span>翻译中...</span></div>';
-    }
+    // 在段落尾部插入 inline loading（不换行）
+    const { loadingEl, container } = insertLoadingAtEnd(paragraph);
 
     loadingEntries.push({
       paragraph,
       paragraphIdx: i,
       translationId,
-      translationEl,
+      loadingEl,
       container,
     });
-  }
-
-  // 设置交互
-  for (const entry of loadingEntries) {
-    setupTranslationInteraction(entry.translationEl, entry.translationId);
-    setupSourceElementInteraction(entry.container, entry.translationId);
   }
 
   // 并行翻译，并发度为 10
@@ -4068,9 +2551,29 @@ async function translateMultipleParagraphs(
       const loadingEntry = loadingEntries.find(e => e.paragraphIdx === paragraphIdx);
       if (!loadingEntry) continue;
 
-      const { translationEl, container } = loadingEntry;
+      const paragraph = loadingEntry.paragraph;
+      const originalText = paragraphTexts[paragraphIdx];
 
-      const contentEl = translationEl.querySelector('.select-ask-translation-content');
+      // 移除 loading
+      loadingEntry.loadingEl.remove();
+
+      // 动态判断使用行内还是块级模式
+      const isInline = translationText
+        ? detectInlineMode(paragraph, originalText, translationText)
+        : shouldUseInlineMode(originalText);
+
+      // 创建正式的译文容器
+      const translationId = loadingEntry.translationId;
+      const result = insertTranslation(paragraph, translationId, isInline, originalText, undefined);
+
+      loadingEntry.translationEl = result.translationEl;
+      loadingEntry.wrapper = result.wrapper;
+
+      // 设置交互
+      setupTranslationInteraction(result.translationEl, translationId);
+
+      // 渲染译文
+      const contentEl = result.translationEl.querySelector('.select-ask-translation-content');
       if (contentEl) {
         if (translationText && translationText.trim()) {
           // 翻译成功，显示结果
@@ -4082,7 +2585,7 @@ async function translateMultipleParagraphs(
       }
 
       // 更新 TranslationManager 中的条目
-      const entry = TranslationManager.get(loadingEntry.translationId);
+      const entry = TranslationManager.get(translationId);
       if (entry) {
         entry.streamCompleted = true;
       }
@@ -4143,6 +2646,7 @@ async function handleMenuAction(action: string): Promise<void> {
     'translate': '翻译',
     'question': '提问',
     'summarize': '总结页面',
+    'search': '搜索',
   };
 
   const title = titles[action] || action;
@@ -4155,12 +2659,11 @@ async function handleMenuAction(action: string): Promise<void> {
 
   if (action === 'question') {
     console.log('=== Handling question action ===');
-    // 显示问题输入框，让用户输入问题
-    await showCustomQuestionInputBox(text, context, dropdownRect);
+    // 提问功能已删除
   } else if (action === 'summarize') {
     console.log('=== Handling summarize action ===');
     // 统计总结功能使用
-    // 显示页面总结
+    // 显示页面总结（仅支持侧边栏模式）
     await showPageSummary(dropdownRect);
   } else if (action === 'translate') {
     console.log('=== Handling translate action ===');
@@ -4171,13 +2674,17 @@ async function handleMenuAction(action: string): Promise<void> {
       // 行内翻译模式
       await showInPlaceTranslation(text, context);
     } else {
-      // 浮动框或侧边栏模式
-      await showResponseFloatingBox(title, text, context, dropdownRect);
+      // 侧边栏模式
+      await showResponseInSidebar(title, text, context);
     }
   } else if (action === 'explain') {
     console.log('=== Handling explain action ===');
-    // 解释功能使用浮动框或侧边栏
-    await showResponseFloatingBox(title, text, context, dropdownRect);
+    // 解释功能使用侧边栏
+    await showResponseInSidebar(title, text, context);
+  } else if (action === 'search') {
+    console.log('=== Handling search action ===');
+    // AI 搜索功能使用侧边栏
+    await showResponseInSidebar(title, text, context);
   } else {
     console.log('=== Unknown action:', action);
   }
@@ -4207,16 +2714,8 @@ async function showPageSummary(dropdownRect: { left: number; top: number; right:
       content: truncatedContent,
     });
 
-    // 获取当前显示模式
-    const displayMode = await getDisplayMode();
-
-    if (displayMode === 'sidebar') {
-      // 在侧边栏中显示
-      await showSummaryInSidebar(extractedContent.title, summaryPrompt);
-    } else {
-      // 在浮动框中显示
-      await showSummaryInFloatingBox(extractedContent.title, summaryPrompt, dropdownRect);
-    }
+    // 仅在侧边栏中显示
+    await showSummaryInSidebar(extractedContent.title, summaryPrompt);
   } catch (error) {
     console.error('Failed to generate page summary:', error);
     // 显示错误提示
@@ -4341,342 +2840,7 @@ async function showSummaryInSidebar(title: string, prompt: string): Promise<void
   }
 }
 
-/**
- * 在浮动框中显示页面总结
- */
-async function showSummaryInFloatingBox(title: string, prompt: string, dropdownRect: { left: number; top: number; right: number; bottom: number } | null = null): Promise<void> {
-  console.log('=== showSummaryInFloatingBox called ===');
 
-  // 创建浮动框
-  const floatingBox = document.createElement('div');
-  floatingBox.className = 'select-ask-floating-box';
-  floatingBox.style.cssText = `
-    position: absolute;
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    padding: 16px;
-    max-width: 600px;
-    max-height: 500px;
-    overflow-y: auto;
-    z-index: 10000;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  `;
-
-  // 设置位置
-  if (dropdownRect) {
-    floatingBox.style.left = `${dropdownRect.left}px`;
-    floatingBox.style.top = `${dropdownRect.bottom + 8}px`;
-  } else {
-    floatingBox.style.left = '50%';
-    floatingBox.style.top = '50%';
-    floatingBox.style.transform = 'translate(-50%, -50%)';
-  }
-
-  // 创建标题
-  const titleElement = document.createElement('div');
-  titleElement.style.cssText = `
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 12px;
-    color: #1f2937;
-  `;
-  titleElement.textContent = `总结页面: ${title}`;
-  floatingBox.appendChild(titleElement);
-
-  // 创建内容区域
-  const contentElement = document.createElement('div');
-  contentElement.style.cssText = `
-    font-size: 14px;
-    line-height: 1.6;
-    color: #374151;
-  `;
-
-  // 显示加载状态
-  contentElement.innerHTML = '<div style="color: #6b7280;">正在生成总结...</div>';
-  floatingBox.appendChild(contentElement);
-
-  // 创建关闭按钮
-  const closeButton = document.createElement('button');
-  closeButton.style.cssText = `
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    background: transparent;
-    border: none;
-    font-size: 20px;
-    cursor: pointer;
-    color: #9ca3af;
-    padding: 4px;
-  `;
-  closeButton.textContent = '×';
-  closeButton.addEventListener('click', () => {
-    floatingBox.remove();
-  });
-  floatingBox.appendChild(closeButton);
-
-  document.body.appendChild(floatingBox);
-  currentFloatingBox = floatingBox;
-
-  // 调用LLM API
-  try {
-    const selectedModel = await getSelectedChatModel();
-    if (!selectedModel) {
-      throw new Error('未配置模型，请先在设置中配置模型');
-    }
-
-    // 使用问答接口获取总结
-    const messages = [{ role: 'user' as const, content: prompt }];
-    let fullResponse = '';
-
-    // 流式调用
-    for await (const chunk of streamQuestion(messages, selectedModel)) {
-      fullResponse += chunk;
-      // 渲染Markdown
-      contentElement.innerHTML = await marked(fullResponse) as string;
-    }
-
-  } catch (error) {
-    console.error('Failed to get summary:', error);
-    contentElement.innerHTML = `<div style="color: #ef4444;">生成总结失败: ${error instanceof Error ? error.message : String(error)}</div>`;
-  }
-}
-
-/**
- * 显示自定义问题输入框
- */
-/**
- * 截断文本，中间省略
- */
-function truncateText(text: string, maxLength: number = 100): { text: string; truncated: boolean } {
-  if (text.length <= maxLength) {
-    return { text, truncated: false };
-  }
-  const startLength = Math.floor(maxLength / 2);
-  const endLength = Math.floor(maxLength / 2);
-  return {
-    text: text.slice(0, startLength) + '...' + text.slice(-endLength),
-    truncated: true
-  };
-}
-
-async function showCustomQuestionInputBox(text: string, context: any, dropdownRect: { left: number; top: number; right: number; bottom: number } | null = null): Promise<void> {
-  // 如果已有浮动框，先关闭
-  if (currentFloatingBox) {
-    currentFloatingBox.remove();
-  }
-
-  // 计算位置
-  let x = 100, y = 100;
-  if (dropdownRect) {
-    x = dropdownRect.right + 8;
-    y = dropdownRect.top;
-  } else if (currentSelectionData && currentSelectionData.position) {
-    x = currentSelectionData.position.x + 150;
-    y = currentSelectionData.position.y;
-  }
-
-  const box = document.createElement('div');
-  box.className = 'select-ask-chat-box';
-  box.style.left = `${x}px`;
-  box.style.top = `${y}px`;
-
-  // 添加可拖拽标题栏
-  const header = await createChatHeader(box);
-  box.appendChild(header);
-  setupDraggable(box, header);
-  setupHistoryButton(header, box);
-  setupFullscreenButton(header, box);
-  setupCloseButton(header, box);
-
-  // 聊天容器
-  const chatContainer = document.createElement('div');
-  chatContainer.className = 'select-ask-chat-container';
-
-  // 引用卡片 - 显示选中的文本
-  const quoteCard = document.createElement('div');
-  quoteCard.className = 'select-ask-quote-card';
-  const { text: displayText, truncated } = truncateText(text, 120);
-  quoteCard.innerHTML = `
-    <div class="select-ask-quote-label">📝 选中文本${truncated ? '（已截断）' : ''}</div>
-    <div class="select-ask-quote-text">${escapeHtml(displayText)}</div>
-  `;
-  chatContainer.appendChild(quoteCard);
-
-  box.appendChild(chatContainer);
-
-  // 输入区域
-  const inputArea = document.createElement('div');
-  inputArea.className = 'select-ask-input-area';
-  inputArea.dataset.isLoading = 'false';
-
-  // 输入框容器（圆角卡片）
-  const inputBox = document.createElement('div');
-  inputBox.className = 'select-ask-input-box';
-
-  // 输入行：文本框
-  const inputRow = document.createElement('div');
-  inputRow.className = 'select-ask-input-row';
-
-  const textarea = document.createElement('textarea');
-  textarea.className = 'select-ask-textarea';
-  textarea.placeholder = '输入您的问题...';
-  textarea.rows = 1;
-  inputRow.appendChild(textarea);
-
-  inputBox.appendChild(inputRow);
-
-  // 控制行：模型选择 + 发送按钮（放在底部）
-  const controlsRow = document.createElement('div');
-  controlsRow.className = 'select-ask-controls-row';
-
-  // 创建模型选择器
-  const modelSelector = await createModelSelector();
-  controlsRow.appendChild(modelSelector);
-
-  const sendBtn = document.createElement('button');
-  sendBtn.className = 'select-ask-send-icon';
-  sendBtn.disabled = true;
-  sendBtn.innerHTML = `
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M12 19V5M5 12l7-7 7 7"/>
-    </svg>
-  `;
-  controlsRow.appendChild(sendBtn);
-
-  inputBox.appendChild(controlsRow);
-  inputArea.appendChild(inputBox);
-
-  box.appendChild(inputArea);
-
-  document.body.appendChild(box);
-  currentFloatingBox = box;
-
-  // 初始禁用发送按钮
-  sendBtn.disabled = true;
-
-  // 自动调整文本框高度
-  const adjustTextareaHeight = () => {
-    textarea.style.height = 'auto';
-    const newHeight = Math.min(textarea.scrollHeight, 120);
-    textarea.style.height = Math.max(newHeight, 24) + 'px';
-  };
-
-  textarea.addEventListener('focus', adjustTextareaHeight);
-  textarea.addEventListener('input', () => {
-    adjustTextareaHeight();
-    // 只有不在加载状态时才启用发送按钮
-    if (inputArea.dataset.isLoading !== 'true') {
-      sendBtn.disabled = !textarea.value.trim();
-    }
-  });
-
-  // 支持 Enter 发送，Shift+Enter 换行
-  textarea.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (textarea.value.trim() && !sendBtn.disabled) {
-        sendBtn.click();
-      }
-    }
-  });
-
-  // 发送按钮点击事件
-  const submitQuestion = () => {
-    const question = textarea.value.trim();
-    if (!question) return;
-
-    // 用户消息 - 显示用户的问题
-    const userMessage = document.createElement('div');
-    userMessage.className = 'select-ask-message select-ask-message-user';
-    userMessage.innerHTML = `
-      <div class="select-ask-message-content">
-        <div class="select-ask-message-time">${formatTime()}</div>
-        <div class="select-ask-message-body">
-          <div class="select-ask-message-action">提问</div>
-          <div class="select-ask-message-text">${escapeHtml(question)}</div>
-        </div>
-      </div>
-    `;
-    chatContainer.appendChild(userMessage);
-
-    // 为用户消息添加操作按钮
-    addUserMessageActions(userMessage, question, inputArea);
-
-    // 清空输入框并标记加载状态
-    inputArea.dataset.isLoading = 'true';
-    textarea.value = '';
-    textarea.style.height = '44px';
-    sendBtn.disabled = true;
-
-    // 添加 AI 消息容器
-    const aiMessage = document.createElement('div');
-    aiMessage.className = 'select-ask-message select-ask-message-ai';
-    aiMessage.innerHTML = `
-      <div class="select-ask-message-content">
-        <div class="select-ask-ai-header">
-          <span class="select-ask-message-time">${formatTime()}</span>
-          <span class="select-ask-ai-divider">·</span>
-          <span class="select-ask-ai-model-name"></span>
-          <span class="select-ask-ai-divider">·</span>
-          <span class="select-ask-ai-time"></span>
-        </div>
-        <div class="select-ask-ai-content">
-          <div class="select-ask-reasoning-section expanded">
-            <button class="select-ask-reasoning-toggle" aria-expanded="true">
-              <span class="select-ask-reasoning-icon">💭</span>
-              <span class="select-ask-reasoning-title">思考中...</span>
-              <span class="select-ask-reasoning-chevron">▼</span>
-            </button>
-            <div class="select-ask-reasoning-content">
-              <div class="select-ask-reasoning-text"></div>
-            </div>
-          </div>
-          <div class="select-ask-answer-text"></div>
-        </div>
-      </div>
-    `;
-
-    // 异步设置模型名称
-    getSelectedChatModel().then(model => {
-      const modelNameEl = aiMessage.querySelector('.select-ask-ai-model-name');
-      if (modelNameEl && model) {
-        modelNameEl.textContent = model.name;
-
-        if (!supportsReasoning) {
-          const reasoningSection = aiMessage.querySelector('.select-ask-reasoning-section') as HTMLElement;
-          if (reasoningSection) {
-            reasoningSection.style.display = 'none';
-          }
-        }
-      }
-    });
-
-    chatContainer.appendChild(aiMessage);
-
-    // 滚动到底部
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-
-    // 调用 API 获取回答
-    callQuestionBackendAPI(question, text, context, aiMessage, box, inputArea);
-  };
-
-  sendBtn?.addEventListener('click', submitQuestion);
-
-  // 调整位置确保不超出视口
-  setTimeout(() => {
-    adjustBoxPosition(box, parseInt(box.style.left), parseInt(box.style.top));
-    textarea?.focus({ preventScroll: true });
-  }, 0);
-
-  // 设置点击外部关闭对话框
-  setupClickOutsideClose(box);
-}
-
-/**
- * 显示图标菜单
- */
 function showIconMenu(): void {
   const selection = window.getSelection();
   // 检查选择有效性：非空、非折叠、非纯空白
@@ -4755,7 +2919,6 @@ function handleMouseUp(e: MouseEvent): void {
   // 检查是否点击了菜单或对话框
   if ((e.target as HTMLElement).closest('.select-ask-icon-menu') ||
       (e.target as HTMLElement).closest('.select-ask-dropdown-menu') ||
-      (e.target as HTMLElement).closest('.select-ask-floating-box') ||
       (e.target as HTMLElement).closest('.select-ask-chat-box') ||
       (e.target as HTMLElement).closest('.select-ask-sidebar')) {
     return;
@@ -4792,17 +2955,12 @@ function init(): void {
     const target = e.target as HTMLElement;
     const isClickingMenu = target.closest('.select-ask-icon-menu') ||
                            target.closest('.select-ask-dropdown-menu') ||
-                           target.closest('.select-ask-floating-box') ||
                            target.closest('.select-ask-chat-box');
 
     if (!isIconClicking && !isClickingMenu) {
       mouseUpPosition = null;
       currentSelectionData = null;
       removeIconMenus();
-      if (currentFloatingBox) {
-        currentFloatingBox.remove();
-        currentFloatingBox = null;
-      }
       if (currentDropdown) {
         currentDropdown.remove();
         currentDropdown = null;
@@ -5133,11 +3291,11 @@ async function showResponseInSidebar(title: string, text: string, context: any):
   // 初始化历史会话
   currentSessionId = generateSessionId();
   currentSelectedText = text;
-  currentSessionType = title === '解释' ? 'explain' : title === '翻译' ? 'translate' : 'custom';
+  currentSessionType = title === '解释' ? 'explain' : title === '翻译' ? 'translate' : title === '搜索' ? 'search' : 'custom';
   currentSessionMessages = [];
 
-  // 只发送"解释"或"翻译"给 AI，不包含选中文本
-  const userMessageText = title; // 直接发送"解释"或"翻译"
+  // 只发送"解释"或"翻译"或"搜索"给 AI，不包含选中文本
+  const userMessageText = title; // 直接发送"解释"或"翻译"或"搜索"
 
   currentSessionMessages.push({
     role: 'user',
@@ -5181,6 +3339,7 @@ async function callBackendAPIForSidebar(
   const actionMap: Record<string, string> = {
     '解释': 'explain',
     '翻译': 'translate',
+    '搜索': 'search',
   };
 
   const apiAction = actionMap[action] || action;
@@ -5207,9 +3366,14 @@ async function callBackendAPIForSidebar(
     } : undefined;
 
     // 根据动作选择流式生成器
-    const streamGenerator = apiAction === 'translate'
-      ? streamTranslate(text)
-      : streamExplain(text, llmContext);
+    let streamGenerator;
+    if (apiAction === 'translate') {
+      streamGenerator = streamTranslate(text);
+    } else if (apiAction === 'search') {
+      streamGenerator = streamSearch(text, llmContext);
+    } else {
+      streamGenerator = streamExplain(text, llmContext);
+    }
 
     // 流式读取响应
     for await (const chunk of streamGenerator) {
@@ -5436,202 +3600,6 @@ async function showHistorySidebarFromPopup(): Promise<void> {
   document.body.appendChild(sidebar);
 }
 
-/**
- * 从历史记录创建聊天框
- */
-async function createChatBoxFromHistory(session: HistorySession): Promise<void> {
-  // 关闭已有的聊天框
-  if (currentFloatingBox) {
-    currentFloatingBox.remove();
-    currentFloatingBox = null;
-  }
-
-  // 创建新的聊天框
-  const box = document.createElement('div');
-  box.className = 'select-ask-chat-box';
-
-  // 设置位置
-  box.style.left = '50%';
-  box.style.top = '50%';
-  box.style.transform = 'translate(-50%, -50%)';
-
-  // 创建头部
-  const header = await createChatHeader(box);
-  box.appendChild(header);
-
-  // 创建聊天容器并恢复消息
-  const chatContainer = document.createElement('div');
-  chatContainer.className = 'select-ask-chat-container';
-
-  for (const msg of session.messages) {
-    if (msg.role === 'user') {
-      const userMsg = document.createElement('div');
-      userMsg.className = 'select-ask-message select-ask-message-user';
-      userMsg.innerHTML = `<div class="select-ask-message-content">${escapeHtml(msg.content)}</div>`;
-      chatContainer.appendChild(userMsg);
-    } else {
-      const aiMsg = document.createElement('div');
-      aiMsg.className = 'select-ask-message select-ask-message-ai';
-
-      const aiContent = document.createElement('div');
-      aiContent.className = 'select-ask-ai-content';
-
-      // 添加思考过程（如果有）
-      if (msg.reasoning) {
-        aiContent.innerHTML = `
-          <div class="select-ask-reasoning-section expanded">
-            <button class="select-ask-reasoning-toggle" aria-expanded="true">
-              <span class="select-ask-reasoning-icon">💭</span>
-              <span class="select-ask-reasoning-title">思考过程</span>
-              <span class="select-ask-reasoning-chevron">▼</span>
-            </button>
-            <div class="select-ask-reasoning-content">
-              <div class="select-ask-reasoning-text">${renderMarkdown(msg.reasoning)}</div>
-            </div>
-          </div>
-          <div class="select-ask-answer-text">${renderMarkdown(msg.content)}</div>
-        `;
-
-        // 添加折叠功能
-        const toggle = aiContent.querySelector('.select-ask-reasoning-toggle');
-        const section = aiContent.querySelector('.select-ask-reasoning-section');
-        toggle?.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          const isExpanded = section?.classList.toggle('expanded');
-          toggle?.setAttribute('aria-expanded', String(!!isExpanded));
-        });
-      } else {
-        aiContent.innerHTML = `<div class="select-ask-answer-text">${renderMarkdown(msg.content)}</div>`;
-      }
-
-      aiMsg.appendChild(aiContent);
-      chatContainer.appendChild(aiMsg);
-    }
-  }
-
-  box.appendChild(chatContainer);
-
-  // 创建输入区域
-  const inputArea = document.createElement('div');
-  inputArea.className = 'select-ask-input-area';
-
-  const inputBox = document.createElement('div');
-  inputBox.className = 'select-ask-input-box';
-
-  const inputRow = document.createElement('div');
-  inputRow.className = 'select-ask-input-row';
-
-  const textarea = document.createElement('textarea');
-  textarea.className = 'select-ask-textarea';
-  textarea.placeholder = '追问或提出新问题...';
-  textarea.rows = 1;
-  inputRow.appendChild(textarea);
-
-  inputBox.appendChild(inputRow);
-
-  const controlsRow = document.createElement('div');
-  controlsRow.className = 'select-ask-controls-row';
-
-  const modelSelector = await createModelSelector();
-  controlsRow.appendChild(modelSelector);
-
-  const sendBtn = document.createElement('button');
-  sendBtn.className = 'select-ask-send-icon';
-  sendBtn.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>`;
-  sendBtn.disabled = true;
-  controlsRow.appendChild(sendBtn);
-
-  inputBox.appendChild(controlsRow);
-  inputArea.appendChild(inputBox);
-  box.appendChild(inputArea);
-
-  document.body.appendChild(box);
-  currentFloatingBox = box;
-
-  // 设置拖拽
-  setupDraggable(header, box);
-
-  // 设置历史记录按钮
-  setupHistoryButton(header, box);
-
-  // 设置全屏按钮
-  setupFullscreenButton(header, box);
-
-  // 设置关闭按钮
-  setupCloseButton(header, box);
-
-  // 设置当前会话 ID
-  currentSessionId = session.id;
-  currentSessionType = session.type;
-  currentSelectedText = session.selectedText;
-  currentSessionMessages = [...session.messages];
-
-  // 滚动到底部
-  chatContainer.scrollTop = chatContainer.scrollHeight;
-
-  // 输入事件
-  textarea.addEventListener('input', () => {
-    textarea.style.height = 'auto';
-    textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
-    sendBtn.disabled = !textarea.value.trim();
-  });
-
-  textarea.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (textarea.value.trim() && !sendBtn.disabled) {
-        sendBtn.click();
-      }
-    }
-  });
-
-  // 发送事件
-  sendBtn.addEventListener('click', async () => {
-    const question = textarea.value.trim();
-    if (!question) return;
-
-    // 添加用户消息
-    const userMsg = document.createElement('div');
-    userMsg.className = 'select-ask-message select-ask-message-user';
-    userMsg.innerHTML = `<div class="select-ask-message-content">${escapeHtml(question)}</div>`;
-    chatContainer.appendChild(userMsg);
-
-    textarea.value = '';
-    textarea.style.height = 'auto';
-    sendBtn.disabled = true;
-
-    // 添加 AI 消息占位
-    const aiMsg = document.createElement('div');
-    aiMsg.className = 'select-ask-message select-ask-message-ai';
-
-    const aiContent = document.createElement('div');
-    aiContent.className = 'select-ask-ai-content';
-    aiContent.innerHTML = `
-      <div class="select-ask-reasoning-section" style="display: none;">
-        <button class="select-ask-reasoning-toggle" aria-expanded="true">
-          <span class="select-ask-reasoning-icon">💭</span>
-          <span class="select-ask-reasoning-title">思考中...</span>
-          <span class="select-ask-reasoning-chevron">▼</span>
-        </button>
-        <div class="select-ask-reasoning-content">
-          <div class="select-ask-reasoning-text"></div>
-        </div>
-      </div>
-      <div class="select-ask-answer-text select-ask-loading-placeholder">请求中...</div>
-    `;
-    aiMsg.appendChild(aiContent);
-    chatContainer.appendChild(aiMsg);
-
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-
-    // 调用 API
-    const context = await getContextData(session.selectedText);
-    await callFollowUpBackendAPI(question, session.selectedText, context, aiMsg, inputArea);
-
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-  });
-}
 
 // ============= 初始化全局翻译交互监听 =============
 // 在 DOM 加载完成后初始化全局 ESC 键监听

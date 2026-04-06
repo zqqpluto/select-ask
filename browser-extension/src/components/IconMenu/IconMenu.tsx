@@ -20,8 +20,8 @@ export function IconMenu({ position, onExplain, onTranslate, onQuestion, onQuest
   const menuItems = [
     { key: 'explain', label: '解释', icon: '💡', action: onExplain },
     { key: 'translate', label: '翻译', icon: '🌐', action: onTranslate },
+    { key: 'search', label: '搜索', icon: '🔍', action: onSearch },
     { key: 'question', label: '提问', icon: '❓', action: onQuestion },
-    { key: 'questions', label: '常见问题', icon: '📋', action: onQuestions },
   ] as const;
 
   return (

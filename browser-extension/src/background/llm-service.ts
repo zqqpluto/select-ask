@@ -11,7 +11,7 @@ import type { LLMMessage, LLMContext } from '../types/llm';
  * 构建 LLM 消息
  */
 function buildMessages(
-  action: 'explain' | 'translate' | 'question' | 'generateQuestions',
+  action: 'explain' | 'translate' | 'question' | 'generateQuestions' | 'search',
   text: string,
   question?: string,
   context?: LLMContext
@@ -20,10 +20,18 @@ function buildMessages(
     case 'explain':
       if (context && (context.before || context.after)) {
         return [
-          { role: 'user', content: `请解释以下内容：\n\n${text}\n\n上下文：\n...${context.before}【${text}】${context.after}...` },
+          { role: 'user', content: `请用通俗易懂的方式解释以下内容：\n\n${text}\n\n上下文：\n...${context.before}【${text}】${context.after}...\n\n请结合上下文从以下几个方面进行说明（如果相关）：\n1. 在当前语境中的具体含义（用大白话）\n2. 与上下文的关联关系\n3. 如有抽象概念，用简单类比说明\n4. 如有逻辑关系，分步骤拆解\n5. 相关背景或补充信息` },
         ];
       }
-      return [{ role: 'user', content: `请解释以下内容：\n\n${text}` }];
+      return [{ role: 'user', content: `请用通俗易懂的方式解释以下内容：\n\n${text}\n\n请从以下几个方面进行说明（如果相关）：\n1. 用大白话讲清楚是什么\n2. 如有抽象概念，用简单类比说明\n3. 如有逻辑关系，分步骤拆解\n4. 补充相关背景或概念说明` }];
+
+    case 'search':
+      if (context && (context.before || context.after)) {
+        return [
+          { role: 'user', content: `请搜索并提供关于以下内容的相关信息：\n\n${text}\n\n上下文：\n...${context.before}【${text}】${context.after}...\n\n请结合上下文从以下几个方面进行整理（如果相关）：\n1. 在当前语境中的具体含义\n2. 关键要点或特征\n3. 与上下文的关联关系\n4. 相关背景或扩展信息` },
+        ];
+      }
+      return [{ role: 'user', content: `请搜索并提供关于以下内容的相关信息：\n\n${text}\n\n请从以下几个方面进行整理（如果相关）：\n1. 核心定义/概述\n2. 关键要点或特征\n3. 相关背景或来源\n4. 扩展信息或关联概念` }];
 
     case 'translate': {
       // 获取目标语言
@@ -69,7 +77,7 @@ function buildMessages(
 export async function handleLLMStream(
   port: chrome.runtime.Port,
   request: {
-    action?: 'explain' | 'translate' | 'question' | 'generateQuestions';
+    action?: 'explain' | 'translate' | 'question' | 'generateQuestions' | 'search';
     text?: string;
     question?: string;
     context?: LLMContext;

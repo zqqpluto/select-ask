@@ -4,7 +4,8 @@ export interface IconMenuProps {
   onTranslate: () => void;
   onQuestion: () => void;
   onQuestions: () => void;
+  onSearch: () => void;
   onClose: () => void;
 }
 
-export type MenuAction = 'explain' | 'translate' | 'question' | 'questions';
+export type MenuAction = 'explain' | 'translate' | 'question' | 'search';

@@ -12,18 +12,16 @@ import type { LLMMessage, LLMContext } from '../types/llm';
  * 通过 Background 发起 LLM 流式请求
  */
 async function* streamViaBackground(
-  action: 'explain' | 'translate' | 'question' | 'generateQuestions',
+  action: 'explain' | 'translate' | 'question' | 'search',
   text: string,
   question?: string,
   context?: LLMContext
 ): AsyncGenerator<string, void, unknown> {
   // 获取当前模型
-  const model = action === 'generateQuestions'
-    ? await getSelectedQuestionModel()
-    : await getSelectedChatModel();
+  const model = await getSelectedChatModel();
 
   if (!model) {
-    throw new Error(action === 'generateQuestions' ? '请先在设置中选择问题生成模型' : '请先在设置中选择问答模型');
+    throw new Error('请先在设置中选择问答模型');
   }
 
   // 创建端口连接
@@ -106,17 +104,61 @@ async function* streamViaBackground(
 }
 
 /**
- * 构建解释 Prompt（保留用于显示）
+ * 构建解释 Prompt（保留用于显示）- 优化版
  */
 function buildExplainPrompt(text: string, context?: LLMContext): LLMMessage[] {
   let userContent = '';
   if (context && (context.before || context.after)) {
-    userContent = `"${text}"是什么？
+    userContent = `请用通俗易懂的方式解释"${text}"。
 
 上下文：
-...${context.before}【${text}】${context.after}...`;
+...${context.before}【${text}】${context.after}...
+
+请结合上下文从以下几个方面进行说明（如果相关）：
+1. 在当前语境中的具体含义（用大白话）
+2. 与上下文的关联关系
+3. 如有抽象概念，用简单类比说明
+4. 如有逻辑关系，分步骤拆解
+5. 相关背景或补充信息`;
   } else {
-    userContent = `"${text}"是什么？`;
+    userContent = `请用通俗易懂的方式解释"${text}"。
+
+请从以下几个方面进行说明（如果相关）：
+1. 用大白话讲清楚是什么
+2. 如有抽象概念，用简单类比说明
+3. 如有逻辑关系，分步骤拆解
+4. 补充相关背景或概念说明`;
+  }
+
+  return [
+    { role: 'user', content: userContent },
+  ];
+}
+
+/**
+ * 构建搜索 Prompt（保留用于显示）
+ */
+function buildSearchPrompt(text: string, context?: LLMContext): LLMMessage[] {
+  let userContent = '';
+  if (context && (context.before || context.after)) {
+    userContent = `请搜索并提供关于"${text}"的信息。
+
+上下文：
+...${context.before}【${text}】${context.after}...
+
+请结合上下文从以下几个方面进行整理（如果相关）：
+1. 在当前语境中的具体含义
+2. 关键要点或特征
+3. 与上下文的关联关系
+4. 相关背景或扩展信息`;
+  } else {
+    userContent = `请搜索并提供关于"${text}"的信息。
+
+请从以下几个方面进行整理（如果相关）：
+1. 核心定义/概述
+2. 关键要点或特征
+3. 相关背景或来源
+4. 扩展信息或关联概念`;
   }
 
   return [
@@ -280,47 +322,15 @@ export async function* streamQuestion(
 }
 
 /**
- * 生成问题列表
+ * 执行搜索操作
  */
-export async function generateQuestions(
+export async function* streamSearch(
   text: string,
   context?: LLMContext
-): Promise<string[]> {
-  let responseText = '';
-
-  for await (const chunk of streamViaBackground('generateQuestions', text, undefined, context)) {
-    responseText += chunk;
-  }
-
-  // 过滤掉可能的 REASONING/ANSWER 标签内容
-  // 提取 <ANSWER> 标签内的内容（如果存在）
-  const answerMatch = responseText.match(/<ANSWER>([\s\S]*?)<\/ANSWER>/);
-  if (answerMatch) {
-    responseText = answerMatch[1].trim();
-  }
-
-  // 移除可能存在的 REASONING 标签和内容
-  responseText = responseText.replace(/<REASONING>[\s\S]*?<\/REASONING>/g, '');
-  responseText = responseText.replace(/\[REASONING\]/g, '');
-  responseText = responseText.replace(/\[REASONING_DONE\]/g, '');
-
-  // 解析问题列表
-  const lines = responseText.split('\n').filter(line => line.trim());
-  const questions: string[] = [];
-
-  for (const line of lines) {
-    let cleaned = line.trim();
-    // 移除开头的数字和符号
-    while (cleaned && !cleaned[0].match(/[\u4e00-\u9fa5a-zA-Z]/)) {
-      cleaned = cleaned.slice(1).trim();
-    }
-    if (cleaned) {
-      questions.push(cleaned);
-    }
-  }
-
-  return questions.slice(0, 5);
+): AsyncGenerator<string, void, unknown> {
+  yield* streamViaBackground('search', text, undefined, context);
 }
+
 
 /**
  * 检查模型是否已配置

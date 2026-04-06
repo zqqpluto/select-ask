@@ -27,7 +27,7 @@ export type ContentMessage =
  * LLM 流式请求参数
  */
 export interface LLMStreamRequest {
-  action: 'explain' | 'translate' | 'question' | 'generateQuestions';
+  action: 'explain' | 'translate' | 'question' | 'generateQuestions' | 'search';
   text: string;
   question?: string; // 仅用于 question action
   context?: LLMContext;
