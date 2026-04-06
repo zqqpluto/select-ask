@@ -415,6 +415,12 @@ body {
   color: #1d2129;
 }
 
+.side-panel-reasoning-model {
+  color: #6366f1;
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .side-panel-reasoning-status svg {
   width: 16px;
   height: 16px;
@@ -765,11 +771,11 @@ body {
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 8px 10px;
+  padding: 8px 12px;
   margin: 2px 0;
   background: transparent;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   text-align: left;
   font-size: 13px;
   color: #374151;
@@ -941,24 +947,6 @@ body {
 
 .side-panel-content::-webkit-scrollbar-thumb:hover {
   background: #c9cdd4;
-}
-
-/* AI 消息头部 - 与浮动框保持一致 */
-.select-ask-ai-header {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  margin-bottom: 6px;
-  padding: 0 2px;
-  font-size: 12px;
-  background: transparent;
-  box-shadow: none;
-}
-
-.select-ask-ai-model-name {
-  font-size: 12px;
-  font-weight: 500;
-  color: #165dff;
 }
 
 /* 表格样式 */

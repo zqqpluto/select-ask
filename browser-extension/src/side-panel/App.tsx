@@ -571,8 +571,10 @@ export default function App() {
             (m: ModelConfig) => selectedIds.includes(m.id)
           );
           setAvailableModels(selectedModels);
-          if (selectedModels.length > 0) {
-            setCurrentModel(selectedModels[0]);
+          // 根据选择的 modelId 设置当前模型
+          const model = selectedModels.find(m => m.id === modelId);
+          if (model) {
+            setCurrentModel(model);
           }
         }
       }
@@ -720,15 +722,6 @@ export default function App() {
               // AI 消息
               <div className="side-panel-message-wrapper side-panel-message-ai-wrapper">
                 <div className="side-panel-message-content side-panel-ai-content-flat">
-                  {/* 模型信息和耗时 - 与浮动框保持一致的结构 */}
-                  <div className="select-ask-ai-header">
-                    <span className="select-ask-ai-model-name">{msg.modelName || 'AI'}</span>
-                    {msg.duration ? (
-                      <span className="select-ask-message-time">耗时{formatDuration(msg.duration)}</span>
-                    ) : (
-                      <span className="select-ask-message-time">思考中...</span>
-                    )}
-                  </div>
                   {/* 思考过程 - 支持展开/收起 */}
                   {msg.reasoning && (
                     <div className="side-panel-reasoning-quote">
@@ -737,6 +730,8 @@ export default function App() {
                         onClick={() => toggleReasoning(index)}
                       >
                         <div className="side-panel-reasoning-status">
+                          {/* 大模型名称 */}
+                          <span className="side-panel-reasoning-model">{msg.modelName || 'AI'}</span>
                           {!msg.duration ? (
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <circle cx="12" cy="12" r="10"/>
