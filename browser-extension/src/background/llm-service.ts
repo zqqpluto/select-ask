@@ -21,6 +21,8 @@ function buildMessages(
 
   // 添加系统提示词
   let systemContent = '';
+  console.log('[buildMessages] action:', action, 'text:', text?.substring(0, 50));
+
   switch (action) {
     case 'explain':
       systemContent = `你是一个专业的知识解释助手，擅长用通俗易懂的方式解释复杂概念。
