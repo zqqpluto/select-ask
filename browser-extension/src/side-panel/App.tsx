@@ -23,7 +23,35 @@ function formatDuration(ms: number): string {
 }
 
 function renderMarkdown(text: string): string {
-  return marked(text);
+  try {
+    let processed = marked(text);
+
+    // 表格
+    processed = processed.replace(/<table>/g, '<table class="select-ask-table">');
+
+    // 代码块
+    processed = processed.replace(/<pre>/g, '<pre class="select-ask-pre">');
+    processed = processed.replace(/<code>/g, '<code class="select-ask-code">');
+
+    // 引用
+    processed = processed.replace(/<blockquote>/g, '<blockquote class="select-ask-blockquote">');
+
+    // 列表
+    processed = processed.replace(/<ul>/g, '<ul class="select-ask-ul">');
+    processed = processed.replace(/<ol>/g, '<ol class="select-ask-ol">');
+    processed = processed.replace(/<li>/g, '<li class="select-ask-li">');
+
+    // 分割线
+    processed = processed.replace(/<hr\s*\/?>/g, '<hr class="select-ask-hr">');
+
+    // 链接 - 添加安全属性
+    processed = processed.replace(/<a href="([^"]*)"/g, '<a href="$1" target="_blank" rel="noopener noreferrer"');
+
+    return processed;
+  } catch (error) {
+    console.error('Markdown render error:', error);
+    return text;
+  }
 }
 
 interface ExtendedHistoryMessage extends HistoryMessage {
@@ -561,7 +589,7 @@ export default function App() {
       if (modelButtonRef.current) {
         const rect = modelButtonRef.current.getBoundingClientRect();
         setDropdownPosition({
-          bottom: rect.height + 8, // 按钮上方 8px
+          bottom: rect.height + 6, // 按钮上方 6px
           left: 0,
         });
         setShowModelSelector(true);
@@ -687,6 +715,16 @@ export default function App() {
               // AI 消息
               <div className="side-panel-message-wrapper side-panel-message-ai-wrapper">
                 <div className="side-panel-message-content side-panel-ai-content-flat">
+                  {/* 模型信息和耗时 - 与浮动框保持一致的结构 */}
+                  <div className="select-ask-ai-header">
+                    <span className="select-ask-ai-model-name">{msg.modelName || 'AI'}</span>
+                    <span className="select-ask-ai-divider">·</span>
+                    {msg.duration ? (
+                      <span className="select-ask-ai-time">耗时{formatDuration(msg.duration)}</span>
+                    ) : (
+                      <span className="select-ask-ai-time">思考中...</span>
+                    )}
+                  </div>
                   {/* 思考过程 - 支持展开/收起 */}
                   {msg.reasoning && (
                     <div className="side-panel-reasoning-quote">
@@ -705,9 +743,8 @@ export default function App() {
                               <polyline points="20 6 9 17 4 12"/>
                             </svg>
                           )}
-                          <span className="side-panel-reasoning-model">{msg.modelName}</span>
                           {!msg.duration ? (
-                            <span>思考中</span>
+                            <span>思考中...</span>
                           ) : (
                             <span>已思考（用时{formatDuration(msg.duration)}）</span>
                           )}
@@ -792,18 +829,18 @@ export default function App() {
             />
           </div>
 
-          {/* 下栏：发送按钮和模型选择 */}
+          {/* 下栏：模型选择 + 发送按钮 */}
           <div className="side-panel-input-controls">
-            {/* 模型选择器 */}
-            <div className="side-panel-model-selector">
+            {/* 模型选择器 - 左侧 */}
+            <div className="side-panel-model-selector-left">
               <button
                 ref={modelButtonRef}
-                className="side-panel-model-btn"
+                className="side-panel-model-btn-left"
                 onClick={toggleModelSelector}
                 title="切换模型"
               >
                 {/* 科技感神经元图标 - 缩小版 */}
-                <svg className="model-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                <svg className="model-icon" viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
                   <circle cx="12" cy="5" r="2.5"/>
                   <circle cx="6" cy="12" r="2.5"/>
                   <circle cx="18" cy="12" r="2.5"/>
@@ -812,7 +849,7 @@ export default function App() {
                   <path d="M7.5 13.5l3 3M13.5 7.5l3-3M16.5 13.5l-3 3M7.5 10.5l3-3" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.6"/>
                 </svg>
                 <span>{currentModel?.name || '选择模型'}</span>
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M6 9l6 6 6-6"/>
                 </svg>
               </button>

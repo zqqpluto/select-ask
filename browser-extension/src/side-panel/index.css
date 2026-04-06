@@ -410,15 +410,9 @@ body {
 .side-panel-reasoning-status {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-size: 14px;
   color: #1d2129;
-  font-weight: 400;
-}
-
-.side-panel-reasoning-model {
-  color: #6366f1;
-  font-size: 13px;
 }
 
 .side-panel-reasoning-status svg {
@@ -690,14 +684,68 @@ body {
   color: #c9cdd4;
 }
 
-/* 输入框下栏：发送按钮 */
+/* 输入框下栏：模型选择 + 发送按钮 */
 .side-panel-input-controls {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 8px;
   padding-top: 4px;
   position: relative;
+}
+
+/* 模型选择器 - 下栏左侧 */
+.side-panel-model-selector-left {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.side-panel-model-btn-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease-out;
+  white-space: nowrap;
+  max-width: 120px;
+  height: 28px;
+}
+
+.side-panel-model-btn-left:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+.side-panel-model-btn-left:active {
+  transform: scale(0.98);
+}
+
+.side-panel-model-btn-left .model-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: #6366f1;
+}
+
+.side-panel-model-btn-left svg:last-child {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  opacity: 0.5;
+  transition: transform 0.2s ease-out;
+}
+
+.side-panel-model-btn-left:hover svg:last-child {
+  opacity: 1;
+  transform: rotate(180deg);
 }
 
 @keyframes dropdown-fade-in {
@@ -782,6 +830,7 @@ body {
   position: absolute;
   bottom: 100%;
   left: 0;
+  margin-bottom: 6px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
@@ -889,6 +938,63 @@ body {
 
 .side-panel-content::-webkit-scrollbar-thumb:hover {
   background: #c9cdd4;
+}
+
+/* AI 消息头部 - 与浮动框保持一致 */
+.select-ask-ai-header {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 6px;
+  padding: 0 2px;
+  font-size: 12px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.select-ask-ai-model-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: #165dff;
+}
+
+.select-ask-ai-time {
+  font-size: 12px;
+  color: #86909c;
+}
+
+.select-ask-ai-divider {
+  color: #c9cdd4;
+  font-size: 12px;
+}
+
+/* 表格样式 */
+.select-ask-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 13px;
+}
+
+.select-ask-table th,
+.select-ask-table td {
+  border: 1px solid #e5e7eb;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.select-ask-table th {
+  background: #f9fafb;
+  font-weight: 600;
+  color: #1d2129;
+}
+
+.select-ask-table tr:nth-child(even) {
+  background: #f9fafb;
+}
+
+.select-ask-table tr:hover {
+  background: #f3f4f6;
 }
 
 /* Markdown 内容样式 */
