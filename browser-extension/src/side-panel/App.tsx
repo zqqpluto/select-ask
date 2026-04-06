@@ -86,6 +86,7 @@ export default function App() {
   const [recommendedQuestions, setRecommendedQuestions] = useState<string[]>([]);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [autoGenerateEnabled, setAutoGenerateEnabled] = useState(true); // 默认开启
+  const [hasGeneratedQuestions, setHasGeneratedQuestions] = useState(false); // 是否已生成过推荐问题
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -169,20 +170,27 @@ export default function App() {
     });
   };
 
-  // 重新生成最后一条 AI 消息
-  const handleRegenerate = async () => {
-    // 找到最后一条 AI 消息的索引
-    const lastAiIndex = messages.map((m, i) => m.role === 'assistant' ? i : -1).filter(i => i !== -1).pop();
-    if (lastAiIndex === undefined || lastAiIndex < 0) return;
+  // 重新生成指定索引的 AI 消息
+  const handleRegenerate = async (messageIndex?: number) => {
+    // 如果传入了索引，重新生成该条消息；否则重新生成最后一条
+    const targetIndex = messageIndex ?? messages.map((m, i) => m.role === 'assistant' ? i : -1).filter(i => i !== -1).pop();
+    if (targetIndex === undefined || targetIndex < 0) return;
 
     // 找到对应的用户消息
-    const userMsgIndex = lastAiIndex > 0 ? lastAiIndex - 1 : null;
+    const userMsgIndex = targetIndex > 0 ? targetIndex - 1 : null;
     if (userMsgIndex === null || messages[userMsgIndex]?.role !== 'user') return;
 
     const userMessage = messages[userMsgIndex].content;
 
-    // 移除 AI 消息
-    setMessages(prev => prev.slice(0, lastAiIndex));
+    // 移除 AI 消息（包括可能跟在后面的推荐问题消息）
+    setMessages(prev => {
+      // 如果下一条是推荐问题消息，也一起移除
+      const nextMsg = prev[targetIndex + 1];
+      if (nextMsg && nextMsg.questions) {
+        return prev.slice(0, targetIndex);
+      }
+      return prev.slice(0, targetIndex);
+    });
 
     // 重新生成
     await getAIResponse(userMessage, currentModel);
@@ -513,9 +521,9 @@ export default function App() {
             }
           });
         } else if (message.type === 'LLM_STREAM_END') {
-          // AI 回答完成，生成推荐问题
+          // AI 回答完成，生成推荐问题（仅在第一次 AI 回答后生成）
           (async () => {
-            if (autoGenerateEnabled && textToUse) {
+            if (autoGenerateEnabled && textToUse && !hasGeneratedQuestions) {
               try {
                 const questions = await generateQuestionsIfNeeded();
                 // 添加推荐问题作为独立消息
@@ -529,6 +537,8 @@ export default function App() {
                       questions: questions,
                     },
                   ]);
+                  // 标记已生成过推荐问题
+                  setHasGeneratedQuestions(true);
                 }
               } catch (error) {
                 console.error('Failed to generate questions:', error);
@@ -949,19 +959,17 @@ export default function App() {
                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                       </svg>
                     </button>
-                    {/* 重新生成按钮 - 只在最后一条有 content 的 AI 回答消息时显示 */}
-                    {index === messages.map((m, i) => m.role === 'assistant' && m.content && !m.questions ? i : -1).filter(i => i !== -1).pop() && (
-                      <button
-                        className="side-panel-action-btn"
-                        onClick={handleRegenerate}
-                        title="重新生成"
-                      >
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M23 4v6h-6M1 20v-6h6"/>
-                          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-                        </svg>
-                      </button>
-                    )}
+                    {/* 重新生成按钮 - 每一条 AI 回答消息都显示 */}
+                    <button
+                      className="side-panel-action-btn"
+                      onClick={() => handleRegenerate(index)}
+                      title="重新生成"
+                    >
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M23 4v6h-6M1 20v-6h6"/>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                      </svg>
+                    </button>
                   </div>
                 )}
 
