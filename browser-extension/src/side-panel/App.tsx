@@ -521,7 +521,25 @@ export default function App() {
             }
           });
         } else if (message.type === 'LLM_STREAM_END') {
-          // AI 回答完成，生成推荐问题（仅在第一次 AI 回答后生成）
+          // AI 回答完成，立即设置耗时（让操作按钮立即显示）
+          const answerStartTime = startTime;
+          setMessages(prev => {
+            const aiMsgIndex = prev.findIndex(
+              m => m.role === 'assistant' && m.startTime && m.duration === undefined
+            );
+            if (aiMsgIndex !== -1) {
+              const aiMsg = prev[aiMsgIndex];
+              const newPrev = [...prev];
+              newPrev[aiMsgIndex] = {
+                ...aiMsg,
+                duration: Date.now() - answerStartTime,
+              };
+              return newPrev;
+            }
+            return prev;
+          });
+
+          // 生成推荐问题（仅在第一次 AI 回答后生成）
           (async () => {
             if (autoGenerateEnabled && textToUse && !hasGeneratedQuestions) {
               try {
@@ -548,24 +566,6 @@ export default function App() {
             setIsLoading(false);
             currentPortRef.current = null;
             port.disconnect();
-
-            // 设置最终耗时 - 更新 AI 回答消息（推荐问题之前的消息）
-            setMessages(prev => {
-              // 找到最后一个有 startTime 的 AI 消息
-              const aiMsgIndex = prev.findIndex(
-                (m, i) => m.role === 'assistant' && m.startTime && i < prev.length - 1
-              );
-              if (aiMsgIndex !== -1) {
-                const aiMsg = prev[aiMsgIndex];
-                const newPrev = [...prev];
-                newPrev[aiMsgIndex] = {
-                  ...aiMsg,
-                  duration: Date.now() - aiMsg.startTime,
-                };
-                return newPrev;
-              }
-              return prev;
-            });
           })();
         } else if (message.type === 'LLM_STREAM_ERROR') {
           setIsLoading(false);
