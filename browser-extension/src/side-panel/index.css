@@ -267,53 +267,6 @@ body {
   max-width: 100%;
 }
 
-.side-panel-answer-content {
-  font-size: 14px;
-  line-height: 1.6;
-  color: #1d2129;
-}
-
-.side-panel-answer-content p {
-  margin: 0 0 8px 0;
-}
-
-.side-panel-answer-content p:last-child {
-  margin-bottom: 0;
-}
-
-.side-panel-answer-content code {
-  background: #f2f3f5;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 13px;
-  font-family: ui-monospace, 'SF Mono', 'Monaco', Consolas, monospace;
-  color: #d4380d;
-}
-
-.side-panel-answer-content pre {
-  background: #f8fafc;
-  padding: 12px;
-  border-radius: 8px;
-  overflow-x: auto;
-  margin: 8px 0;
-}
-
-.side-panel-answer-content pre code {
-  background: transparent;
-  padding: 0;
-}
-
-.side-panel-answer-content ul,
-.side-panel-answer-content ol {
-  padding-left: 20px;
-  margin: 8px 0;
-}
-
-.side-panel-answer-content li {
-  margin: 4px 0;
-  line-height: 1.6;
-}
-
 /* 下拉菜单选项 */
 .side-panel-model-option {
   display: flex;

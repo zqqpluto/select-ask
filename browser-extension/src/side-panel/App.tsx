@@ -539,17 +539,20 @@ export default function App() {
             currentPortRef.current = null;
             port.disconnect();
 
-            // 设置最终耗时
+            // 设置最终耗时 - 更新 AI 回答消息（推荐问题之前的消息）
             setMessages(prev => {
-              const lastMsg = prev[prev.length - 1];
-              if (lastMsg && lastMsg.role === 'assistant' && lastMsg.startTime) {
-                return [
-                  ...prev.slice(0, -1),
-                  {
-                    ...lastMsg,
-                    duration: Date.now() - lastMsg.startTime,
-                  },
-                ];
+              // 找到最后一个有 startTime 的 AI 消息
+              const aiMsgIndex = prev.findIndex(
+                (m, i) => m.role === 'assistant' && m.startTime && i < prev.length - 1
+              );
+              if (aiMsgIndex !== -1) {
+                const aiMsg = prev[aiMsgIndex];
+                const newPrev = [...prev];
+                newPrev[aiMsgIndex] = {
+                  ...aiMsg,
+                  duration: Date.now() - aiMsg.startTime,
+                };
+                return newPrev;
               }
               return prev;
             });
@@ -910,7 +913,6 @@ export default function App() {
                   )}
                   {/* 回答正文 */}
                   <div
-                    className="side-panel-answer-content"
                     dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
                   />
 
