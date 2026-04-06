@@ -146,12 +146,17 @@ export default function App() {
       currentPortRef.current = null;
     }
     setIsLoading(false);
-    // 标记最后一条 AI 消息为已中断
+    // 标记最后一条 AI 消息为已中断，并设置 duration
     setMessages(prev => {
       const lastAiIndex = prev.map((m, i) => m.role === 'assistant' ? i : -1).filter(i => i !== -1).pop();
       if (lastAiIndex !== undefined && lastAiIndex >= 0) {
+        const lastMsg = prev[lastAiIndex];
         return prev.map((msg, index) =>
-          index === lastAiIndex ? { ...msg, isStopped: true } : msg
+          index === lastAiIndex ? {
+            ...msg,
+            isStopped: true,
+            duration: msg.startTime ? Date.now() - msg.startTime : undefined
+          } : msg
         );
       }
       return prev;
@@ -718,11 +723,10 @@ export default function App() {
                   {/* 模型信息和耗时 - 与浮动框保持一致的结构 */}
                   <div className="select-ask-ai-header">
                     <span className="select-ask-ai-model-name">{msg.modelName || 'AI'}</span>
-                    <span className="select-ask-ai-divider">·</span>
                     {msg.duration ? (
-                      <span className="select-ask-ai-time">耗时{formatDuration(msg.duration)}</span>
+                      <span className="select-ask-message-time">耗时{formatDuration(msg.duration)}</span>
                     ) : (
-                      <span className="select-ask-ai-time">思考中...</span>
+                      <span className="select-ask-message-time">思考中...</span>
                     )}
                   </div>
                   {/* 思考过程 - 支持展开/收起 */}

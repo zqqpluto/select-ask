@@ -714,8 +714,9 @@ body {
   cursor: pointer;
   transition: all 0.15s ease-out;
   white-space: nowrap;
-  max-width: 120px;
   height: 28px;
+  width: auto;
+  min-width: 80px;
 }
 
 .side-panel-model-btn-left:hover {
@@ -836,7 +837,9 @@ body {
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   padding: 6px;
-  min-width: 140px;
+  min-width: 100%;
+  width: max-content;
+  max-width: 280px;
   max-height: 250px;
   overflow-y: auto;
   z-index: 1000;
@@ -956,16 +959,6 @@ body {
   font-size: 12px;
   font-weight: 500;
   color: #165dff;
-}
-
-.select-ask-ai-time {
-  font-size: 12px;
-  color: #86909c;
-}
-
-.select-ask-ai-divider {
-  color: #c9cdd4;
-  font-size: 12px;
 }
 
 /* 表格样式 */
