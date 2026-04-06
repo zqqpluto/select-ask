@@ -562,7 +562,6 @@ export default function App() {
           setCurrentModel(fallbackModel);
         }
       }
-      }
 
       setShowModelSelector(false);
       setDropdownPosition(null);
