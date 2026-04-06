@@ -2433,8 +2433,8 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
 
 /**
  * 翻译多个段落
- * 每段单独请求 API 翻译，并行度为 10
- * 翻译时显示加载状态，完成后显示结果
+ * 参照沉浸式翻译实现：多段文本合并为一个请求，用分隔符分隔
+ * 翻译完成后按分隔符拆分结果
  */
 async function translateMultipleParagraphs(
   paragraphs: HTMLElement[],
@@ -2466,7 +2466,7 @@ async function translateMultipleParagraphs(
   // 提取每段的纯文本
   const paragraphTexts = targetParagraphs.map(p => p.textContent?.trim() || '');
 
-  console.log('Translating', paragraphTexts.length, 'paragraphs with concurrency 10');
+  console.log('Translating', paragraphTexts.length, 'paragraphs as a single request');
 
   // 为每个段落创建加载状态（inline loading）
   const loadingEntries: Array<{
@@ -2496,66 +2496,45 @@ async function translateMultipleParagraphs(
     });
   }
 
-  // 并行翻译，并发度为 10
-  const CONCURRENCY = 10;
+  // 合并多段文本为一个请求（参照沉浸式翻译）
+  const combinedText = paragraphTexts.join('\n---\n');
+  console.log('Combined text length:', combinedText.length);
 
-  // 批次处理
-  for (let i = 0; i < paragraphTexts.length; i += CONCURRENCY) {
-    const batch = paragraphTexts.slice(i, Math.min(i + CONCURRENCY, paragraphTexts.length));
-    const batchIndices = Array.from({ length: batch.length }, (_, idx) => i + idx);
+  try {
+    let fullResponse = '';
+    let isReasoning = false;
 
-    console.log('Processing batch:', i, '-', Math.min(i + CONCURRENCY, paragraphTexts.length));
+    // 发起单次翻译请求
+    for await (const chunk of streamTranslate(combinedText)) {
+      if (chunk === '[REASONING]') {
+        isReasoning = true;
+        continue;
+      }
+      if (chunk === '[REASONING_DONE]') {
+        isReasoning = false;
+        continue;
+      }
+      if (isReasoning) continue;
 
-    // 并行翻译当前批次
-    const batchResults = await Promise.all(
-      batch.map(async (text, batchIdx) => {
-        try {
-          const prompt = `你是一个专业的翻译助手。请将以下英文文本翻译成中文。
+      fullResponse += chunk;
+    }
 
-文本：${text}
+    console.log('Translation completed, total length:', fullResponse.length);
 
-要求：
-1. 只返回翻译结果，不要任何其他内容
-2. 保持简洁，不要解释
+    // 按分隔符拆分翻译结果
+    const translatedSegments = fullResponse.split('\n---\n').map(s => s.trim());
 
-翻译结果：`;
+    console.log('Split into', translatedSegments.length, 'segments');
 
-          let fullResponse = '';
-          let isReasoning = false;
-
-          for await (const chunk of streamTranslate(prompt)) {
-            if (chunk === '[REASONING]') {
-              isReasoning = true;
-              continue;
-            }
-            if (chunk === '[REASONING_DONE]') {
-              isReasoning = false;
-              continue;
-            }
-            if (isReasoning) continue;
-
-            fullResponse += chunk;
-          }
-
-          return fullResponse.trim();
-        } catch (error) {
-          console.error('Translation failed for paragraph', i + batchIdx, ':', error);
-          return null;
-        }
-      })
-    );
-
-    // 更新当前批次的译文
-    for (let j = 0; j < batch.length; j++) {
-      const paragraphIdx = batchIndices[j];
-      const translationText = batchResults[j];
+    // 为每段创建译文容器
+    for (let i = 0; i < targetParagraphs.length; i++) {
+      const paragraph = targetParagraphs[i];
+      const originalText = paragraphTexts[i];
+      const translationText = translatedSegments[i] || '';
 
       // 找到对应的加载条目
-      const loadingEntry = loadingEntries.find(e => e.paragraphIdx === paragraphIdx);
+      const loadingEntry = loadingEntries.find(e => e.paragraphIdx === i);
       if (!loadingEntry) continue;
-
-      const paragraph = loadingEntry.paragraph;
-      const originalText = paragraphTexts[paragraphIdx];
 
       // 移除 loading
       loadingEntry.loadingEl.remove();
@@ -2579,10 +2558,8 @@ async function translateMultipleParagraphs(
       const contentEl = result.translationEl.querySelector('.select-ask-translation-content');
       if (contentEl) {
         if (translationText && translationText.trim()) {
-          // 翻译成功，显示结果
           contentEl.innerHTML = await marked(translationText) as string;
         } else {
-          // 翻译失败，显示错误
           contentEl.innerHTML = '<span class="select-ask-translation-error">翻译失败</span>';
         }
       }
@@ -2591,6 +2568,16 @@ async function translateMultipleParagraphs(
       const entry = TranslationManager.get(translationId);
       if (entry) {
         entry.streamCompleted = true;
+      }
+    }
+  } catch (error) {
+    console.error('Translation failed:', error);
+    // 翻译失败，移除所有 loading 并显示错误
+    for (const loadingEntry of loadingEntries) {
+      loadingEntry.loadingEl.remove();
+      const contentEl = loadingEntry.container.querySelector('.select-ask-translation-content');
+      if (contentEl) {
+        contentEl.innerHTML = `<span class="select-ask-translation-error">翻译失败：${error instanceof Error ? error.message : String(error)}</span>`;
       }
     }
   }

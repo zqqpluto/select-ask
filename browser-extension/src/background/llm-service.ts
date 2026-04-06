@@ -42,12 +42,17 @@ function buildMessages(
       const browserLang = (self as any).navigator?.language || 'zh-CN';
       const langMap: Record<string, string> = {
         'zh': '中文', 'zh-CN': '中文', 'zh-TW': '繁体中文',
-        'en': '英文', 'en-US': '英文', 'en-GB': '英文',
-        'ja': '日语', 'ko': '韩语',
+        'en': 'English', 'en-US': 'English', 'en-GB': 'English',
+        'ja': '日本語', 'ko': '한국어',
       };
       const targetLang = langMap[browserLang] || langMap[browserLang.split('-')[0]] || '中文';
       userContent = USER_PROMPTS.translate(text, targetLang);
-      break;
+
+      // 替换 system prompt 中的{to}变量为目标语言
+      const systemContent = SYSTEM_PROMPTS[action].replace('{to}', targetLang);
+      messages.push({ role: 'system', content: systemContent });
+      messages.push({ role: 'user', content: userContent });
+      return messages;
     }
 
     case 'question':
