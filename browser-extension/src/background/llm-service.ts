@@ -9,6 +9,7 @@ import type { LLMMessage, LLMContext } from '../types/llm';
 
 /**
  * 构建 LLM 消息
+ * 根据 action 类型生成对应的 system prompt 和 user prompt
  */
 function buildMessages(
   action: 'explain' | 'translate' | 'question' | 'generateQuestions' | 'search',
@@ -16,25 +17,70 @@ function buildMessages(
   question?: string,
   context?: LLMContext
 ): LLMMessage[] {
+  const messages: LLMMessage[] = [];
+
+  // 添加系统提示词
+  let systemContent = '';
   switch (action) {
     case 'explain':
-      if (context && (context.before || context.after)) {
-        return [
-          { role: 'user', content: `请用通俗易懂的方式解释以下内容：\n\n${text}\n\n上下文：\n...${context.before}【${text}】${context.after}...\n\n请结合上下文从以下几个方面进行说明（如果相关）：\n1. 在当前语境中的具体含义（用大白话）\n2. 与上下文的关联关系\n3. 如有抽象概念，用简单类比说明\n4. 如有逻辑关系，分步骤拆解\n5. 相关背景或补充信息` },
-        ];
-      }
-      return [{ role: 'user', content: `请用通俗易懂的方式解释以下内容：\n\n${text}\n\n请从以下几个方面进行说明（如果相关）：\n1. 用大白话讲清楚是什么\n2. 如有抽象概念，用简单类比说明\n3. 如有逻辑关系，分步骤拆解\n4. 补充相关背景或概念说明` }];
+      systemContent = `你是一个专业的知识解释助手，擅长用通俗易懂的方式解释复杂概念。
+你的回答应该：
+- 使用简单易懂的语言，避免过度专业化
+- 多用类比和例子帮助理解
+- 逻辑清晰，分步骤讲解
+- 提供相关背景知识但不要偏离主题`;
+      break;
 
     case 'search':
+      systemContent = `你是一个专业的信息检索助手，擅长搜索、整理和提供准确的事实信息。
+你的回答应该：
+- 优先提供可验证的事实信息
+- 清晰标注信息来源或依据
+- 综合多个来源的信息进行整理
+- 对于专业术语提供准确的定义
+- 区分事实和推测`;
+      break;
+
+    case 'translate':
+      systemContent = `你是一个专业的翻译助手，擅长准确传达原文含义。
+你的翻译应该：
+- 保持原文的语调和风格
+- 准确传达原文含义，不随意增减内容
+- 专业术语使用对应的标准翻译
+- 输出仅包含翻译结果，不要添加额外解释`;
+      break;
+
+    default:
+      break;
+  }
+
+  if (systemContent) {
+    messages.push({ role: 'system', content: systemContent });
+  }
+
+  // 构建 user 消息
+  let userContent = '';
+  switch (action) {
+    case 'explain':
+      // AI 解释：侧重解读、翻译、简化、说明
       if (context && (context.before || context.after)) {
-        return [
-          { role: 'user', content: `请搜索并提供关于以下内容的相关信息：\n\n${text}\n\n上下文：\n...${context.before}【${text}】${context.after}...\n\n请结合上下文从以下几个方面进行整理（如果相关）：\n1. 在当前语境中的具体含义\n2. 关键要点或特征\n3. 与上下文的关联关系\n4. 相关背景或扩展信息` },
-        ];
+        userContent = `请用通俗易懂的方式解释以下内容：\n\n${text}\n\n上下文：\n...${context.before}【${text}】${context.after}...\n\n请结合上下文从以下几个方面进行说明（如果相关）：\n1. 在当前语境中的具体含义（用大白话）\n2. 与上下文的关联关系\n3. 如有抽象概念，用简单类比说明\n4. 如有逻辑关系，分步骤拆解\n5. 相关背景或补充信息`;
+      } else {
+        userContent = `请用通俗易懂的方式解释以下内容：\n\n${text}\n\n请从以下几个方面进行说明（如果相关）：\n1. 用大白话讲清楚是什么\n2. 如有抽象概念，用简单类比说明\n3. 如有逻辑关系，分步骤拆解\n4. 补充相关背景或概念说明`;
       }
-      return [{ role: 'user', content: `请搜索并提供关于以下内容的相关信息：\n\n${text}\n\n请从以下几个方面进行整理（如果相关）：\n1. 核心定义/概述\n2. 关键要点或特征\n3. 相关背景或来源\n4. 扩展信息或关联概念` }];
+      break;
+
+    case 'search':
+      // AI 搜索：侧重检索、匹配、整理信息
+      if (context && (context.before || context.after)) {
+        userContent = `请搜索并提供关于以下内容的相关信息：\n\n${text}\n\n上下文：\n...${context.before}【${text}】${context.after}...\n\n请结合上下文从以下几个方面进行整理（如果相关）：\n1. 在当前语境中的具体含义\n2. 关键要点或特征\n3. 与上下文的关联关系\n4. 相关背景或扩展信息\n\n注意：\n- 优先提供可验证的事实信息\n- 结合上下文理解选中文本的实际用途\n- 如有相关概念，请提供对比说明`;
+      } else {
+        userContent = `请搜索并提供关于以下内容的相关信息：\n\n${text}\n\n请从以下几个方面进行整理（如果相关）：\n1. 核心定义/概述\n2. 关键要点或特征\n3. 相关背景或来源\n4. 扩展信息或关联概念\n\n注意：\n- 优先提供可验证的事实信息\n- 如有多个来源，请综合整理\n- 对于专业术语，请提供准确的定义`;
+      }
+      break;
 
     case 'translate': {
-      // 获取目标语言
+      // 翻译：准确传达原文含义
       const browserLang = (self as any).navigator?.language || 'zh-CN';
       const langMap: Record<string, string> = {
         'zh': '中文', 'zh-CN': '中文', 'zh-TW': '繁体中文',
@@ -42,30 +88,33 @@ function buildMessages(
         'ja': '日语', 'ko': '韩语',
       };
       const targetLang = langMap[browserLang] || langMap[browserLang.split('-')[0]] || '中文';
-      return [{ role: 'user', content: `请将以下内容翻译成${targetLang}：\n\n${text}` }];
+      userContent = `请将以下内容翻译成${targetLang}：\n\n${text}\n\n要求：\n1. 保持原文的语调和风格\n2. 准确传达原文含义\n3. 专业术语使用对应的标准翻译\n4. 输出仅包含翻译结果，不要添加额外解释`;
+      break;
     }
 
     case 'question':
       if (context && (context.before || context.after)) {
-        return [
-          { role: 'user', content: `${question}\n\n选中文本：${text}\n\n上下文：\n...${context.before}【${text}】${context.after}...` },
-        ];
+        userContent = `${question}\n\n选中文本：${text}\n\n上下文：\n...${context.before}【${text}】${context.after}...`;
+      } else {
+        userContent = `${question}\n\n选中文本：${text}`;
       }
-      return [{ role: 'user', content: `${question}\n\n选中文本：${text}` }];
+      break;
 
     case 'generateQuestions':
       if (context && (context.before || context.after)) {
-        return [
-          { role: 'user', content: `请分析以下文本和上下文，提炼出用户最可能提出的5个关于选中文本的问题。\n\n选中文本：${text}\n\n上下文：\n...${context.before}【${text}】${context.after}...\n\n要求：\n1. 问题针对选中文本\n2. 结合上下文背景\n3. 简洁、具体、有针对性\n4. 直接返回5个问题，每行一个问题，不要序号或其他格式` },
-        ];
+        userContent = `请分析以下文本和上下文，提炼出用户最可能提出的 5 个关于选中文本的问题。\n\n选中文本：${text}\n\n上下文：\n...${context.before}【${text}】${context.after}...\n\n要求：\n1. 问题针对选中文本\n2. 结合上下文背景\n3. 简洁、具体、有针对性\n4. 直接返回 5 个问题，每行一个问题，不要序号或其他格式`;
+      } else {
+        userContent = `请分析以下文本，提炼出用户最可能提出的 5 个问题。\n\n文本内容：\n${text}\n\n要求：\n1. 问题针对选中文本\n2. 简洁、具体、有针对性\n3. 直接返回 5 个问题，每行一个问题，不要序号或其他格式`;
       }
-      return [
-        { role: 'user', content: `请分析以下文本，提炼出用户最可能提出的5个问题。\n\n文本内容：\n${text}\n\n要求：\n1. 问题针对选中文本\n2. 简洁、具体、有针对性\n3. 直接返回5个问题，每行一个问题，不要序号或其他格式` },
-      ];
+      break;
 
     default:
-      return [{ role: 'user', content: text }];
+      userContent = text;
+      break;
   }
+
+  messages.push({ role: 'user', content: userContent });
+  return messages;
 }
 
 /**
@@ -133,6 +182,12 @@ export async function handleLLMStream(
       return;
     }
 
+    // 打印完整的消息内容（用于调试 system prompt）
+    console.log('=== Background: Messages to send to LLM ===');
+    messages.forEach((msg, idx) => {
+      console.log(`[Message ${idx}] role: ${msg.role}`);
+      console.log(`[Message ${idx}] content preview:`, msg.content.substring(0, 200) + (msg.content.length > 200 ? '...' : ''));
+    });
     console.log('=== Background: Starting streamChat ===');
 
     // 流式获取响应

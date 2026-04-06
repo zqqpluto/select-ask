@@ -69,7 +69,21 @@
       "WebFetch(domain:immersivetranslate.com)",
       "mcp__plugin_claude-mem_mcp-search__smart_outline",
       "Read(//Users/zhaoqiqiang/.claude/plans/**)",
-      "Bash(mkdir -p /Users/zhaoqiqiang/.claude/plans)"
+      "Bash(mkdir -p /Users/zhaoqiqiang/.claude/plans)",
+      "mcp__plugin_serena_serena__replace_content",
+      "mcp__plugin_serena_serena__activate_project",
+      "mcp__plugin_serena_serena__get_current_config",
+      "WebFetch(domain:www.doubao.com)",
+      "Bash(find:*)",
+      "Bash(perl -ne 'print \"$.: $_\\\\n\" if /system_prompt/' '/Users/zhaoqiqiang/Library/Application Support/Google/Chrome/Default/Extensions/dbjibobgilijgolhjdcbdebjhejelffo/1.36.0_0/static/js/async/47236.js')",
+      "Bash(perl -ne 'print if /总结 | 分析 | 解释 | 搜索/' \"/Users/zhaoqiqiang/Library/Application Support/Google/Chrome/Default/Extensions/dbjibobgilijgolhjdcbdebjhejelffo/1.36.0_0/static/js/async/deep-search-input-plugin.js\")",
+      "Bash(xargs cat:*)",
+      "Bash(strings \"/Users/zhaoqiqiang/Library/Application Support/Google/Chrome/Default/Extensions/dbjibobgilijgolhjdcbdebjhejelffo/1.36.0_0/static/js/async/\"*.js)",
+      "mcp__plugin_figma_figma__generate_diagram",
+      "mcp__plugin_figma_figma__create_new_file",
+      "mcp__plugin_figma_figma__whoami",
+      "mcp__plugin_figma_figma__use_figma",
+      "Bash(sips -z 512 512 logo-simple.svg --out icon16.png)"
     ]
   }
 }

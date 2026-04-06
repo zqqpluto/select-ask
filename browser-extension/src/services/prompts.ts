@@ -2,6 +2,7 @@ import type { ContextData } from '../types';
 
 /**
  * 解释 Prompt（带上下文）- 侧重解读、翻译、简化、说明
+ * 定位：帮助用户看懂复杂内容
  */
 export function createExplainPrompt(selectedText: string, context?: ContextData): string {
   if (!context || !context.beforeText && !context.afterText) {
@@ -30,22 +31,28 @@ export function createExplainPrompt(selectedText: string, context?: ContextData)
 }
 
 /**
- * 搜索 Prompt（AI 搜索 - 侧重检索、匹配、整理信息）
+ * 搜索 Prompt（AI 搜索）- 侧重检索、匹配、整理信息
+ * 定位：帮助用户查事实、找资料、获取最新信息
  */
 export function createSearchPrompt(selectedText: string, context?: ContextData): string {
   if (!context || !context.beforeText && !context.afterText) {
     // 无上下文时的搜索
-    return `请搜索并提供关于"${selectedText}"的信息。
+    return `请搜索并提供关于"${selectedText}"的相关信息。
 
 请从以下几个方面进行整理（如果相关）：
 1. 核心定义/概述
 2. 关键要点或特征
 3. 相关背景或来源
-4. 扩展信息或关联概念`;
+4. 扩展信息或关联概念
+
+注意：
+- 优先提供可验证的事实信息
+- 如有多个来源，请综合整理
+- 对于专业术语，请提供准确的定义`;
   }
 
   // 带上下文的搜索
-  return `请搜索并提供关于"${selectedText}"的信息。
+  return `请搜索并提供关于"${selectedText}"的相关信息。
 
 上下文：
 ...${context.beforeText}【${selectedText}】${context.afterText}...
@@ -54,7 +61,12 @@ export function createSearchPrompt(selectedText: string, context?: ContextData):
 1. 在当前语境中的具体含义
 2. 关键要点或特征
 3. 与上下文的关联关系
-4. 相关背景或扩展信息`;
+4. 相关背景或扩展信息
+
+注意：
+- 优先提供可验证的事实信息
+- 结合上下文理解选中文本的实际用途
+- 如有相关概念，请提供对比说明`;
 }
 
 /**

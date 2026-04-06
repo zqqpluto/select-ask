@@ -104,7 +104,7 @@ async function* streamViaBackground(
 }
 
 /**
- * 构建解释 Prompt（保留用于显示）- 优化版
+ * 构建解释 Prompt（保留用于显示）- 侧重解读、翻译、简化、说明
  */
 function buildExplainPrompt(text: string, context?: LLMContext): LLMMessage[] {
   let userContent = '';
@@ -136,12 +136,12 @@ function buildExplainPrompt(text: string, context?: LLMContext): LLMMessage[] {
 }
 
 /**
- * 构建搜索 Prompt（保留用于显示）
+ * 构建搜索 Prompt（保留用于显示）- 侧重检索、匹配、整理信息
  */
 function buildSearchPrompt(text: string, context?: LLMContext): LLMMessage[] {
   let userContent = '';
   if (context && (context.before || context.after)) {
-    userContent = `请搜索并提供关于"${text}"的信息。
+    userContent = `请搜索并提供关于"${text}"的相关信息。
 
 上下文：
 ...${context.before}【${text}】${context.after}...
@@ -150,15 +150,25 @@ function buildSearchPrompt(text: string, context?: LLMContext): LLMMessage[] {
 1. 在当前语境中的具体含义
 2. 关键要点或特征
 3. 与上下文的关联关系
-4. 相关背景或扩展信息`;
+4. 相关背景或扩展信息
+
+注意：
+- 优先提供可验证的事实信息
+- 结合上下文理解选中文本的实际用途
+- 如有相关概念，请提供对比说明`;
   } else {
-    userContent = `请搜索并提供关于"${text}"的信息。
+    userContent = `请搜索并提供关于"${text}"的相关信息。
 
 请从以下几个方面进行整理（如果相关）：
 1. 核心定义/概述
 2. 关键要点或特征
 3. 相关背景或来源
-4. 扩展信息或关联概念`;
+4. 扩展信息或关联概念
+
+注意：
+- 优先提供可验证的事实信息
+- 如有多个来源，请综合整理
+- 对于专业术语，请提供准确的定义`;
   }
 
   return [
