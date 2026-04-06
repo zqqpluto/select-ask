@@ -63,20 +63,59 @@ function buildMessages(
   let userContent = '';
   switch (action) {
     case 'explain':
-      // AI 解释：侧重解读、翻译、简化、说明
+      // AI 解释：侧重解读、简化、说明
       if (context && (context.before || context.after)) {
-        userContent = `请用通俗易懂的方式解释以下内容：\n\n${text}\n\n上下文：\n...${context.before}【${text}】${context.after}...\n\n请结合上下文从以下几个方面进行说明（如果相关）：\n1. 在当前语境中的具体含义（用大白话）\n2. 与上下文的关联关系\n3. 如有抽象概念，用简单类比说明\n4. 如有逻辑关系，分步骤拆解\n5. 相关背景或补充信息`;
+        userContent = `请用通俗易懂的方式解释以下内容：
+
+${text}
+
+上下文：
+...${context.before}【${text}】${context.after}...
+
+请结合上下文从以下几个方面进行说明（如果相关）：
+1. 在当前语境中的具体含义（用大白话）
+2. 与上下文的关联关系
+3. 如有抽象概念，用简单类比说明
+4. 如有逻辑关系，分步骤拆解
+5. 相关背景或补充信息`;
       } else {
-        userContent = `请用通俗易懂的方式解释以下内容：\n\n${text}\n\n请从以下几个方面进行说明（如果相关）：\n1. 用大白话讲清楚是什么\n2. 如有抽象概念，用简单类比说明\n3. 如有逻辑关系，分步骤拆解\n4. 补充相关背景或概念说明`;
+        userContent = `请用通俗易懂的方式解释以下内容：
+
+${text}
+
+请从以下几个方面进行说明（如果相关）：
+1. 用大白话讲清楚是什么
+2. 如有抽象概念，用简单类比说明
+3. 如有逻辑关系，分步骤拆解
+4. 补充相关背景或概念说明`;
       }
       break;
 
     case 'search':
       // AI 搜索：侧重检索、匹配、整理信息
       if (context && (context.before || context.after)) {
-        userContent = `请搜索并提供关于以下内容的相关信息：\n\n${text}\n\n上下文：\n...${context.before}【${text}】${context.after}...\n\n请结合上下文从以下几个方面进行整理（如果相关）：\n1. 在当前语境中的具体含义\n2. 关键要点或特征\n3. 与上下文的关联关系\n4. 相关背景或扩展信息`;
+        userContent = `请搜索并提供关于以下内容的相关信息：
+
+${text}
+
+上下文：
+...${context.before}【${text}】${context.after}...
+
+请结合上下文从以下几个方面进行整理（如果相关）：
+1. 在当前语境中的具体含义
+2. 关键要点或特征
+3. 与上下文的关联关系
+4. 相关背景或扩展信息`;
       } else {
-        userContent = `请搜索并提供关于以下内容的相关信息：\n\n${text}\n\n请从以下几个方面进行整理（如果相关）：\n1. 核心定义/概述\n2. 关键要点或特征\n3. 相关背景或来源\n4. 扩展信息或关联概念`;
+        userContent = `请搜索并提供关于以下内容的相关信息：
+
+${text}
+
+请从以下几个方面进行整理（如果相关）：
+1. 核心定义/概述
+2. 关键要点或特征
+3. 相关背景或来源
+4. 扩展信息或关联概念`;
       }
       break;
 
@@ -89,23 +128,51 @@ function buildMessages(
         'ja': '日语', 'ko': '韩语',
       };
       const targetLang = langMap[browserLang] || langMap[browserLang.split('-')[0]] || '中文';
-      userContent = `请将以下内容翻译成${targetLang}：\n\n${text}`;
+      userContent = `请将以下内容翻译成${targetLang}：
+
+${text}`;
       break;
     }
 
     case 'question':
       if (context && (context.before || context.after)) {
-        userContent = `${question}\n\n选中文本：${text}\n\n上下文：\n...${context.before}【${text}】${context.after}...`;
+        userContent = `${question}
+
+选中文本：${text}
+
+上下文：
+...${context.before}【${text}】${context.after}...`;
       } else {
-        userContent = `${question}\n\n选中文本：${text}`;
+        userContent = `${question}
+
+选中文本：${text}`;
       }
       break;
 
     case 'generateQuestions':
       if (context && (context.before || context.after)) {
-        userContent = `请分析以下文本和上下文，提炼出用户最可能提出的 5 个关于选中文本的问题。\n\n选中文本：${text}\n\n上下文：\n...${context.before}【${text}】${context.after}...\n\n要求：\n1. 问题针对选中文本\n2. 结合上下文背景\n3. 简洁、具体、有针对性\n4. 直接返回 5 个问题，每行一个问题，不要序号或其他格式`;
+        userContent = `请分析以下文本和上下文，提炼出用户最可能提出的 5 个关于选中文本的问题。
+
+选中文本：${text}
+
+上下文：
+...${context.before}【${text}】${context.after}...
+
+要求：
+1. 问题针对选中文本
+2. 结合上下文背景
+3. 简洁、具体、有针对性
+4. 直接返回 5 个问题，每行一个问题，不要序号或其他格式`;
       } else {
-        userContent = `请分析以下文本，提炼出用户最可能提出的 5 个问题。\n\n文本内容：\n${text}\n\n要求：\n1. 问题针对选中文本\n2. 简洁、具体、有针对性\n3. 直接返回 5 个问题，每行一个问题，不要序号或其他格式`;
+        userContent = `请分析以下文本，提炼出用户最可能提出的 5 个问题。
+
+文本内容：
+${text}
+
+要求：
+1. 问题针对选中文本
+2. 简洁、具体、有针对性
+3. 直接返回 5 个问题，每行一个问题，不要序号或其他格式`;
       }
       break;
 
