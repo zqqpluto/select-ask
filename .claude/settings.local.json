@@ -83,7 +83,14 @@
       "mcp__plugin_figma_figma__create_new_file",
       "mcp__plugin_figma_figma__whoami",
       "mcp__plugin_figma_figma__use_figma",
-      "Bash(sips -z 512 512 logo-simple.svg --out icon16.png)"
+      "Bash(sips -z 512 512 logo-simple.svg --out icon16.png)",
+      "Bash(perl -ne 'print \"$.\\\\n\" if /总结 | 分析 | 解释 | 搜索/' \"/Users/zhaoqiqiang/Library/Application Support/Google/Chrome/Default/Extensions/dbjibobgilijgolhjdcbdebjhejelffo/1.36.0_0/static/js/async/deep-search-input-plugin.js\")",
+      "Bash(perl -ne 'print \"$.\\\\t$_\" if /generateQuestions|followUp|推荐问题|追问/' '/Users/zhaoqiqiang/Library/Application Support/Google/Chrome/Default/Extensions/dbjibobgilijgolhjdcbdebjhejelffo/1.36.0_0/static/js/99948.js')",
+      "Bash(perl -ne 'print \"$.\\\\t$_\" if /suggestedQuestions|RecommendedQuestions|相关问猜/' '/Users/zhaoqiqiang/Library/Application Support/Google/Chrome/Default/Extensions/dbjibobgilijgolhjdcbdebjhejelffo/1.36.0_0/static/js/99948.js')",
+      "Bash(perl -ne 'print \"$.\\\\t$_\" if /RelatedQuestion|relatedQuestion|followUp|follow.up/' '/Users/zhaoqiqiang/Library/Application Support/Google/Chrome/Default/Extensions/dbjibobgilijgolhjdcbdebjhejelffo/1.36.0_0/static/js/content.js')",
+      "Bash(strings \"/Users/zhaoqiqiang/Library/Application Support/Google/Chrome/Default/Extensions/dbjibobgilijgolhjdcbdebjhejelffo/1.36.0_0/static/js/\"*.js)",
+      "Bash(perl -ne 'print \"$.\\\\t$_\" if /请围绕该主题/ || /请基于以上内容/ || /请根据/' '/Users/zhaoqiqiang/Library/Application Support/Google/Chrome/Default/Extensions/dbjibobgilijgolhjdcbdebjhejelffo/1.36.0_0/static/js/async/*.js')",
+      "Bash(perl -ne 'print \"$.\\\\t$_\" if /relatedQuestions|suggestedQuestions|followUp|recommendedQuestions/' '/Users/zhaoqiqiang/Library/Application Support/Google/Chrome/Default/Extensions/dbjibobgilijgolhjdcbdebjhejelffo/1.36.0_0/static/js/content.js')"
     ]
   }
 }

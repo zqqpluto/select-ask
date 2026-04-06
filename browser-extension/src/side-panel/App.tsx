@@ -315,28 +315,67 @@ export default function App() {
     }
   }, [currentModel?.id, availableModels.length]); // 只依赖 model.id 和 length，避免重复触发
 
-  // 生成追问问题（并行执行，返回 Promise）
+  // 生成追问问题（在 AI 回答完成后调用）
   const generateFollowUpQuestions = async (
     selectedText: string,
     context: { before: string; after: string } | null,
     model: ModelConfig
   ): Promise<string[]> => {
     return new Promise((resolve) => {
-      const port = chrome.runtime.connect({ name: 'llm-stream-questions' });
+      const port = chrome.runtime.connect({ name: 'llm-stream' });
       let fullContent = '';
 
       port.onMessage.addListener((message) => {
         if (message.type === 'LLM_STREAM_CHUNK') {
           fullContent += message.chunk || '';
         } else if (message.type === 'LLM_STREAM_END') {
-          // 解析问题（按行分割，移除序号，限制 3 条）
-          const questions = fullContent
-            .split('\n')
-            .map(q => q.replace(/^[1-3][.)]\s*/, '').replace(/^[-*]\s*/, '').trim())
-            .filter(q => q.length > 0 && q.length < 200)
-            .slice(0, 3);
+          // 过滤掉 [REASONING] 标签
+          const cleanedContent = fullContent
+            .replace(/\[REASONING\]/g, '')
+            .replace(/\[REASONING_DONE\]/g, '')
+            .replace(/\[ANSWER\]/g, '')
+            .replace(/\[ANSWER_DONE\]/g, '');
+
+          // 解析问题（多层过滤机制）
+          const questions = cleanedContent
+            .split('\n')                              // 第 1 层：按行分割
+            .map(q => q.trim())                       // 去除空白
+            .filter(q => q.length > 0 && q.length < 200)  // 第 2 层：长度检查
+            .map(q => {
+              // 第 3 层：移除序号和符号（参考 options 页面和 base.ts）
+              let cleaned = q;
+              // 先移除开头的数字和符号（如 "1."、"2)"、"- "、"* " 等）
+              cleaned = cleaned.replace(/^[\d\-\•\*]+\s*[.)]?\s*/, '');
+              // 再移除剩余的非中文字符（如 "第一个问题："）
+              while (cleaned && !cleaned[0].match(/[\u4e00-\u9fa5a-zA-Z?]/)) {
+                cleaned = cleaned.slice(1);
+              }
+              return cleaned.trim();
+            })
+            .filter(q => {
+              // 第 4 层：过滤推理关键词
+              if (q.length === 0) return false;
+              const skipKeywords = [
+                '首先', '接下来', '然后', '最后',
+                '用户可能', '用户需要', '我得',
+                '所以', '因为', '这是一个',
+                '分析', '推理', '嗯，', '嗯,', '想想',
+                '第一个问题', '第二个问题', '第三个问题'
+              ];
+              if (skipKeywords.some(keyword => q.includes(keyword))) return false;
+              // 第 5 层：只保留包含问号或疑问词的行（确保是问题格式）
+              return q.includes('?') || q.includes('？') ||
+                     q.includes('什么') || q.includes('如何') ||
+                     q.includes('怎么') || q.includes('为什么') ||
+                     q.includes('是否') || q.includes('哪些') ||
+                     q.includes('哪里') || q.includes('吗');
+            })
+            .slice(0, 3);  // 第 6 层：限制数量为 3 个
           port.disconnect();
           resolve(questions);
+        } else if (message.type === 'LLM_STREAM_ERROR') {
+          port.disconnect();
+          resolve([]);
         }
       });
 
@@ -382,14 +421,17 @@ export default function App() {
     let reasoningContent = '';
     let answerContent = '';
 
-    // 并行生成推荐问题（如果配置开启且有选中文本）
+    // 选中文本和上下文
     const textToUse = initSelectedText !== undefined ? initSelectedText : selectedText;
     const contextToUse = initContext !== undefined ? initContext : context;
 
-    let questionsPromise: Promise<string[]> | null = null;
-    if (autoGenerateEnabled && textToUse) {
-      questionsPromise = generateFollowUpQuestions(textToUse, contextToUse, modelToUse);
-    }
+    // 推荐问题生成（在 AI 回答完成后调用）
+    const generateQuestionsIfNeeded = async () => {
+      if (autoGenerateEnabled && textToUse) {
+        return generateFollowUpQuestions(textToUse, contextToUse, modelToUse);
+      }
+      return [];
+    };
 
     try {
       // 创建端口进行流式通信
@@ -471,11 +513,11 @@ export default function App() {
             }
           });
         } else if (message.type === 'LLM_STREAM_END') {
-          // AI 回答完成，等待推荐问题生成完成
+          // AI 回答完成，生成推荐问题
           (async () => {
-            if (questionsPromise) {
+            if (autoGenerateEnabled && textToUse) {
               try {
-                const questions = await questionsPromise;
+                const questions = await generateQuestionsIfNeeded();
                 // 添加推荐问题作为独立消息
                 if (questions.length > 0) {
                   setMessages(prev => [
@@ -484,7 +526,7 @@ export default function App() {
                       role: 'assistant',
                       content: '',
                       timestamp: Date.now(),
-                      questions: questions, // 使用扩展字段存储推荐问题
+                      questions: questions,
                     },
                   ]);
                 }
@@ -875,24 +917,19 @@ export default function App() {
                   {/* 推荐问题 - 在有 questions 字段时显示 */}
                   {msg.questions && msg.questions.length > 0 && (
                     <div className="side-panel-recommended-questions">
-                      <div className="side-panel-recommended-header">
-                        <span>💡</span>
-                        <span>推荐追问</span>
-                      </div>
                       <div className="side-panel-recommended-list">
                         {msg.questions.map((q, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => handleQuestionClick(q)}
-                            className="side-panel-recommended-bubble"
-                          >
-                            {q}
-                          </button>
+                          <div key={idx} className="side-panel-recommended-item">
+                            <span className="side-panel-recommended-text">{q}</span>
+                            <button
+                              className="side-panel-recommended-arrow"
+                              onClick={() => handleQuestionClick(q)}
+                              title="快速追问"
+                            >
+                              →
+                            </button>
+                          </div>
                         ))}
-                      </div>
-                      {/* 快速追问按钮 */}
-                      <div className="side-panel-recommended-action">
-                        <span className="side-panel-recommended-action-text">点击问题快速追问</span>
                       </div>
                     </div>
                   )}

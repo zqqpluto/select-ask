@@ -155,10 +155,10 @@ export function createQuestionPrompt(userQuestion: string, selectedText: string,
 /**
  * 生成问题 Prompt（用于追问气泡功能）
  */
-export function createGenerateQuestionsPrompt(selectedText: string, context?: ContextData): string {
+export function createGenerateQuestionsPrompt(selectedText: string, context?: ContextData, answer?: string): string {
   if (!context || !context.beforeText && !context.afterText) {
     // 无上下文时
-    return `请分析以下文本，提炼出用户最可能提出的 3 个问题。
+    return `请分析以下文本，提炼出用户最可能提出的 5 个问题。
 
 文本内容：
 ${selectedText}
@@ -166,11 +166,11 @@ ${selectedText}
 要求：
 1. 问题针对选中文本
 2. 简洁、具体、有针对性
-3. 直接返回 3 个问题，每行一个问题，不要序号或其他格式`;
+3. 直接返回 5 个问题，每行一个问题，不要序号或其他格式`;
   }
 
   // 带上下文时
-  return `请分析以下文本和上下文，提炼出用户最可能提出的 3 个关于选中文本的问题。
+  return `请分析以下文本和上下文，提炼出用户最可能提出的 5 个关于选中文本的问题。
 
 选中文本：${selectedText}
 
@@ -181,7 +181,7 @@ ${selectedText}
 1. 问题针对选中文本
 2. 结合上下文背景
 3. 简洁、具体、有针对性
-4. 直接返回 3 个问题，每行一个问题，不要序号或其他格式`;
+4. 直接返回 5 个问题，每行一个问题，不要序号或其他格式`;
 }
 
 // ============================================================================

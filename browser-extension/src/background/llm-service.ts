@@ -121,7 +121,7 @@ export async function handleLLMStream(
       }));
     } else if (request.action && request.text) {
       // content script 格式：使用 buildMessages 构建
-      messages = buildMessages(request.action, request.text, request.question, request.context);
+      messages = buildMessages(request.action, request.text, request.question, request.context, request.answer);
     } else {
       port.postMessage({ type: 'LLM_STREAM_ERROR', error: '无效的请求格式' });
       port.postMessage({ type: 'LLM_STREAM_END' });

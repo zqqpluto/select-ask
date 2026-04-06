@@ -82,7 +82,7 @@ async function generateRecommendedQuestions(
             .split('\n')
             .map(q => q.trim())
             .filter(q => q && !q.match(/^[\d\-\•\*]+\.?\s*/)) // 移除序号
-            .slice(0, 5);
+            .slice(0, 3); // 只展示 3 个
 
           resolve(questions);
         }
