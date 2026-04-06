@@ -218,29 +218,22 @@ export default function App() {
             .filter((m: ModelConfig) => {
               console.log(`Model ${m.name}: enabled=${m.enabled}, enableChat=${m.enableChat}`);
               return m.enabled && (m.enableChat !== false);
-            })
-            .map((m: ModelConfig) => ({
-              id: m.id,
-              name: m.name,
-              provider: m.provider,
-              modelId: m.modelId,
-            }));
+            });
 
           // 获取选中的模型 ID 列表
           const selectedIds = config.selectedChatModelIds || [];
 
           console.log('Enabled models count:', enabledModels.length);
-          console.log('Enabled models:', enabledModels);
           console.log('Selected IDs:', selectedIds);
 
           let modelsToUse: ModelConfig[] = [];
 
           if (selectedIds.length > 0) {
-            // 有选中的模型，只返回选中的（且启用的）
-            modelsToUse = enabledModels.filter(
-              (m: ModelConfig) => selectedIds.includes(m.id)
-            );
-            console.log('Selected models:', modelsToUse);
+            // 有选中的模型，按照 selectedIds 的顺序返回选中的模型
+            modelsToUse = selectedIds
+              .map(id => enabledModels.find(m => m.id === id))
+              .filter((m): m is ModelConfig => m !== undefined && m.enabled);
+            console.log('Selected models (ordered):', modelsToUse);
           } else {
             // 没有选中的模型，返回所有启用的
             modelsToUse = enabledModels;
@@ -330,8 +323,9 @@ export default function App() {
     // 如果未传入模型，使用当前模型
     const modelToUse = model || currentModel;
 
-    console.log('getAIResponse called, modelToUse:', modelToUse, 'currentModel:', currentModel);
-    console.log('initSelectedText:', initSelectedText, 'selectedText state:', selectedText);
+    console.log('[getAIResponse] modelToUse:', modelToUse ? { id: modelToUse.id, name: modelToUse.name } : null);
+    console.log('[getAIResponse] currentModel:', currentModel ? { id: currentModel.id, name: currentModel.name } : null);
+    console.log('[getAIResponse] initSelectedText:', initSelectedText, 'selectedText state:', selectedText);
 
     if (!modelToUse) {
       console.warn('No model selected, showing error message');
@@ -486,11 +480,13 @@ export default function App() {
       const textToUse = initSelectedText !== undefined ? initSelectedText : selectedText;
       const contextToUse = initContext !== undefined ? initContext : context;
 
-      console.log('Sending to LLM:', {
+      console.log('[LLM Request] Sending to LLM:', {
         action: actionType,
         text: textToUse,
         question: actionType === 'question' ? question : undefined,
         context: contextToUse,
+        modelId: modelToUse.id,
+        modelName: modelToUse.name,
       });
 
       // 发送请求
@@ -566,16 +562,27 @@ export default function App() {
         const enabledModels = config.models.filter((m: ModelConfig) => m.enabled);
         const selectedIds = config.selectedChatModelIds || [];
 
+        let modelsToUse: ModelConfig[] = [];
+
         if (selectedIds.length > 0) {
-          const selectedModels = enabledModels.filter(
-            (m: ModelConfig) => selectedIds.includes(m.id)
-          );
-          setAvailableModels(selectedModels);
-          // 根据选择的 modelId 设置当前模型
-          const model = selectedModels.find(m => m.id === modelId);
-          if (model) {
-            setCurrentModel(model);
-          }
+          // 有选中的模型，按照 selectedIds 的顺序返回选中的模型
+          modelsToUse = selectedIds
+            .map(id => enabledModels.find(m => m.id === id))
+            .filter((m): m is ModelConfig => m !== undefined && m.enabled);
+        } else {
+          // 没有选中的模型，返回所有启用的
+          modelsToUse = enabledModels;
+        }
+
+        setAvailableModels(modelsToUse);
+
+        // 直接从 modelsToUse 中查找选中的模型
+        const model = modelsToUse.find(m => m.id === modelId);
+        if (model) {
+          setCurrentModel(model);
+          console.log('[ModelSelect] Model switched to:', model.id, model.name);
+        } else {
+          console.warn('[ModelSelect] Model not found:', modelId, 'Available models:', modelsToUse.map(m => m.id));
         }
       }
 

@@ -1,9 +1,45 @@
 /**
  * API Key 加密工具
  * 使用 Web Crypto API (AES-GCM) 加密存储
+ * 支持 Chrome Extension Service Worker 环境
  */
 
 const ENCRYPTION_KEY_NAME = 'llm_encryption_key';
+
+/**
+ * Base64 编码（兼容 Service Worker）
+ */
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  // 在 Service Worker 中使用 btoa 的替代方案
+  if (typeof btoa !== 'undefined') {
+    return btoa(binary);
+  }
+  // Chrome Service Worker 支持 btoa 全局函数
+  return globalThis.btoa(binary);
+}
+
+/**
+ * Base64 解码（兼容 Service Worker）
+ */
+function base64ToArrayBuffer(base64: string): Uint8Array {
+  let binary = '';
+  // 在 Service Worker 中使用 atob 的替代方案
+  if (typeof atob !== 'undefined') {
+    binary = atob(base64);
+  } else {
+    binary = globalThis.atob(base64);
+  }
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
 
 /**
  * 获取或创建加密密钥
@@ -15,7 +51,7 @@ async function getOrCreateEncryptionKey(): Promise<CryptoKey> {
 
   if (keyData) {
     // 导入现有密钥
-    const keyBuffer = Uint8Array.from(atob(keyData), c => c.charCodeAt(0));
+    const keyBuffer = base64ToArrayBuffer(keyData);
     return crypto.subtle.importKey(
       'raw',
       keyBuffer,
@@ -34,7 +70,7 @@ async function getOrCreateEncryptionKey(): Promise<CryptoKey> {
 
   // 导出并存储密钥
   const exportedKey = await crypto.subtle.exportKey('raw', key);
-  const keyBase64 = btoa(String.fromCharCode(...new Uint8Array(exportedKey)));
+  const keyBase64 = arrayBufferToBase64(exportedKey);
   await chrome.storage.local.set({ [ENCRYPTION_KEY_NAME]: keyBase64 });
 
   return key;
@@ -66,7 +102,7 @@ export async function encryptApiKey(plainText: string): Promise<string> {
   combined.set(new Uint8Array(encrypted), iv.length);
 
   // 转为 Base64
-  return btoa(String.fromCharCode(...combined));
+  return arrayBufferToBase64(combined.buffer);
 }
 
 /**
@@ -79,7 +115,7 @@ export async function decryptApiKey(encryptedText: string): Promise<string> {
     const key = await getOrCreateEncryptionKey();
 
     // 从 Base64 解码
-    const combined = Uint8Array.from(atob(encryptedText), c => c.charCodeAt(0));
+    const combined = base64ToArrayBuffer(encryptedText);
 
     // 分离 IV 和加密数据
     const iv = combined.slice(0, 12);
@@ -108,7 +144,7 @@ export function isEncrypted(value: string): boolean {
   // 简单检查：加密后的值包含 IV (12 bytes) + encrypted data
   // Base64 编码后至少会有一定长度
   try {
-    const decoded = atob(value);
+    const decoded = base64ToArrayBuffer(value);
     return decoded.length > 12;
   } catch {
     return false;

@@ -87,10 +87,11 @@ export async function handleLLMStream(
 ): Promise<void> {
   try {
     console.log('[Background] Handling LLM stream request:', request.modelId);
+    console.log('[Background] Request payload:', JSON.stringify(request, null, 2));
 
     // 获取模型配置
     const model = await getModelConfig(request.modelId);
-    console.log('[Background] Model config:', model ? {
+    console.log('[Background] Model config loaded:', model ? {
       id: model.id,
       name: model.name,
       provider: model.provider,
