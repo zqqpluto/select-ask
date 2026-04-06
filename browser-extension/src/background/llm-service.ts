@@ -21,7 +21,10 @@ function buildMessages(
 
   // 添加系统提示词
   let systemContent = '';
-  console.log('[buildMessages] action:', action, 'text:', text?.substring(0, 50));
+  console.log('====== [buildMessages] START ======');
+  console.log('[buildMessages] action:', action);
+  console.log('[buildMessages] text:', text?.substring(0, 50));
+  console.log('[buildMessages] context:', context ? 'has context' : 'no context');
 
   switch (action) {
     case 'explain':

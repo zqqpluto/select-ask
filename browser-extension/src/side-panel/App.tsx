@@ -897,7 +897,7 @@ export default function App() {
                 </svg>
               ) : (
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                  <path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/>
+                  <path d="M3 12l18-9-7 18-2-7-9-2z"/>
                 </svg>
               )}
             </button>
