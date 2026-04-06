@@ -172,6 +172,11 @@ export async function handleLLMStream(
 
     // 打印完整的消息内容
     console.log('[Background] Messages to send:', messages.length, 'messages');
+    console.log('=== Background: Messages to send to LLM ===');
+    messages.forEach((msg, idx) => {
+      console.log(`[Message ${idx}] role: ${msg.role}`);
+      console.log(`[Message ${idx}] content preview:`, msg.content.substring(0, 500) + (msg.content.length > 500 ? '...' : ''));
+    });
 
     // 流式获取响应
     for await (const chunk of provider.streamChat(messages)) {
