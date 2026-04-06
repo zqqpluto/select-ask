@@ -60,6 +60,7 @@ interface ExtendedHistoryMessage extends HistoryMessage {
   startTime?: number;
   reasoning?: string;
   isStopped?: boolean; // 标记是否被中断
+  questions?: string[]; // 推荐问题列表（用于独立消息展示）
 }
 
 interface PageInfo {
@@ -84,8 +85,7 @@ export default function App() {
   // 追问气泡相关状态
   const [recommendedQuestions, setRecommendedQuestions] = useState<string[]>([]);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
-  const [currentSelectedText, setCurrentSelectedText] = useState<string>('');
-  const [currentContext, setCurrentContext] = useState<{ before: string; after: string } | null>(null);
+  const [autoGenerateEnabled, setAutoGenerateEnabled] = useState(true); // 默认开启
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -227,7 +227,7 @@ export default function App() {
           if (selectedIds.length > 0) {
             // 有选中的模型，按照 selectedIds 的顺序返回选中的模型
             modelsToUse = selectedIds
-              .map(id => enabledModels.find(m => m.id === id))
+              .map((id: string) => enabledModels.find((m: ModelConfig) => m.id === id))
               .filter((m): m is ModelConfig => m !== undefined && m.enabled);
           } else {
             // 没有选中的模型，返回所有启用的
@@ -240,6 +240,11 @@ export default function App() {
           } else {
             console.warn('No models available!');
           }
+        }
+
+        // 读取用户偏好设置，获取自动推荐问题开关状态
+        if (config && config.preferences) {
+          setAutoGenerateEnabled(config.preferences.autoGenerateQuestions !== false);
         }
       } catch (error) {
         console.error('Failed to load models:', error);
@@ -310,18 +315,14 @@ export default function App() {
     }
   }, [currentModel?.id, availableModels.length]); // 只依赖 model.id 和 length，避免重复触发
 
-  // 生成追问问题
+  // 生成追问问题（并行执行，返回 Promise）
   const generateFollowUpQuestions = async (
     selectedText: string,
     context: { before: string; after: string } | null,
     model: ModelConfig
-  ) => {
-    setIsGeneratingQuestions(true);
-    setRecommendedQuestions([]); // 清空之前的问题
-
-    try {
+  ): Promise<string[]> => {
+    return new Promise((resolve) => {
       const port = chrome.runtime.connect({ name: 'llm-stream-questions' });
-
       let fullContent = '';
 
       port.onMessage.addListener((message) => {
@@ -332,15 +333,15 @@ export default function App() {
           const questions = fullContent
             .split('\n')
             .map(q => q.replace(/^[1-3][.)]\s*/, '').replace(/^[-*]\s*/, '').trim())
-            .filter(q => q.length > 0 && q.length < 200) // 过滤空行和过长行
+            .filter(q => q.length > 0 && q.length < 200)
             .slice(0, 3);
-          setRecommendedQuestions(questions);
           port.disconnect();
+          resolve(questions);
         }
       });
 
       port.onDisconnect.addListener(() => {
-        setIsGeneratingQuestions(false);
+        resolve([]);
       });
 
       // 发送请求
@@ -353,10 +354,7 @@ export default function App() {
           modelId: model.id,
         },
       });
-    } catch (error) {
-      console.error('Failed to generate follow-up questions:', error);
-      setIsGeneratingQuestions(false);
-    }
+    });
   };
 
   // 获取 AI 响应
@@ -381,9 +379,17 @@ export default function App() {
     const startTime = Date.now();
 
     // 思考过程内容
-    let hasReasoning = false;
     let reasoningContent = '';
     let answerContent = '';
+
+    // 并行生成推荐问题（如果配置开启且有选中文本）
+    const textToUse = initSelectedText !== undefined ? initSelectedText : selectedText;
+    const contextToUse = initContext !== undefined ? initContext : context;
+
+    let questionsPromise: Promise<string[]> | null = null;
+    if (autoGenerateEnabled && textToUse) {
+      questionsPromise = generateFollowUpQuestions(textToUse, contextToUse, modelToUse);
+    }
 
     try {
       // 创建端口进行流式通信
@@ -396,7 +402,6 @@ export default function App() {
 
           // 处理思考过程标签
           if (chunk === '[REASONING]') {
-            hasReasoning = true;
             return;
           }
           if (chunk === '[REASONING_DONE]') {
@@ -466,28 +471,47 @@ export default function App() {
             }
           });
         } else if (message.type === 'LLM_STREAM_END') {
-          setIsLoading(false);
-          currentPortRef.current = null;
-          port.disconnect();
-          // 设置最终耗时
-          setMessages(prev => {
-            const lastMsg = prev[prev.length - 1];
-            if (lastMsg && lastMsg.role === 'assistant' && lastMsg.startTime) {
-              return [
-                ...prev.slice(0, -1),
-                {
-                  ...lastMsg,
-                  duration: Date.now() - lastMsg.startTime,
-                },
-              ];
+          // AI 回答完成，等待推荐问题生成完成
+          (async () => {
+            if (questionsPromise) {
+              try {
+                const questions = await questionsPromise;
+                // 添加推荐问题作为独立消息
+                if (questions.length > 0) {
+                  setMessages(prev => [
+                    ...prev,
+                    {
+                      role: 'assistant',
+                      content: '',
+                      timestamp: Date.now(),
+                      questions: questions, // 使用扩展字段存储推荐问题
+                    },
+                  ]);
+                }
+              } catch (error) {
+                console.error('Failed to generate questions:', error);
+              }
             }
-            return prev;
-          });
 
-          // AI 回答完成后，自动生成追问问题（仅当有选中文本时）
-          if (textToUse && !isGeneratingQuestions) {
-            generateFollowUpQuestions(textToUse, contextToUse, modelToUse);
-          }
+            setIsLoading(false);
+            currentPortRef.current = null;
+            port.disconnect();
+
+            // 设置最终耗时
+            setMessages(prev => {
+              const lastMsg = prev[prev.length - 1];
+              if (lastMsg && lastMsg.role === 'assistant' && lastMsg.startTime) {
+                return [
+                  ...prev.slice(0, -1),
+                  {
+                    ...lastMsg,
+                    duration: Date.now() - lastMsg.startTime,
+                  },
+                ];
+              }
+              return prev;
+            });
+          })();
         } else if (message.type === 'LLM_STREAM_ERROR') {
           setIsLoading(false);
           currentPortRef.current = null;
@@ -520,17 +544,17 @@ export default function App() {
       }
 
       // 使用传入的 selectedText 和 context，如果没有则使用 state 中的值
-      const textToUse = initSelectedText !== undefined ? initSelectedText : selectedText;
-      const contextToUse = initContext !== undefined ? initContext : context;
+      const textToUseForRequest = initSelectedText !== undefined ? initSelectedText : selectedText;
+      const contextToUseForRequest = initContext !== undefined ? initContext : context;
 
       // 发送请求
       port.postMessage({
         type: 'LLM_STREAM_START',
         payload: {
           action: actionType,
-          text: textToUse,
+          text: textToUseForRequest,
           question: actionType === 'question' ? question : undefined,
-          context: contextToUse || undefined,
+          context: contextToUseForRequest || undefined,
           modelId: modelToUse.id,
         },
       });
@@ -561,6 +585,20 @@ export default function App() {
     setMessages(prev => [...prev, userMsg]);
 
     // 调用 AI 回答（追问不需要选中文本和上下文）
+    await getAIResponse(question, currentModel);
+  };
+
+  // 点击推荐问题消息中的快速追问按钮
+  const handleQuestionClick = async (question: string) => {
+    // 添加用户消息
+    const userMsg: ExtendedHistoryMessage = {
+      role: 'user',
+      content: question,
+      timestamp: Date.now(),
+    };
+    setMessages(prev => [...prev, userMsg]);
+
+    // 调用 AI 回答
     await getAIResponse(question, currentModel);
   };
 
@@ -833,6 +871,31 @@ export default function App() {
                     className="side-panel-answer-content"
                     dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
                   />
+
+                  {/* 推荐问题 - 在有 questions 字段时显示 */}
+                  {msg.questions && msg.questions.length > 0 && (
+                    <div className="side-panel-recommended-questions">
+                      <div className="side-panel-recommended-header">
+                        <span>💡</span>
+                        <span>推荐追问</span>
+                      </div>
+                      <div className="side-panel-recommended-list">
+                        {msg.questions.map((q, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleQuestionClick(q)}
+                            className="side-panel-recommended-bubble"
+                          >
+                            {q}
+                          </button>
+                        ))}
+                      </div>
+                      {/* 快速追问按钮 */}
+                      <div className="side-panel-recommended-action">
+                        <span className="side-panel-recommended-action-text">点击问题快速追问</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 {/* 操作按钮 - 回答完成后或中断后显示 */}
                 {(msg.duration || msg.isStopped) && (

@@ -1097,3 +1097,64 @@ body {
 .side-panel-followup-bubble:active {
   transform: scale(0.98);
 }
+
+/* ===== 推荐问题区域（独立消息） ===== */
+.side-panel-recommended-questions {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.side-panel-recommended-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #86909c;
+  margin-bottom: 8px;
+}
+
+/* 推荐问题列表 */
+.side-panel-recommended-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* 推荐问题气泡按钮 */
+.side-panel-recommended-bubble {
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s ease-out;
+  line-height: 1.5;
+}
+
+.side-panel-recommended-bubble:hover {
+  background: #f0f5ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.1);
+}
+
+.side-panel-recommended-bubble:active {
+  transform: scale(0.98);
+}
+
+/* 快速追问提示 */
+.side-panel-recommended-action {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #e5e7eb;
+}
+
+.side-panel-recommended-action-text {
+  font-size: 12px;
+  color: #86909c;
+}
