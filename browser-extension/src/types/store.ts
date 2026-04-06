@@ -15,8 +15,6 @@ export interface AppState {
   isGeneratingQuestions: boolean;
 
   // UI状态
-  floatingBoxVisible: boolean;
-  floatingBoxPosition: { x: number; y: number };
   selectedText?: string;
   selectedContext?: import('./selection').ContextData;
 }
@@ -29,6 +27,4 @@ export interface AppActions {
   setStreaming: (streaming: boolean) => void;
   setQuestions: (questions: string[]) => void;
   setGeneratingQuestions: (generating: boolean) => void;
-  showFloatingBox: (position: { x: number; y: number }, text?: string, context?: import('./selection').ContextData) => void;
-  hideFloatingBox: () => void;
 }

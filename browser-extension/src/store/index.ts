@@ -12,8 +12,6 @@ export const useAppStore = create<AppStore>((set) => ({
   isStreaming: false,
   questions: [],
   isGeneratingQuestions: false,
-  floatingBoxVisible: false,
-  floatingBoxPosition: { x: 0, y: 0 },
   selectedText: undefined,
   selectedContext: undefined,
 
@@ -33,18 +31,6 @@ export const useAppStore = create<AppStore>((set) => ({
   setQuestions: (questions) => set({ questions }),
 
   setGeneratingQuestions: (generating) => set({ isGeneratingQuestions: generating }),
-
-  showFloatingBox: (position, text, context) => set({
-    floatingBoxVisible: true,
-    floatingBoxPosition: position,
-    selectedText: text,
-    selectedContext: context,
-  }),
-
-  hideFloatingBox: () => set({
-    floatingBoxVisible: false,
-    floatingBoxPosition: { x: 0, y: 0 },
-  }),
 }));
 
 // 持久化到 chrome.storage

@@ -1,5 +1,3 @@
-import type { FloatingBoxPosition } from '../types';
-
 const MAX_TEXT_LENGTH = 10000;
 
 /**

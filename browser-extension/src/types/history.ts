@@ -7,6 +7,9 @@ export interface HistoryMessage {
   content: string;
   reasoning?: string;
   timestamp: number;
+  modelName?: string;
+  duration?: number;
+  startTime?: number;
 }
 
 export interface HistorySession {

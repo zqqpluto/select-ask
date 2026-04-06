@@ -152,20 +152,71 @@ export function generateTranslationId(text: string): string {
 }
 
 /**
- * 判断文本长度，决定使用行内模式还是块级模式
+ * 动态检测译文是否应该使用行内模式
+ * 通过计算原文 + 译文的总宽度是否超过容器宽度来判断
+ * @param sourceElement 原文元素
+ * @param sourceText 原文文本
+ * @param translatedText 译文文本
+ */
+export function detectInlineMode(
+  sourceElement: HTMLElement,
+  sourceText: string,
+  translatedText: string
+): boolean {
+  // 创建临时 span 测量宽度
+  const tempSpan = document.createElement('span');
+  tempSpan.style.visibility = 'hidden';
+  tempSpan.style.position = 'absolute';
+  tempSpan.style.whiteSpace = 'nowrap';
+  tempSpan.style.display = 'inline-block';
+
+  // 继承原文样式
+  const computedStyle = window.getComputedStyle(sourceElement);
+  const styleProperties = [
+    'font-family', 'font-size', 'font-weight', 'font-style',
+    'line-height', 'letter-spacing', 'text-transform'
+  ];
+  for (const prop of styleProperties) {
+    (tempSpan.style as any)[prop] = computedStyle.getPropertyValue(prop);
+  }
+
+  // 设置内容为原文 + 空格 + 译文
+  tempSpan.textContent = sourceText + '  ' + translatedText;
+  document.body.appendChild(tempSpan);
+
+  // 获取总宽度
+  const totalWidth = tempSpan.offsetWidth;
+  document.body.removeChild(tempSpan);
+
+  // 获取原文容器的宽度
+  const sourceRect = sourceElement.getBoundingClientRect();
+
+  // 如果总宽度小于等于容器宽度的 95%，使用行内模式（留 5% 余量）
+  return totalWidth <= sourceRect.width * 0.95;
+}
+
+/**
+ * 判断文本长度，决定使用行内模式还是块级模式（兜底方案）
  * 短文本（<= 50 字符）使用行内模式，显示在原文右侧
  * 长文本使用块级模式，显示在原文下方
+ * @deprecated 优先使用 detectInlineMode 进行动态判断
  */
 export function shouldUseInlineMode(text: string): boolean {
   return text.length <= 50;
 }
 
 /**
- * 创建译文容器元素 - 简洁的沉浸式样式
+ * 创建译文容器元素 - 沉浸式双语对照样式
+ * 使用双层结构：wrapper 容器 + translation 内容
  * @param id - 唯一标识
  * @param isInline - 是否使用行内模式
  */
-export function createTranslationElement(id: string, isInline: boolean): HTMLElement {
+export function createTranslationElement(id: string, isInline: boolean): { wrapper: HTMLElement; translationEl: HTMLElement } {
+  // 创建 wrapper 容器（用于布局和状态管理）
+  const wrapper = document.createElement('div');
+  wrapper.className = `select-ask-translation-wrapper ${isInline ? 'inline' : 'block'}`;
+
+  // 创建译文内容容器
   const translationEl = document.createElement('div');
   translationEl.id = id;
   translationEl.className = `select-ask-translation ${isInline ? 'inline' : 'block'}`;
@@ -176,13 +227,15 @@ export function createTranslationElement(id: string, isInline: boolean): HTMLEle
     <button class="select-ask-translation-close" title="关闭">×</button>
   `;
 
-  return translationEl;
+  wrapper.appendChild(translationEl);
+  return { wrapper, translationEl };
 }
 
 /**
- * 在指定位置插入译文
- * 短文本：在选中的文本节点后面插入译文
- * 长文本：复制原文标签，插入到原文后面
+ * 在指定位置插入译文 - 参照沉浸式翻译架构
+ * 原文保持不动，译文作为独立容器插入到原文后面（作为兄弟元素）
+ * 短文本：译文作为 inline-block 紧跟原文
+ * 长文本：译文作为 block 显示在原文下方
  * @param inheritStyles - 是否继承原文样式（如标题、段落等）
  */
 export function insertTranslation(
@@ -192,115 +245,81 @@ export function insertTranslation(
   originalText: string,
   range?: Range,
   inheritStyles: boolean = true
-): { translationEl: HTMLElement; container: HTMLElement; separatorNode?: Text } {
+): { translationEl: HTMLElement; wrapper: HTMLElement; container: HTMLElement; separatorNode?: Text } {
   // 检查是否已存在
   const existing = document.getElementById(translationId);
   if (existing) {
-    return { translationEl: existing, container: existing };
+    return { translationEl: existing, wrapper: existing.parentElement as HTMLElement, container: existing };
   }
 
-  // 创建译文容器元素
-  const translationEl = createTranslationElement(translationId, isInline);
+  // 创建译文容器元素（包含 wrapper）
+  const { wrapper, translationEl } = createTranslationElement(translationId, isInline);
 
   // 存储关联关系
-  translationEl.dataset.translationFor = paragraph.tagName.toLowerCase();
-  translationEl.dataset.sourceElement = paragraph.tagName.toLowerCase();
-  translationEl.dataset.originalText = originalText;
+  wrapper.dataset.translationFor = paragraph.tagName.toLowerCase();
+  wrapper.dataset.sourceElement = paragraph.tagName.toLowerCase();
+  wrapper.dataset.originalText = originalText;
+
+  // 继承原文样式：通过 CSS inherit 属性，不需要复制 tagName
+  if (inheritStyles) {
+    // 设置 wrapper 继承原文的关键样式
+    const computedStyle = window.getComputedStyle(paragraph);
+    const styleProperties = [
+      'font-family', 'font-size', 'font-weight', 'font-style',
+      'line-height', 'color', 'text-transform', 'letter-spacing',
+      'text-align'
+    ];
+
+    for (const prop of styleProperties) {
+      const value = computedStyle.getPropertyValue(prop);
+      if (value) {
+        (wrapper.style as any)[prop.replace(/-./g, x => x[1].toUpperCase())] = value;
+      }
+    }
+  }
 
   if (isInline) {
-    // 短文本：创建一个与原文标签相同的新标签，用于容纳译文
-    // 这样译文可以继承原文的样式（如 h1、h2 等）
-    const newParagraph = document.createElement(paragraph.tagName);
-    newParagraph.id = translationId + '-inline';
-    newParagraph.appendChild(translationEl);
-    newParagraph.classList.add('select-ask-translation-inline-wrapper');
-
-    // 强制设置为 inline，防止块级标签（如 h1）换行
-    newParagraph.style.display = 'inline';
-
-    // 继承原文样式类名和 style 属性
-    if (inheritStyles) {
-      // 复制所有 class（排除可能冲突的类）
-      const originalClasses = Array.from(paragraph.classList);
-      originalClasses.forEach(cls => {
-        if (!cls.startsWith('select-ask-')) {
-          newParagraph.classList.add(cls);
-        }
-      });
-      // 复制内联样式
-      newParagraph.style.cssText = paragraph.style.cssText;
-
-      // 使用 getComputedStyle 获取计算后的样式并应用
-      const computedStyle = window.getComputedStyle(paragraph);
-      const styleProperties = [
-        'font-family', 'font-size', 'font-weight', 'font-style',
-        'line-height', 'color', 'text-transform', 'letter-spacing',
-        'text-align', 'text-decoration', 'text-indent'
-      ];
-
-      for (const prop of styleProperties) {
-        const value = computedStyle.getPropertyValue(prop);
-        if (value) {
-          (newParagraph.style as any)[prop.replace(/-./g, x => x[1].toUpperCase())] = value;
-        }
-      }
-    }
-
-    // 在 Range 结束位置的文本节点后插入译文元素
+    // 行内模式：译文作为 inline-block 插入到段落内部，紧跟选中的文本
     let separatorNode: Text | undefined;
     if (range && !range.collapsed) {
-      separatorNode = insertAfterRange(range, newParagraph);
+      // 在 Range 结束位置的文本节点后插入
+      separatorNode = insertAfterRange(range, wrapper);
     } else {
       // 兜底：直接追加到段落末尾
-      paragraph.appendChild(newParagraph);
+      paragraph.appendChild(wrapper);
     }
 
-    return { translationEl, container: newParagraph, separatorNode };
+    return { translationEl, wrapper, container: wrapper, separatorNode };
   } else {
-    // 长文本：创建一个与原文标签相同的新标签，用于容纳译文
-    // 不直接插入到 DOM，而是返回给调用者决定如何插入
-    const newParagraph = document.createElement(paragraph.tagName);
-    newParagraph.id = translationId + '-clone';
-    newParagraph.appendChild(translationEl);
-    newParagraph.classList.add('select-ask-translation-clone');
-
-    // 继承原文样式类名和 style 属性
-    if (inheritStyles) {
-      // 复制所有 class（排除可能冲突的类）
-      const originalClasses = Array.from(paragraph.classList);
-      originalClasses.forEach(cls => {
-        if (!cls.startsWith('select-ask-')) {
-          newParagraph.classList.add(cls);
-        }
-      });
-      // 复制内联样式
-      newParagraph.style.cssText = paragraph.style.cssText;
-
-      // 使用 getComputedStyle 获取计算后的样式并应用
-      const computedStyle = window.getComputedStyle(paragraph);
-      const styleProperties = [
-        'font-family', 'font-size', 'font-weight', 'font-style',
-        'line-height', 'color', 'text-transform', 'letter-spacing',
-        'text-align', 'text-decoration', 'text-indent'
-      ];
-
-      for (const prop of styleProperties) {
-        const value = computedStyle.getPropertyValue(prop);
-        if (value) {
-          (newParagraph.style as any)[prop.replace(/-./g, x => x[1].toUpperCase())] = value;
-        }
-      }
-    }
-
-    // 将新标签插入到原文后面
+    // 块级模式：译文作为独立 block 插入到原文后面（作为兄弟元素）
     if (paragraph.nextSibling) {
-      paragraph.parentNode?.insertBefore(newParagraph, paragraph.nextSibling);
+      paragraph.parentNode?.insertBefore(wrapper, paragraph.nextSibling);
     } else {
-      paragraph.parentNode?.appendChild(newParagraph);
+      paragraph.parentNode?.appendChild(wrapper);
     }
 
-    return { translationEl, container: newParagraph };
+    return { translationEl, wrapper, container: wrapper };
   }
+}
+
+/**
+ * 在段落后面插入 loading 元素（作为独立兄弟元素）
+ * 用于翻译开始时的加载状态
+ * 参照沉浸式翻译：loading 显示在译文容器位置，而不是段落内部
+ */
+export function insertLoadingAtEnd(paragraph: HTMLElement): { loadingEl: HTMLElement; container: HTMLElement } {
+  const loadingEl = document.createElement('span');
+  loadingEl.className = 'select-ask-translation-loading-inline';
+  loadingEl.innerHTML = '<div class="select-ask-loading-spinner"></div>';
+
+  // 将 loading 插入到段落后面（作为兄弟元素）
+  if (paragraph.nextSibling) {
+    paragraph.parentNode?.insertBefore(loadingEl, paragraph.nextSibling);
+  } else {
+    paragraph.parentNode?.appendChild(loadingEl);
+  }
+
+  return { loadingEl, container: loadingEl };
 }
 
 /**

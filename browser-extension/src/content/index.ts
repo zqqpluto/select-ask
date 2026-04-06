@@ -1419,7 +1419,7 @@ function createIconMenu(x: number, y: number): HTMLElement {
 }
 
 /**
- * 显示二级菜单（解释、翻译、搜索、提问、总结页面）
+ * 显示二级菜单（AI 搜索、解释、翻译、总结页面、提问）
  */
 function showDropdownMenu(x: number, y: number): HTMLElement {
   const dropdown = document.createElement('div');
@@ -1428,11 +1428,11 @@ function showDropdownMenu(x: number, y: number): HTMLElement {
   dropdown.style.top = `${y}px`;
 
   const menuItems = [
+    { key: 'search', label: 'AI 搜索', icon: '🔍' },
     { key: 'explain', label: '解释', icon: '💡' },
     { key: 'translate', label: '翻译', icon: '🌐' },
-    { key: 'search', label: '搜索', icon: '🔍' },
-    { key: 'question', label: '提问', icon: '❓' },
     { key: 'summarize', label: '总结页面', icon: '📄' },
+    { key: 'question', label: '提问', icon: '❓' },
   ];
 
   menuItems.forEach((item) => {
@@ -1728,11 +1728,14 @@ async function callBackendAPI(
     });
 
     // 保存 AI 回答到当前会话消息
+    const currentModel = await getSelectedChatModel();
     currentSessionMessages.push({
       role: 'assistant',
       content: answerContent,
       reasoning: reasoningContent || undefined,
       timestamp: Date.now(),
+      modelName: currentModel?.name || 'AI',
+      duration: Date.now() - startTime,
     });
 
     // 保存会话到历史记录
@@ -3451,11 +3454,14 @@ async function callBackendAPIForSidebar(
     });
 
     // 保存 AI 回答到当前会话消息
+    const currentModel = await getSelectedChatModel();
     currentSessionMessages.push({
       role: 'assistant',
       content: answerContent,
       reasoning: reasoningContent || undefined,
       timestamp: Date.now(),
+      modelName: currentModel?.name || 'AI',
+      duration: Date.now() - startTime,
     });
 
     // 保存会话到历史记录

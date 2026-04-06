@@ -1,14 +1,29 @@
 /* 行内翻译样式 - 沉浸式对照翻译 */
 
-/* 行内模式 wrapper - 短文本时创建与原文相同标签的 wrapper，用于继承样式 */
-.select-ask-translation-inline-wrapper {
-  display: inline !important;
-  margin-left: 8px;
+/* =============================================
+   Wrapper 层 - 用于布局控制
+   参照沉浸式翻译的 .immersive-translate-target-translation-block-wrapper
+============================================= */
+
+/* 块级模式 wrapper - 长文本显示在原文下方 */
+.select-ask-translation-wrapper.block {
+  display: block;
+  margin: 8px 0;
+}
+
+/* 行内模式 wrapper - 短文本显示在原文后面 */
+.select-ask-translation-wrapper.inline {
+  display: inline-block;
+  margin: 0 4px;
   vertical-align: baseline;
 }
 
+/* =============================================
+   译文内容继承样式 - 使用 CSS inherit 属性
+============================================= */
+
 /* 行内模式 wrapper 内的译文容器 */
-.select-ask-translation-inline-wrapper .select-ask-translation.inline {
+.select-ask-translation-wrapper.inline .select-ask-translation {
   margin-left: 0;
   padding: 2px 6px;
   background: #f3f4f6;
@@ -20,8 +35,8 @@
   animation: selectAskTranslationFadeIn 0.2s ease forwards;
 }
 
-/* 行内模式 wrapper 内的内容继承原文样式 */
-.select-ask-translation-inline-wrapper .select-ask-translation-content {
+/* 行内模式译文内容继承原文样式 */
+.select-ask-translation-wrapper.inline .select-ask-translation-content {
   font-family: inherit;
   font-size: inherit;
   font-weight: inherit;
@@ -34,13 +49,15 @@
   display: inline;
 }
 
-/* 行内模式 wrapper 内的关闭按钮 */
-.select-ask-translation-inline-wrapper .select-ask-translation-close {
+/* 行内模式关闭按钮 */
+.select-ask-translation-wrapper.inline .select-ask-translation-close {
   display: inline-flex;
   vertical-align: middle;
 }
 
-/* 块级模式 - 长文本显示在原文下方 */
+/* =============================================
+   块级模式 - 长文本显示在原文下方
+============================================= */
 .select-ask-translation.block {
   display: block;
   padding: 8px 12px;
@@ -53,40 +70,25 @@
   animation: selectAskTranslationFadeIn 0.25s ease forwards;
 }
 
-/* 复制的标签样式 - 长文本时复制原文标签用于显示译文 */
-.select-ask-translation-clone {
-  margin-top: 4px;
-  margin-bottom: 8px;
-  /* 保持原文的显示属性 */
-  display: inherit;
-}
-
-/* 克隆标签内的译文内容继承原文样式 */
-.select-ask-translation-clone .select-ask-translation-content {
-  /* 继承字体样式 */
+/* 块级模式的 wrapper 内的内容继承样式 */
+.select-ask-translation-wrapper.block .select-ask-translation-content,
+.select-ask-translation.block .select-ask-translation-content {
+  /* 使用 inherit 让译文自然继承父元素样式 */
+  color: inherit;
   font-family: inherit;
   font-size: inherit;
   font-weight: inherit;
   line-height: inherit;
-  color: inherit;
+  white-space: inherit;
   text-transform: inherit;
   letter-spacing: inherit;
   text-align: inherit;
 }
 
-/* 特殊标签样式继承 */
-.select-ask-translation-clone h1 .select-ask-translation-content,
-.select-ask-translation-clone h2 .select-ask-translation-content,
-.select-ask-translation-clone h3 .select-ask-translation-content,
-.select-ask-translation-clone h4 .select-ask-translation-content,
-.select-ask-translation-clone h5 .select-ask-translation-content,
-.select-ask-translation-clone h6 .select-ask-translation-content {
-  margin: 0;
-}
-
-.select-ask-translation-clone p .select-ask-translation-content {
-  margin: 0;
-  display: block;
+/* 使用 box-decoration-break 确保多行文本样式连续性（参照沉浸式翻译） */
+.select-ask-translation-content {
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
 @keyframes selectAskTranslationFadeIn {
@@ -238,11 +240,29 @@
   animation: selectAskTranslationFadeIn 0.2s ease forwards;
 }
 
+/* 块级 loading 样式 - block 显示在原文下方 */
+.select-ask-translation-loading-block {
+  display: block;
+  margin: 8px 0;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border-radius: 6px;
+  opacity: 0;
+  animation: selectAskTranslationFadeIn 0.2s ease forwards;
+}
+
 .select-ask-translation-loading-inline .select-ask-loading-spinner {
   width: 14px;
   height: 14px;
   display: inline-block;
   vertical-align: middle;
+}
+
+.select-ask-translation-loading-block .select-ask-loading-spinner {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  margin-right: 8px;
 }
 
 .select-ask-loading-spinner {

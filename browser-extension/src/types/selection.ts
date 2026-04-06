@@ -14,10 +14,3 @@ export interface SelectionContext {
     height: number;
   };
 }
-
-export interface FloatingBoxPosition {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}

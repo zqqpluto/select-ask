@@ -199,63 +199,7 @@
   text-align: center;
 }
 
-/* 浮动框样式 - 重新设计为聊天样式 */
-.select-ask-floating-box {
-  position: absolute;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  z-index: 2147483645;
-  overflow: hidden;
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
-  border: 1px solid #e8e8e8;
-  width: 50vw;
-  min-width: 380px;
-  max-width: 90vw;
-}
 
-.select-ask-questions-box {
-  min-height: 200px;
-}
-
-.select-ask-floating-box-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-bottom: none;
-}
-
-.select-ask-floating-box-title {
-  font-weight: 600;
-  color: white;
-  font-size: 15px;
-}
-
-.select-ask-floating-box-close {
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
-  font-size: 18px;
-  color: white;
-  cursor: pointer;
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  line-height: 1;
-  border-radius: 50%;
-  transition: all 0.2s;
-}
-
-.select-ask-floating-box-close:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: rotate(90deg);
-}
 
 /* Header actions container */
 .select-ask-header-actions {
@@ -336,12 +280,6 @@
   margin: 8px;
 }
 
-.select-ask-floating-box-content {
-  padding: 18px;
-  overflow-y: auto;
-  flex: 1;
-  background: #fafbfc;
-}
 
 /* 加载动画 - 聊天风格 */
 .select-ask-loading {
