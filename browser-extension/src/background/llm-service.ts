@@ -6,13 +6,14 @@
 import { getLLMProvider } from '../services/llm';
 import { getModelConfig } from '../utils/config-manager';
 import type { LLMMessage, LLMContext } from '../types/llm';
+import { SYSTEM_PROMPTS, USER_PROMPTS, type Action } from '../services/prompts';
 
 /**
  * 构建 LLM 消息
  * 根据 action 类型生成对应的 system prompt 和 user prompt
  */
 function buildMessages(
-  action: 'explain' | 'translate' | 'question' | 'generateQuestions' | 'search',
+  action: Action,
   text: string,
   question?: string,
   context?: LLMContext
@@ -20,107 +21,24 @@ function buildMessages(
   const messages: LLMMessage[] = [];
 
   // 添加系统提示词
-  let systemContent = '';
-
-  switch (action) {
-    case 'explain':
-      systemContent = `你是一个专业的知识解释助手，擅长用通俗易懂的方式解释复杂概念。
-你的回答应该：
-- 使用简单易懂的语言，避免过度专业化
-- 多用类比和例子帮助理解
-- 逻辑清晰，分步骤讲解
-- 提供相关背景知识但不要偏离主题`;
-      break;
-
-    case 'search':
-      systemContent = `你是一个专业的信息检索助手，擅长搜索、整理和提供准确的事实信息。
-你的回答应该：
-- 优先提供可验证的事实信息
-- 清晰标注信息来源或依据
-- 综合多个来源的信息进行整理
-- 对于专业术语提供准确的定义
-- 区分事实和推测`;
-      break;
-
-    case 'translate':
-      systemContent = `你是一个专业的翻译助手，擅长准确传达原文含义。
-你的翻译应该：
-- 保持原文的语调和风格
-- 准确传达原文含义，不随意增减内容
-- 专业术语使用对应的标准翻译
-- 输出仅包含翻译结果，不要添加额外解释`;
-      break;
-
-    default:
-      break;
-  }
-
+  const systemContent = SYSTEM_PROMPTS[action];
   if (systemContent) {
     messages.push({ role: 'system', content: systemContent });
   }
 
   // 构建 user 消息
-  let userContent = '';
+  let userContent: string;
+
   switch (action) {
     case 'explain':
-      // AI 解释：侧重解读、简化、说明
-      if (context && (context.before || context.after)) {
-        userContent = `请用通俗易懂的方式解释以下内容：
-
-${text}
-
-上下文：
-...${context.before}【${text}】${context.after}...
-
-请结合上下文从以下几个方面进行说明（如果相关）：
-1. 在当前语境中的具体含义（用大白话）
-2. 与上下文的关联关系
-3. 如有抽象概念，用简单类比说明
-4. 如有逻辑关系，分步骤拆解
-5. 相关背景或补充信息`;
-      } else {
-        userContent = `请用通俗易懂的方式解释以下内容：
-
-${text}
-
-请从以下几个方面进行说明（如果相关）：
-1. 用大白话讲清楚是什么
-2. 如有抽象概念，用简单类比说明
-3. 如有逻辑关系，分步骤拆解
-4. 补充相关背景或概念说明`;
-      }
+      userContent = USER_PROMPTS.explain(text, context ? adaptContext(context) : undefined);
       break;
 
     case 'search':
-      // AI 搜索：侧重检索、匹配、整理信息
-      if (context && (context.before || context.after)) {
-        userContent = `请搜索并提供关于以下内容的相关信息：
-
-${text}
-
-上下文：
-...${context.before}【${text}】${context.after}...
-
-请结合上下文从以下几个方面进行整理（如果相关）：
-1. 在当前语境中的具体含义
-2. 关键要点或特征
-3. 与上下文的关联关系
-4. 相关背景或扩展信息`;
-      } else {
-        userContent = `请搜索并提供关于以下内容的相关信息：
-
-${text}
-
-请从以下几个方面进行整理（如果相关）：
-1. 核心定义/概述
-2. 关键要点或特征
-3. 相关背景或来源
-4. 扩展信息或关联概念`;
-      }
+      userContent = USER_PROMPTS.search(text, context ? adaptContext(context) : undefined);
       break;
 
     case 'translate': {
-      // 翻译：准确传达原文含义
       const browserLang = (self as any).navigator?.language || 'zh-CN';
       const langMap: Record<string, string> = {
         'zh': '中文', 'zh-CN': '中文', 'zh-TW': '繁体中文',
@@ -128,61 +46,34 @@ ${text}
         'ja': '日语', 'ko': '韩语',
       };
       const targetLang = langMap[browserLang] || langMap[browserLang.split('-')[0]] || '中文';
-      userContent = `请将以下内容翻译成${targetLang}：
-
-${text}`;
+      userContent = USER_PROMPTS.translate(text, targetLang);
       break;
     }
 
     case 'question':
-      if (context && (context.before || context.after)) {
-        userContent = `${question}
-
-选中文本：${text}
-
-上下文：
-...${context.before}【${text}】${context.after}...`;
-      } else {
-        userContent = `${question}
-
-选中文本：${text}`;
-      }
+      userContent = USER_PROMPTS.question(question || '', text, context ? adaptContext(context) : undefined);
       break;
 
     case 'generateQuestions':
-      if (context && (context.before || context.after)) {
-        userContent = `请分析以下文本和上下文，提炼出用户最可能提出的 3 个关于选中文本的问题。
-
-选中文本：${text}
-
-上下文：
-...${context.before}【${text}】${context.after}...
-
-要求：
-1. 问题针对选中文本
-2. 结合上下文背景
-3. 简洁、具体、有针对性
-4. 直接返回 3 个问题，每行一个问题，不要序号或其他格式`;
-      } else {
-        userContent = `请分析以下文本，提炼出用户最可能提出的 3 个问题。
-
-文本内容：
-${text}
-
-要求：
-1. 问题针对选中文本
-2. 简洁、具体、有针对性
-3. 直接返回 3 个问题，每行一个问题，不要序号或其他格式`;
-      }
+      userContent = USER_PROMPTS.generateQuestions(text, context ? adaptContext(context) : undefined);
       break;
 
     default:
       userContent = text;
-      break;
   }
 
   messages.push({ role: 'user', content: userContent });
   return messages;
+}
+
+/**
+ * 适配上下文类型：LLMContext -> ContextData
+ */
+function adaptContext(context: LLMContext) {
+  return {
+    beforeText: context.before || '',
+    afterText: context.after || '',
+  };
 }
 
 /**
