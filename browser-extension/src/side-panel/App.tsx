@@ -949,8 +949,8 @@ export default function App() {
                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                       </svg>
                     </button>
-                    {/* 重新生成按钮 - 只在最后一条 AI 消息时显示 */}
-                    {index === messages.length - 1 && (
+                    {/* 重新生成按钮 - 只在最后一条有 content 的 AI 回答消息时显示 */}
+                    {index === messages.map((m, i) => m.role === 'assistant' && m.content && !m.questions ? i : -1).filter(i => i !== -1).pop() && (
                       <button
                         className="side-panel-action-btn"
                         onClick={handleRegenerate}
