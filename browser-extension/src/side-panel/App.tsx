@@ -469,11 +469,13 @@ export default function App() {
       });
 
       // 根据问题内容判断 action 类型
-      let actionType: 'explain' | 'translate' | 'question' = 'question';
+      let actionType: 'explain' | 'translate' | 'question' | 'search' = 'question';
       if (question === '解释' || question === 'explain') {
         actionType = 'explain';
       } else if (question === '翻译' || question === 'translate') {
         actionType = 'translate';
+      } else if (question === '搜索' || question === 'search') {
+        actionType = 'search';
       }
 
       // 使用传入的 selectedText 和 context，如果没有则使用 state 中的值
