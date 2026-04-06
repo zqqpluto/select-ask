@@ -304,13 +304,13 @@ export function insertTranslation(
 
 /**
  * 在段落后面插入 loading 元素（作为独立兄弟元素）
- * 用于翻译开始时的加载状态
  * 参照沉浸式翻译：loading 显示在译文容器位置，而不是段落内部
+ * loading 作为独立的 block 元素，显示在原文下方（块级模式）或原文后面（行内模式）
  */
-export function insertLoadingAtEnd(paragraph: HTMLElement): { loadingEl: HTMLElement; container: HTMLElement } {
-  const loadingEl = document.createElement('span');
-  loadingEl.className = 'select-ask-translation-loading-inline';
-  loadingEl.innerHTML = '<div class="select-ask-loading-spinner"></div>';
+export function insertLoadingAtEnd(paragraph: HTMLElement, isInline: boolean = false): { loadingEl: HTMLElement; container: HTMLElement } {
+  const loadingEl = document.createElement('div');
+  loadingEl.className = `select-ask-translation-loading ${isInline ? 'inline' : 'block'}`;
+  loadingEl.innerHTML = '<div class="select-ask-loading-spinner"></div><span class="select-ask-loading-text">翻译中...</span>';
 
   // 将 loading 插入到段落后面（作为兄弟元素）
   if (paragraph.nextSibling) {

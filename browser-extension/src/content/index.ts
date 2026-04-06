@@ -2322,7 +2322,9 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
   const translationId = generateTranslationId(text);
 
   // 翻译开始时：在段落后面插入 loading（作为兄弟元素）
-  const { loadingEl } = insertLoadingAtEnd(targetParagraph);
+  // 先使用原文长度预估模式（短文本使用行内 loading，长文本使用块级 loading）
+  const预估Inline = shouldUseInlineMode(text);
+  const { loadingEl } = insertLoadingAtEnd(targetParagraph, 预估 Inline);
 
   // 创建临时条目用于管理 loading 状态
   let translationEl: HTMLElement | null = null;

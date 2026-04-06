@@ -1,14 +1,16 @@
 /* 行内翻译样式 - 沉浸式对照翻译 */
+/* 参照沉浸式翻译 v1.27.2 的样式设计 */
 
 /* =============================================
    Wrapper 层 - 用于布局控制
-   参照沉浸式翻译的 .immersive-translate-target-translation-block-wrapper
+   参照沉浸式翻译的 .immersive-translate-target-wrapper
 ============================================= */
 
 /* 块级模式 wrapper - 长文本显示在原文下方 */
 .select-ask-translation-wrapper.block {
   display: block;
-  margin: 8px 0;
+  margin: 0;
+  padding: 0;
 }
 
 /* 行内模式 wrapper - 短文本显示在原文后面 */
@@ -19,24 +21,70 @@
 }
 
 /* =============================================
-   译文内容继承样式 - 使用 CSS inherit 属性
+   译文内容容器 - 参照沉浸式翻译结构
+   .immersive-translate-target-translation-block-wrapper
 ============================================= */
 
-/* 行内模式 wrapper 内的译文容器 */
-.select-ask-translation-wrapper.inline .select-ask-translation {
-  margin-left: 0;
-  padding: 2px 6px;
+/* 块级模式译文容器 */
+.select-ask-translation.block {
+  display: block;
+  margin: 8px 0 0 0;
+  padding: 12px 16px;
+  background: #f9fafb;
+  border-radius: 6px;
+  border-left: 3px solid #6366f1;
+  opacity: 0;
+  animation: selectAskTranslationFadeIn 0.25s ease forwards;
+  position: relative;
+}
+
+/* 块级模式译文内容包装器 */
+.select-ask-translation-content-wrapper {
+  display: block;
+}
+
+/* 块级模式译文内容继承样式 */
+.select-ask-translation.block .select-ask-translation-content {
+  /* 使用 inherit 让译文自然继承父元素样式 */
+  color: #374151;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1.6;
+  white-space: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+  display: block;
+}
+
+/* =============================================
+   行内模式译文样式
+============================================= */
+
+/* 行内模式译文容器 */
+.select-ask-translation.inline {
+  display: inline-block;
+  margin: 0 0 0 6px;
+  padding: 2px 8px;
   background: #f3f4f6;
   border-radius: 4px;
-  font-size: 1em;
+  border: 1px solid #e5e7eb;
+  font-size: 0.95em;
   line-height: inherit;
   color: #6b7280;
   opacity: 0;
   animation: selectAskTranslationFadeIn 0.2s ease forwards;
+  max-width: 400px;
+}
+
+/* 行内模式译文内容包装器 */
+.select-ask-translation.inline .select-ask-translation-content-wrapper {
+  display: inline;
 }
 
 /* 行内模式译文内容继承原文样式 */
-.select-ask-translation-wrapper.inline .select-ask-translation-content {
+.select-ask-translation.inline .select-ask-translation-content {
   font-family: inherit;
   font-size: inherit;
   font-weight: inherit;
@@ -50,39 +98,10 @@
 }
 
 /* 行内模式关闭按钮 */
-.select-ask-translation-wrapper.inline .select-ask-translation-close {
+.select-ask-translation.inline .select-ask-translation-close {
   display: inline-flex;
   vertical-align: middle;
-}
-
-/* =============================================
-   块级模式 - 长文本显示在原文下方
-============================================= */
-.select-ask-translation.block {
-  display: block;
-  padding: 8px 12px;
-  background: #f9fafb;
-  border-radius: 6px;
-  font-size: 14px;
-  line-height: 1.6;
-  color: #6b7280;
-  opacity: 0;
-  animation: selectAskTranslationFadeIn 0.25s ease forwards;
-}
-
-/* 块级模式的 wrapper 内的内容继承样式 */
-.select-ask-translation-wrapper.block .select-ask-translation-content,
-.select-ask-translation.block .select-ask-translation-content {
-  /* 使用 inherit 让译文自然继承父元素样式 */
-  color: inherit;
-  font-family: inherit;
-  font-size: inherit;
-  font-weight: inherit;
-  line-height: inherit;
-  white-space: inherit;
-  text-transform: inherit;
-  letter-spacing: inherit;
-  text-align: inherit;
+  margin-left: 4px;
 }
 
 /* 使用 box-decoration-break 确保多行文本样式连续性（参照沉浸式翻译） */
@@ -232,6 +251,42 @@
 }
 
 /* 行内 loading 样式 - inline 显示，不换行 */
+/* =============================================
+   Loading 状态样式 - 参照沉浸式翻译
+============================================= */
+
+/* 块级 loading - 显示在原文下方 */
+.select-ask-translation-loading.block {
+  display: block;
+  margin: 8px 0 0 0;
+  padding: 12px 16px;
+  background: #f9fafb;
+  border-radius: 6px;
+  border-left: 3px solid #a5b4fc;
+  opacity: 0;
+  animation: selectAskTranslationFadeIn 0.2s ease forwards;
+}
+
+/* 行内 loading - 显示在原文后面 */
+.select-ask-translation-loading.inline {
+  display: inline-block;
+  margin: 0 0 0 6px;
+  padding: 2px 8px;
+  background: #f3f4f6;
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+  opacity: 0;
+  animation: selectAskTranslationFadeIn 0.2s ease forwards;
+}
+
+.select-ask-translation-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #9ca3af;
+  font-size: 13px;
+}
+
 .select-ask-translation-loading-inline {
   display: inline;
   margin-left: 8px;
@@ -240,7 +295,6 @@
   animation: selectAskTranslationFadeIn 0.2s ease forwards;
 }
 
-/* 块级 loading 样式 - block 显示在原文下方 */
 .select-ask-translation-loading-block {
   display: block;
   margin: 8px 0;
@@ -272,6 +326,12 @@
   border-top-color: #6366f1;
   border-radius: 50%;
   animation: selectAskSpin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+.select-ask-loading-text {
+  color: #9ca3af;
+  font-size: 13px;
 }
 
 @keyframes selectAskSpin {
