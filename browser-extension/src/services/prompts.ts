@@ -158,30 +158,23 @@ export function createQuestionPrompt(userQuestion: string, selectedText: string,
 export function createGenerateQuestionsPrompt(selectedText: string, context?: ContextData, answer?: string): string {
   if (!context || !context.beforeText && !context.afterText) {
     // 无上下文时
-    return `请分析以下文本，提炼出用户最可能提出的 5 个问题。
-
-文本内容：
+    return `请针对以下内容生成 5 个用户最可能问的问题：
 ${selectedText}
 
 要求：
-1. 问题针对选中文本
-2. 简洁、具体、有针对性
-3. 直接返回 5 个问题，每行一个问题，不要序号或其他格式`;
+- 问题简洁、具体
+- 直接返回问题列表，每行一个，不要序号、不要其他内容`;
   }
 
   // 带上下文时
-  return `请分析以下文本和上下文，提炼出用户最可能提出的 5 个关于选中文本的问题。
+  return `请针对以下内容生成 5 个用户最可能问的问题：
+${selectedText}
 
-选中文本：${selectedText}
-
-上下文：
-...${context.beforeText}【${selectedText}】${context.afterText}...
+上下文：${context.beforeText}${selectedText}${context.afterText}
 
 要求：
-1. 问题针对选中文本
-2. 结合上下文背景
-3. 简洁、具体、有针对性
-4. 直接返回 5 个问题，每行一个问题，不要序号或其他格式`;
+- 问题简洁、具体
+- 直接返回问题列表，每行一个，不要序号、不要其他内容`;
 }
 
 // ============================================================================
