@@ -1019,3 +1019,81 @@ body {
   margin: 4px 0;
   line-height: 1.6;
 }
+
+/* ===== 追问气泡区域 ===== */
+.side-panel-followup-section {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f0f0f0;
+}
+
+/* 生成中状态 */
+.side-panel-followup-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: 12px;
+  color: #86909c;
+}
+
+.side-panel-followup-loading .side-panel-spin-icon {
+  width: 14px;
+  height: 14px;
+  animation: side-panel-spin 1s linear infinite;
+}
+
+@keyframes side-panel-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 追问气泡容器 */
+.side-panel-followup-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.side-panel-followup-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #86909c;
+  margin-bottom: 4px;
+}
+
+/* 追问气泡列表 */
+.side-panel-followup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* 追问气泡按钮 */
+.side-panel-followup-bubble {
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s ease-out;
+  line-height: 1.5;
+}
+
+.side-panel-followup-bubble:hover {
+  background: #f0f5ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.1);
+}
+
+.side-panel-followup-bubble:active {
+  transform: scale(0.98);
+}

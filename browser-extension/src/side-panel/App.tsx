@@ -81,6 +81,12 @@ export default function App() {
   const [selectedTextExpanded, setSelectedTextExpanded] = useState(false);
   const [selectedTextNeedsExpand, setSelectedTextNeedsExpand] = useState(false);
 
+  // 追问气泡相关状态
+  const [recommendedQuestions, setRecommendedQuestions] = useState<string[]>([]);
+  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
+  const [currentSelectedText, setCurrentSelectedText] = useState<string>('');
+  const [currentContext, setCurrentContext] = useState<{ before: string; after: string } | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -304,6 +310,55 @@ export default function App() {
     }
   }, [currentModel?.id, availableModels.length]); // 只依赖 model.id 和 length，避免重复触发
 
+  // 生成追问问题
+  const generateFollowUpQuestions = async (
+    selectedText: string,
+    context: { before: string; after: string } | null,
+    model: ModelConfig
+  ) => {
+    setIsGeneratingQuestions(true);
+    setRecommendedQuestions([]); // 清空之前的问题
+
+    try {
+      const port = chrome.runtime.connect({ name: 'llm-stream-questions' });
+
+      let fullContent = '';
+
+      port.onMessage.addListener((message) => {
+        if (message.type === 'LLM_STREAM_CHUNK') {
+          fullContent += message.chunk || '';
+        } else if (message.type === 'LLM_STREAM_END') {
+          // 解析问题（按行分割，移除序号，限制 3 条）
+          const questions = fullContent
+            .split('\n')
+            .map(q => q.replace(/^[1-3][.)]\s*/, '').replace(/^[-*]\s*/, '').trim())
+            .filter(q => q.length > 0 && q.length < 200) // 过滤空行和过长行
+            .slice(0, 3);
+          setRecommendedQuestions(questions);
+          port.disconnect();
+        }
+      });
+
+      port.onDisconnect.addListener(() => {
+        setIsGeneratingQuestions(false);
+      });
+
+      // 发送请求
+      port.postMessage({
+        type: 'LLM_STREAM_START',
+        payload: {
+          action: 'generateQuestions',
+          text: selectedText,
+          context: context || undefined,
+          modelId: model.id,
+        },
+      });
+    } catch (error) {
+      console.error('Failed to generate follow-up questions:', error);
+      setIsGeneratingQuestions(false);
+    }
+  };
+
   // 获取 AI 响应
   const getAIResponse = async (question: string, model?: ModelConfig, initSelectedText?: string, initContext?: { before: string; after: string } | null) => {
     // 如果未传入模型，使用当前模型
@@ -428,6 +483,11 @@ export default function App() {
             }
             return prev;
           });
+
+          // AI 回答完成后，自动生成追问问题（仅当有选中文本时）
+          if (textToUse && !isGeneratingQuestions) {
+            generateFollowUpQuestions(textToUse, contextToUse, modelToUse);
+          }
         } else if (message.type === 'LLM_STREAM_ERROR') {
           setIsLoading(false);
           currentPortRef.current = null;
@@ -486,6 +546,22 @@ export default function App() {
         },
       ]);
     }
+  };
+
+  // 点击追问气泡 - 立即触发问题追问
+  const handleFollowUpClick = async (question: string) => {
+    // 清空推荐问题
+    setRecommendedQuestions([]);
+    // 添加用户消息
+    const userMsg: ExtendedHistoryMessage = {
+      role: 'user',
+      content: question,
+      timestamp: Date.now(),
+    };
+    setMessages(prev => [...prev, userMsg]);
+
+    // 调用 AI 回答（追问不需要选中文本和上下文）
+    await getAIResponse(question, currentModel);
   };
 
   // 发送消息
@@ -783,6 +859,43 @@ export default function App() {
                           <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
                         </svg>
                       </button>
+                    )}
+                  </div>
+                )}
+
+                {/* 追问气泡 - 在最后一条 AI 消息且回答完成后显示 */}
+                {index === messages.length - 1 && (msg.duration || msg.isStopped) && (
+                  <div className="side-panel-followup-section">
+                    {/* 生成中状态 */}
+                    {isGeneratingQuestions && (
+                      <div className="side-panel-followup-loading">
+                        <svg className="side-panel-spin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="10"/>
+                          <path d="M12 6v6l4 2"/>
+                        </svg>
+                        <span>正在生成推荐问题...</span>
+                      </div>
+                    )}
+
+                    {/* 追问气泡列表 */}
+                    {!isGeneratingQuestions && recommendedQuestions.length > 0 && (
+                      <div className="side-panel-followup-questions">
+                        <div className="side-panel-followup-header">
+                          <span>💡</span>
+                          <span>推荐追问</span>
+                        </div>
+                        <div className="side-panel-followup-list">
+                          {recommendedQuestions.map((q, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => handleFollowUpClick(q)}
+                              className="side-panel-followup-bubble"
+                            >
+                              {q}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}
