@@ -730,8 +730,6 @@ export default function App() {
                         onClick={() => toggleReasoning(index)}
                       >
                         <div className="side-panel-reasoning-status">
-                          {/* 大模型名称 */}
-                          <span className="side-panel-reasoning-model">{msg.modelName || 'AI'}</span>
                           {!msg.duration ? (
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <circle cx="12" cy="12" r="10"/>
@@ -742,6 +740,8 @@ export default function App() {
                               <polyline points="20 6 9 17 4 12"/>
                             </svg>
                           )}
+                          {/* 大模型名称 */}
+                          <span className="side-panel-reasoning-model">{msg.modelName || 'AI'}</span>
                           {!msg.duration ? (
                             <span>思考中...</span>
                           ) : (
