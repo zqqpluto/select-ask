@@ -887,8 +887,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   border: none;
@@ -918,8 +918,8 @@ body {
 
 /* Stop 按钮样式 */
 .side-panel-send svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .side-panel-send svg rect {
