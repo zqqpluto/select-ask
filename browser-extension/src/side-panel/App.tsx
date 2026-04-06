@@ -208,23 +208,13 @@ export default function App() {
         const result = await chrome.storage.sync.get(['app_config']);
         const config = result.app_config;
 
-        console.log('Side Panel loaded config:', config);
-        console.log('Models in config:', config?.models);
-        console.log('selectedChatModelIds:', config?.selectedChatModelIds);
-
         if (config && config.models) {
           // 获取所有启用且参与问答的模型
           const enabledModels = config.models
-            .filter((m: ModelConfig) => {
-              console.log(`Model ${m.name}: enabled=${m.enabled}, enableChat=${m.enableChat}`);
-              return m.enabled && (m.enableChat !== false);
-            });
+            .filter((m: ModelConfig) => m.enabled && (m.enableChat !== false));
 
           // 获取选中的模型 ID 列表
           const selectedIds = config.selectedChatModelIds || [];
-
-          console.log('Enabled models count:', enabledModels.length);
-          console.log('Selected IDs:', selectedIds);
 
           let modelsToUse: ModelConfig[] = [];
 
@@ -233,11 +223,9 @@ export default function App() {
             modelsToUse = selectedIds
               .map(id => enabledModels.find(m => m.id === id))
               .filter((m): m is ModelConfig => m !== undefined && m.enabled);
-            console.log('Selected models (ordered):', modelsToUse);
           } else {
             // 没有选中的模型，返回所有启用的
             modelsToUse = enabledModels;
-            console.log('Using all enabled models:', modelsToUse);
           }
 
           setAvailableModels(modelsToUse);
@@ -290,7 +278,6 @@ export default function App() {
         const result = await chrome.storage.local.get(['pending_sidebar_init']);
         if (result.pending_sidebar_init) {
           const { selectedText, context, userMessage, pageUrl, pageTitle } = result.pending_sidebar_init;
-          console.log('Processing pending init message:', userMessage);
           setSelectedText(selectedText || '');
           setContext(context || null);
           setPageInfo({
@@ -309,7 +296,6 @@ export default function App() {
             // 清除 pending 状态
             await chrome.storage.local.remove(['pending_sidebar_init']);
             // 启动 AI 响应 - 传入当前模型和选中文本、上下文
-            console.log('Starting AI response with loaded model:', currentModel.id, currentModel.name);
             getAIResponse(userMessage, currentModel, selectedText || '', context || null);
           }
         }
@@ -322,10 +308,6 @@ export default function App() {
   const getAIResponse = async (question: string, model?: ModelConfig, initSelectedText?: string, initContext?: { before: string; after: string } | null) => {
     // 如果未传入模型，使用当前模型
     const modelToUse = model || currentModel;
-
-    console.log('[getAIResponse] modelToUse:', modelToUse ? { id: modelToUse.id, name: modelToUse.name } : null);
-    console.log('[getAIResponse] currentModel:', currentModel ? { id: currentModel.id, name: currentModel.name } : null);
-    console.log('[getAIResponse] initSelectedText:', initSelectedText, 'selectedText state:', selectedText);
 
     if (!modelToUse) {
       console.warn('No model selected, showing error message');
@@ -340,7 +322,6 @@ export default function App() {
       return;
     }
 
-    console.log('Starting LLM request with model:', modelToUse.id, modelToUse.name);
     setIsLoading(true);
     const startTime = Date.now();
 
@@ -482,15 +463,6 @@ export default function App() {
       const textToUse = initSelectedText !== undefined ? initSelectedText : selectedText;
       const contextToUse = initContext !== undefined ? initContext : context;
 
-      console.log('[LLM Request] Sending to LLM:', {
-        action: actionType,
-        text: textToUse,
-        question: actionType === 'question' ? question : undefined,
-        context: contextToUse,
-        modelId: modelToUse.id,
-        modelName: modelToUse.name,
-      });
-
       // 发送请求
       port.postMessage({
         type: 'LLM_STREAM_START',
@@ -582,10 +554,14 @@ export default function App() {
         const model = modelsToUse.find(m => m.id === modelId);
         if (model) {
           setCurrentModel(model);
-          console.log('[ModelSelect] Model switched to:', model.id, model.name);
-        } else {
-          console.warn('[ModelSelect] Model not found:', modelId, 'Available models:', modelsToUse.map(m => m.id));
         }
+      } else {
+        // 未找到模型，使用第一个可用模型
+        const fallbackModel = modelsToUse[0];
+        if (fallbackModel) {
+          setCurrentModel(fallbackModel);
+        }
+      }
       }
 
       setShowModelSelector(false);

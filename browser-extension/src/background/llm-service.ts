@@ -21,10 +21,6 @@ function buildMessages(
 
   // 添加系统提示词
   let systemContent = '';
-  console.log('====== [buildMessages] START ======');
-  console.log('[buildMessages] action:', action);
-  console.log('[buildMessages] text:', text?.substring(0, 50));
-  console.log('[buildMessages] context:', context ? 'has context' : 'no context');
 
   switch (action) {
     case 'explain':
@@ -78,9 +74,9 @@ function buildMessages(
     case 'search':
       // AI 搜索：侧重检索、匹配、整理信息
       if (context && (context.before || context.after)) {
-        userContent = `请搜索并提供关于以下内容的相关信息：\n\n${text}\n\n上下文：\n...${context.before}【${text}】${context.after}...\n\n请结合上下文从以下几个方面进行整理（如果相关）：\n1. 在当前语境中的具体含义\n2. 关键要点或特征\n3. 与上下文的关联关系\n4. 相关背景或扩展信息\n\n注意：\n- 优先提供可验证的事实信息\n- 结合上下文理解选中文本的实际用途\n- 如有相关概念，请提供对比说明`;
+        userContent = `请搜索并提供关于以下内容的相关信息：\n\n${text}\n\n上下文：\n...${context.before}【${text}】${context.after}...\n\n请结合上下文从以下几个方面进行整理（如果相关）：\n1. 在当前语境中的具体含义\n2. 关键要点或特征\n3. 与上下文的关联关系\n4. 相关背景或扩展信息`;
       } else {
-        userContent = `请搜索并提供关于以下内容的相关信息：\n\n${text}\n\n请从以下几个方面进行整理（如果相关）：\n1. 核心定义/概述\n2. 关键要点或特征\n3. 相关背景或来源\n4. 扩展信息或关联概念\n\n注意：\n- 优先提供可验证的事实信息\n- 如有多个来源，请综合整理\n- 对于专业术语，请提供准确的定义`;
+        userContent = `请搜索并提供关于以下内容的相关信息：\n\n${text}\n\n请从以下几个方面进行整理（如果相关）：\n1. 核心定义/概述\n2. 关键要点或特征\n3. 相关背景或来源\n4. 扩展信息或关联概念`;
       }
       break;
 
@@ -93,7 +89,7 @@ function buildMessages(
         'ja': '日语', 'ko': '韩语',
       };
       const targetLang = langMap[browserLang] || langMap[browserLang.split('-')[0]] || '中文';
-      userContent = `请将以下内容翻译成${targetLang}：\n\n${text}\n\n要求：\n1. 保持原文的语调和风格\n2. 准确传达原文含义\n3. 专业术语使用对应的标准翻译\n4. 输出仅包含翻译结果，不要添加额外解释`;
+      userContent = `请将以下内容翻译成${targetLang}：\n\n${text}`;
       break;
     }
 
@@ -140,17 +136,8 @@ export async function handleLLMStream(
   }
 ): Promise<void> {
   try {
-    console.log('[Background] Handling LLM stream request:', request.modelId);
-    console.log('[Background] Request payload:', JSON.stringify(request, null, 2));
-
     // 获取模型配置
     const model = await getModelConfig(request.modelId);
-    console.log('[Background] Model config loaded:', model ? {
-      id: model.id,
-      name: model.name,
-      provider: model.provider,
-      modelId: model.modelId
-    } : 'NOT FOUND');
 
     if (!model) {
       port.postMessage({ type: 'LLM_STREAM_ERROR', error: '模型配置不存在' });
@@ -165,8 +152,6 @@ export async function handleLLMStream(
       modelId: model.modelId,
     });
 
-    console.log('[Background] Created provider for', model.provider);
-
     // 构建消息 - 支持两种格式
     let messages: LLMMessage[];
 
@@ -176,38 +161,27 @@ export async function handleLLMStream(
         role: m.role as 'user' | 'assistant' | 'system',
         content: m.content
       }));
-      console.log('=== Background: Using Side Panel message format, count:', messages.length);
     } else if (request.action && request.text) {
       // content script 格式：使用 buildMessages 构建
       messages = buildMessages(request.action, request.text, request.question, request.context);
-      console.log('=== Background: Using content script message format ===');
     } else {
       port.postMessage({ type: 'LLM_STREAM_ERROR', error: '无效的请求格式' });
       port.postMessage({ type: 'LLM_STREAM_END' });
       return;
     }
 
-    // 打印完整的消息内容（用于调试 system prompt）
-    console.log('=== Background: Messages to send to LLM ===');
-    messages.forEach((msg, idx) => {
-      console.log(`[Message ${idx}] role: ${msg.role}`);
-      console.log(`[Message ${idx}] content preview:`, msg.content.substring(0, 200) + (msg.content.length > 200 ? '...' : ''));
-    });
-    console.log('=== Background: Starting streamChat ===');
+    // 打印完整的消息内容
+    console.log('[Background] Messages to send:', messages.length, 'messages');
 
     // 流式获取响应
-    let chunkCount = 0;
     for await (const chunk of provider.streamChat(messages)) {
       // 检查端口是否仍然连接
       if (!port.name) {
-        console.log('Port disconnected, stopping stream');
         return;
       }
-      chunkCount++;
       port.postMessage({ type: 'LLM_STREAM_CHUNK', chunk });
     }
 
-    console.log('=== Background: Stream completed, chunks sent:', chunkCount);
     port.postMessage({ type: 'LLM_STREAM_END' });
   } catch (error) {
     console.error('LLM stream error:', error);
