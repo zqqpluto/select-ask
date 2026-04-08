@@ -2466,7 +2466,6 @@ async function translateMultipleParagraphs(
 
   console.log('=== translateMultipleParagraphs ===');
   console.log('Paragraphs count:', paragraphs.length);
-  console.log('Paragraph texts:', paragraphTexts.map((t, i) => `[${i}] ${t.substring(0, 50)}`));
 
   // 限制最大段落数量，防止过多请求
   const MAX_PARAGRAPHS = 100;
@@ -2480,6 +2479,7 @@ async function translateMultipleParagraphs(
   // 提取每段的纯文本
   const paragraphTexts = targetParagraphs.map(p => p.textContent?.trim() || '');
 
+  console.log('Paragraph texts:', paragraphTexts.map((t, i) => `[${i}] ${t.substring(0, 50)}`));
   console.log('Translating', paragraphTexts.length, 'paragraphs as a single request');
 
   // 为每个段落创建加载状态（inline loading）
