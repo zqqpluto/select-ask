@@ -18,7 +18,6 @@ export async function cleanExpiredSessions(): Promise<void> {
   const validSessions = sessions.filter(s => (now - s.updatedAt) < expireTime);
   if (validSessions.length !== sessions.length) {
     await saveHistory(validSessions);
-    console.log(`Cleaned ${sessions.length - validSessions.length} expired sessions`);
   }
 }
 

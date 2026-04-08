@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm list:*)",
+      "Bash(node:*)",
+      "Bash(git checkout:*)",
+      "mcp__plugin_figma_figma__whoami",
+      "mcp__plugin_figma_figma__create_new_file",
+      "mcp__plugin_figma_figma__use_figma",
+      "Bash(sips:*)",
+      "Bash(whichinkscape)",
+      "Bash(brew list:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(grep -E \"\\\\.pen$\")",
+      "Bash(ls:*)",
+      "Bash(open public/icons/icon-fused-128.png)",
+      "Bash(file:*)",
+      "Bash(md5sum /Users/zhaoqiqiang/code/select-ask/select-ask/browser-extension/public/icons/icon*.png /Users/zhaoqiqiang/code/select-ask/select-ask/browser-extension/public/icons/icon.svg)",
+      "Bash(grep -E \"\\\\.\\(svg|png\\)$\")",
+      "Bash(convert --version)",
+      "Bash(git restore:*)"
+    ]
+  }
+}

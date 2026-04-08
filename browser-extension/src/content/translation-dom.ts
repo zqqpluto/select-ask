@@ -18,9 +18,6 @@ export function getAllParagraphsInRange(range: Range): HTMLElement[] {
   const paragraphs: Map<HTMLElement, number> = new Map(); // 用 Map 记录顺序
   const semanticTags = ['P', 'LI', 'TD', 'TH', 'BLOCKQUOTE', 'FIGCAPTION', 'CAPTION'];
 
-  console.log('[getAllParagraphsInRange] Start, commonAncestorContainer:', range.commonAncestorContainer);
-  console.log('[getAllParagraphsInRange] Selection text:', range.toString().substring(0, 100));
-
   // 创建 TreeWalker 遍历所有元素节点
   const elementWalker = document.createTreeWalker(
     range.commonAncestorContainer,
@@ -42,7 +39,6 @@ export function getAllParagraphsInRange(range: Range): HTMLElement[] {
         if (semanticTags.includes(el.tagName)) {
           // 检查该元素是否有选中的文本
           if (isElementTextInRange(range, el)) {
-            console.log('[getAllParagraphsInRange] Found semantic paragraph:', el.tagName, 'textContent:', el.textContent?.trim().substring(0, 50));
             // 只记录，不立即添加（需要检查是否已被父段落包含）
             if (!paragraphs.has(el)) {
               paragraphs.set(el, paragraphs.size);
@@ -66,18 +62,12 @@ export function getAllParagraphsInRange(range: Range): HTMLElement[] {
       );
       // 只保留最内层的段落（没有子段落的）
       if (!hasChildParagraph) {
-        console.log('[getAllParagraphsInRange] Keeping paragraph (no children):', p.tagName, p.textContent?.trim().substring(0, 50));
         filtered.push(p);
-      } else {
-        console.log('[getAllParagraphsInRange] Filtering out parent paragraph:', p.tagName);
       }
     }
 
-    console.log('[getAllParagraphsInRange] Final paragraph count:', filtered.length);
     return filtered;
   }
-
-  console.log('[getAllParagraphsInRange] No semantic paragraphs found, trying block elements...');
 
   // 兜底：查找块级元素作为段落
   const blockWalker = document.createTreeWalker(
@@ -107,7 +97,6 @@ export function getAllParagraphsInRange(range: Range): HTMLElement[] {
     node = blockWalker.nextNode();
   }
 
-  console.log('[getAllParagraphsInRange] Final block paragraph count:', paragraphs.size);
   return Array.from(paragraphs.keys());
 }
 

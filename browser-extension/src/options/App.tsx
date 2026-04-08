@@ -1196,7 +1196,7 @@ export default function App() {
             <div className="max-w-2xl mx-auto">
               <div className="text-center mb-8">
                 <img
-                  src={chrome.runtime.getURL('public/icons/icon48.png')}
+                  src={chrome.runtime.getURL('public/icons/icon64.png')}
                   alt="Select Ask"
                   className="w-16 h-16 rounded-2xl shadow-lg shadow-blue-500/20 mx-auto mb-4"
                 />

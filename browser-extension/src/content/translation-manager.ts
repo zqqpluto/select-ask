@@ -43,7 +43,6 @@ class TranslationManagerClass {
    */
   public register(entry: TranslationEntry): void {
     this.translations.set(entry.id, entry);
-    console.log(`[Translation] Registered: ${entry.id}`);
   }
 
   /**
@@ -60,7 +59,6 @@ class TranslationManagerClass {
     const entry = this.translations.get(id);
     if (entry) {
       this.translations.delete(id);
-      console.log(`[Translation] Removed: ${entry.id}`);
     }
   }
 
@@ -86,9 +84,6 @@ class TranslationManagerClass {
       entry.translationElement.remove();
       this.translations.delete(entry.id);
     });
-    if (entries.length > 0) {
-      console.log(`[Translation] Closed ${entries.length} translations for paragraph`);
-    }
   }
 
   /**
@@ -99,7 +94,6 @@ class TranslationManagerClass {
       entry.translationElement.remove();
     }
     this.translations.clear();
-    console.log('[Translation] Closed all translations');
   }
 
   /**

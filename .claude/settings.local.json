@@ -90,7 +90,20 @@
       "Bash(perl -ne 'print \"$.\\\\t$_\" if /RelatedQuestion|relatedQuestion|followUp|follow.up/' '/Users/zhaoqiqiang/Library/Application Support/Google/Chrome/Default/Extensions/dbjibobgilijgolhjdcbdebjhejelffo/1.36.0_0/static/js/content.js')",
       "Bash(strings \"/Users/zhaoqiqiang/Library/Application Support/Google/Chrome/Default/Extensions/dbjibobgilijgolhjdcbdebjhejelffo/1.36.0_0/static/js/\"*.js)",
       "Bash(perl -ne 'print \"$.\\\\t$_\" if /请围绕该主题/ || /请基于以上内容/ || /请根据/' '/Users/zhaoqiqiang/Library/Application Support/Google/Chrome/Default/Extensions/dbjibobgilijgolhjdcbdebjhejelffo/1.36.0_0/static/js/async/*.js')",
-      "Bash(perl -ne 'print \"$.\\\\t$_\" if /relatedQuestions|suggestedQuestions|followUp|recommendedQuestions/' '/Users/zhaoqiqiang/Library/Application Support/Google/Chrome/Default/Extensions/dbjibobgilijgolhjdcbdebjhejelffo/1.36.0_0/static/js/content.js')"
+      "Bash(perl -ne 'print \"$.\\\\t$_\" if /relatedQuestions|suggestedQuestions|followUp|recommendedQuestions/' '/Users/zhaoqiqiang/Library/Application Support/Google/Chrome/Default/Extensions/dbjibobgilijgolhjdcbdebjhejelffo/1.36.0_0/static/js/content.js')",
+      "Bash(xxd src/content/index.ts)",
+      "mcp__plugin_serena_serena__search_for_pattern",
+      "Bash(npm test:*)",
+      "Bash(TEST_API_KEY=\"sk-sp-4def71a569994340abbf0cace2e7585e\" TEST_API_BASE_URL=\"https://coding.dashscope.aliyuncs.com/v1\" TEST_MODEL_NAME=\"qwen3.5-plus\" npm test:*)",
+      "mcp__plugin_serena_serena__check_onboarding_performed",
+      "mcp__plugin_serena_serena__initial_instructions",
+      "mcp__plugin_serena_serena__onboarding",
+      "mcp__plugin_serena_serena__list_dir",
+      "mcp__plugin_serena_serena__find_file",
+      "mcp__plugin_serena_serena__find_symbol",
+      "Bash(awk 'NR>=7100 && NR<=7200' \"/Users/zhaoqiqiang/Library/Application Support/Google/Chrome/Default/Extensions/bpoadfkcbjbfhfodiogcnhhhpibjhbnh/1.27.2_0/content_script.js\")",
+      "Bash(awk NR>=7100 && NR<=7300:*)",
+      "Bash(awk NR>=1 && NR<=500:*)"
     ]
   }
 }

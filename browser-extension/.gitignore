@@ -25,3 +25,7 @@ dist-ssr
 
 # Environment
 .env
+
+# Test config (API keys)
+test-api-config.json
+*.test.json

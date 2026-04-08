@@ -16,7 +16,6 @@ async function initializeSidePanel() {
       path: 'src/side-panel/index.html',
     });
     sidePanelInitialized = true;
-    console.log('Side Panel initialized');
   } catch (error) {
     console.error('Failed to initialize Side Panel:', error);
   }
@@ -24,14 +23,11 @@ async function initializeSidePanel() {
 
 // 插件安装时初始化
 chrome.runtime.onInstalled.addListener(async () => {
-  console.log('Select Ask extension installed');
-
-  // 生成设备ID
+  // 生成设备 ID
   const { device_id } = await chrome.storage.sync.get('device_id');
   if (!device_id) {
     const newDeviceId = crypto.randomUUID();
     await chrome.storage.sync.set({ device_id: newDeviceId });
-    console.log('Generated device ID:', newDeviceId);
   }
 
   // 初始化存储
@@ -66,8 +62,6 @@ chrome.runtime.onConnect.addListener((port) => {
 
 // 监听来自content script的消息
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('Background received message:', message);
-
   switch (message.type) {
     case 'GET_STATE':
       // 返回当前状态

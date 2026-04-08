@@ -40,17 +40,28 @@ function buildMessages(
 
     case 'translate': {
       const browserLang = (self as any).navigator?.language || 'zh-CN';
+      // 语言代码映射到英文语言名（沉浸式翻译标准）
       const langMap: Record<string, string> = {
-        'zh': '中文', 'zh-CN': '中文', 'zh-TW': '繁体中文',
+        'zh': 'Chinese', 'zh-CN': 'Chinese', 'zh-TW': 'Chinese (Traditional)',
         'en': 'English', 'en-US': 'English', 'en-GB': 'English',
-        'ja': '日本語', 'ko': '한국어',
+        'ja': 'Japanese', 'ko': 'Korean',
+        'fr': 'French', 'de': 'German', 'es': 'Spanish', 'ru': 'Russian',
+        'pt': 'Portuguese', 'it': 'Italian', 'ar': 'Arabic', 'th': 'Thai',
+        'vi': 'Vietnamese'
       };
-      const targetLang = langMap[browserLang] || langMap[browserLang.split('-')[0]] || '中文';
-      userContent = USER_PROMPTS.translate(text, targetLang);
+      const targetLang = langMap[browserLang] || langMap[browserLang.split('-')[0]] || 'Chinese';
 
-      // 替换 system prompt 中的{to}变量为目标语言
-      const systemContent = SYSTEM_PROMPTS[action].replace('{to}', targetLang);
-      messages.push({ role: 'system', content: systemContent });
+      // 检测源语言（简单检测：如果包含中文字符则为 Chinese，否则为 English）
+      const hasChineseChar = /[\u4e00-\u9fa5]/.test(text);
+      const sourceLang = hasChineseChar ? 'Chinese' : 'English';
+
+      userContent = USER_PROMPTS.translate(text, targetLang, sourceLang);
+
+      // 替换 system prompt 中的{{to}}和{{from}}变量
+      const systemContent = SYSTEM_PROMPTS[action]
+        .replace(/{{to}}/g, targetLang)
+        .replace(/{{from}}/g, sourceLang);
+      messages[0] = { role: 'system', content: systemContent };
       messages.push({ role: 'user', content: userContent });
       return messages;
     }
@@ -132,14 +143,6 @@ export async function handleLLMStream(
       port.postMessage({ type: 'LLM_STREAM_END' });
       return;
     }
-
-    // 打印完整的消息内容
-    console.log('[Background] Messages to send:', messages.length, 'messages');
-    console.log('=== Background: Messages to send to LLM ===');
-    messages.forEach((msg, idx) => {
-      console.log(`[Message ${idx}] role: ${msg.role}`);
-      console.log(`[Message ${idx}] content preview:`, msg.content.substring(0, 500) + (msg.content.length > 500 ? '...' : ''));
-    });
 
     // 流式获取响应
     for await (const chunk of provider.streamChat(messages)) {

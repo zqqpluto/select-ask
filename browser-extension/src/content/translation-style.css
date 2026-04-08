@@ -2,80 +2,51 @@
 /* 参照沉浸式翻译 v1.27.2 的样式设计 */
 
 /* =============================================
-   Wrapper 层 - 用于布局控制
-   参照沉浸式翻译的 .immersive-translate-target-wrapper
-============================================= */
-
-/* 块级模式 wrapper - 长文本显示在原文下方 */
-.select-ask-translation-wrapper.block {
-  display: block;
-  margin: 0;
-  padding: 0;
-}
-
-/* 行内模式 wrapper - 短文本显示在原文后面 */
-.select-ask-translation-wrapper.inline {
-  display: inline-block;
-  margin: 0 4px;
-  vertical-align: baseline;
-}
-
-/* =============================================
    译文内容容器 - 参照沉浸式翻译结构
-   .immersive-translate-target-translation-block-wrapper
+   设计原则：
+   1. 默认无边框、无背景（由主题层控制）
+   2. 字体样式通过 JS 显式复制（因为兄弟元素无法 CSS inherit）
+   3. 使用 inline-block 显示，保持与原文对齐
+   4. 添加 notranslate 类防止被浏览器翻译
 ============================================= */
 
-/* 块级模式译文容器 */
+/* 块级模式译文容器 - 默认无主题样式 */
 .select-ask-translation.block {
-  display: block;
+  display: inline-block;
   margin: 8px 0 0 0;
-  padding: 12px 16px;
-  background: #f9fafb;
-  border-radius: 6px;
-  border-left: 3px solid #6366f1;
+  padding: 0;
+  background: transparent;
+  border: none;
   opacity: 0;
   animation: selectAskTranslationFadeIn 0.25s ease forwards;
   position: relative;
+  /* 字体样式通过 JS 显式复制 */
 }
 
-/* 块级模式译文内容包装器 */
-.select-ask-translation-content-wrapper {
-  display: block;
-}
-
-/* 块级模式译文内容继承样式 */
+/* 块级模式译文内容 - 不额外设置样式，完全继承 */
 .select-ask-translation.block .select-ask-translation-content {
-  /* 使用 inherit 让译文自然继承父元素样式 */
-  color: #374151;
-  font-family: inherit;
-  font-size: inherit;
-  font-weight: inherit;
-  line-height: 1.6;
-  white-space: inherit;
-  text-transform: inherit;
-  letter-spacing: inherit;
-  text-align: inherit;
   display: block;
+  /* 所有字体样式通过 inherit 从 translationEl 继承 */
 }
 
 /* =============================================
    行内模式译文样式
+   参照沉浸式翻译的 .immersive-translate-target-translation-inline-wrapper
+   设计原则：
+   1. 默认无边框、无背景（由主题层控制）
+   2. 字体样式通过 JS 显式复制
 ============================================= */
 
 /* 行内模式译文容器 */
 .select-ask-translation.inline {
   display: inline-block;
   margin: 0 0 0 6px;
-  padding: 2px 8px;
-  background: #f3f4f6;
-  border-radius: 4px;
-  border: 1px solid #e5e7eb;
-  font-size: 0.95em;
-  line-height: inherit;
-  color: #6b7280;
+  padding: 0;
+  background: transparent;
+  border: none;
   opacity: 0;
   animation: selectAskTranslationFadeIn 0.2s ease forwards;
-  max-width: 400px;
+  /* 字体样式通过 JS 显式复制 */
 }
 
 /* 行内模式译文内容包装器 */
@@ -83,17 +54,8 @@
   display: inline;
 }
 
-/* 行内模式译文内容继承原文样式 */
+/* 行内模式译文内容 - 完全继承 */
 .select-ask-translation.inline .select-ask-translation-content {
-  font-family: inherit;
-  font-size: inherit;
-  font-weight: inherit;
-  font-style: inherit;
-  line-height: inherit;
-  color: inherit;
-  text-transform: inherit;
-  letter-spacing: inherit;
-  text-align: inherit;
   display: inline;
 }
 
@@ -155,10 +117,6 @@
   position: absolute;
   right: 8px;
   top: 6px;
-}
-
-.select-ask-translation.block {
-  position: relative;
 }
 
 /* 流式加载时的光标效果 */
@@ -241,50 +199,41 @@
   font-size: 13px;
 }
 
-/* 加载状态 */
+
+/* =============================================
+   Loading 状态样式 - 参照沉浸式翻译
+   设计原则：loading 作为占位符，默认无背景无frame
+============================================= */
+
+/* 基础 loading 样式 */
 .select-ask-translation-loading {
   display: flex;
   align-items: center;
   gap: 8px;
   color: #9ca3af;
   font-size: 13px;
+  opacity: 0;
+  animation: selectAskTranslationFadeIn 0.2s ease forwards;
 }
-
-/* 行内 loading 样式 - inline 显示，不换行 */
-/* =============================================
-   Loading 状态样式 - 参照沉浸式翻译
-============================================= */
 
 /* 块级 loading - 显示在原文下方 */
 .select-ask-translation-loading.block {
   display: block;
   margin: 8px 0 0 0;
-  padding: 12px 16px;
-  background: #f9fafb;
-  border-radius: 6px;
-  border-left: 3px solid #a5b4fc;
-  opacity: 0;
-  animation: selectAskTranslationFadeIn 0.2s ease forwards;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
 }
 
 /* 行内 loading - 显示在原文后面 */
 .select-ask-translation-loading.inline {
-  display: inline-block;
+  display: inline;
   margin: 0 0 0 6px;
-  padding: 2px 8px;
-  background: #f3f4f6;
-  border-radius: 4px;
-  border: 1px solid #e5e7eb;
-  opacity: 0;
-  animation: selectAskTranslationFadeIn 0.2s ease forwards;
-}
-
-.select-ask-translation-loading {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #9ca3af;
-  font-size: 13px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
 }
 
 .select-ask-translation-loading-inline {
@@ -298,9 +247,10 @@
 .select-ask-translation-loading-block {
   display: block;
   margin: 8px 0;
-  padding: 8px 12px;
-  background: #f9fafb;
-  border-radius: 6px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
   opacity: 0;
   animation: selectAskTranslationFadeIn 0.2s ease forwards;
 }

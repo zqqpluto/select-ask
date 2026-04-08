@@ -260,7 +260,6 @@ async function createModelSelector(): Promise<HTMLElement> {
           currentIds.unshift(modelId);
           await setSelectedChatModel(modelId);
         }
-        console.log('Model switched to:', modelId);
       }
     });
   } catch (error) {
@@ -1239,7 +1238,6 @@ async function loadCache(): Promise<void> {
     await chrome.storage.local.remove('responseCache');
 
     // 不再从 storage 加载，刷新页面自动清空缓存
-    console.log('Cache cleared (new session)');
   } catch (error) {
     console.error('Failed to load cache:', error);
   }
@@ -1469,9 +1467,6 @@ function showDropdownMenu(x: number, y: number): HTMLElement {
     button.addEventListener('click', async (e) => {
       e.stopPropagation();
       e.preventDefault(); // 阻止默认行为，保持选区
-      console.log('=== Menu item button clicked ===');
-      console.log('Item key:', item.key);
-      console.log('currentSelectionData:', currentSelectionData);
       await handleMenuAction(item.key);
     });
     dropdown.appendChild(button);
@@ -1486,7 +1481,6 @@ function showDropdownMenu(x: number, y: number): HTMLElement {
  * 处理图标点击 - 显示下拉菜单
  */
 function handleMenuClick(e: MouseEvent, iconMenu: HTMLElement): void {
-  console.log('Icon clicked!', e.target);
   isIconClicking = false;
 
   // 获取图标位置
@@ -1613,10 +1607,6 @@ async function callBackendAPI(
   inputArea: HTMLElement
 ): Promise<void> {
   const startTime = Date.now();
-  console.log('=== callBackendAPI called ===');
-  console.log('Action:', action);
-  console.log('Text:', text);
-  console.log('Context:', context);
 
   const actionMap: Record<string, string> = {
     '解释': 'explain',
@@ -1638,8 +1628,6 @@ async function callBackendAPI(
   let hasAnswer = false;
 
   try {
-    console.log('=== Starting LLM stream ===');
-
     // 转换上下文格式
     const llmContext = context ? {
       selected: text,
@@ -1654,8 +1642,6 @@ async function callBackendAPI(
 
     // 流式读取响应
     for await (const chunk of streamGenerator) {
-      console.log('Received chunk:', chunk);
-
       if (chunk === '[REASONING]') {
         // 开始思考过程 - 显示并展开推理区域，移除请求中提示
         hasReasoning = true;
@@ -2286,8 +2272,6 @@ function enableFollowUp(
  * loading 始终显示在段落尾部（不换行），翻译完成后再根据文本长度决定译文显示位置
  */
 async function showInPlaceTranslation(text: string, context: any): Promise<void> {
-  console.log('=== showInPlaceTranslation called ===');
-
   // 动态导入翻译模块
   const { findParagraphContainer, getAllParagraphsInRange, generateTranslationId, insertTranslation, insertLoadingAtEnd, detectInlineMode, shouldUseInlineMode, removeTranslation } = await import('./translation-dom');
   const { TranslationManager } = await import('./translation-manager');
@@ -2307,11 +2291,9 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
 
   // 检测是否是多段选择
   const paragraphs = getAllParagraphsInRange(range);
-  console.log('Paragraphs in selection:', paragraphs.length, paragraphs);
 
   if (paragraphs.length > 1) {
     // 多段选择：每段单独翻译，一起发送，分别插入
-    console.log('Multi-paragraph selection detected, translating each paragraph separately');
     await translateMultipleParagraphs(paragraphs, {
       generateTranslationId,
       insertTranslation,
@@ -2464,8 +2446,6 @@ async function translateMultipleParagraphs(
 ): Promise<void> {
   const { generateTranslationId, insertTranslation, insertLoadingAtEnd, TranslationManager, setupTranslationInteraction, setupSourceElementInteraction, detectInlineMode, shouldUseInlineMode } = deps;
 
-  console.log('[translateMultipleParagraphs] 段落数量:', paragraphs.length);
-
   // 限制最大段落数量，防止过多请求
   const MAX_PARAGRAPHS = 100;
   let targetParagraphs = paragraphs;
@@ -2511,7 +2491,6 @@ async function translateMultipleParagraphs(
 
   // 合并多段文本为一个请求（参照沉浸式翻译使用 \n\n%%\n\n 分隔符）
   const combinedText = paragraphTexts.join('\n\n%%\n\n');
-  console.log('Combined text length:', combinedText.length);
 
   try {
     let fullResponse = '';
@@ -2532,20 +2511,14 @@ async function translateMultipleParagraphs(
       fullResponse += chunk;
     }
 
-    console.log('Translation completed, total length:', fullResponse.length);
-
     // 按分隔符拆分翻译结果（参照沉浸式翻译使用 \n\n%%\n\n）
     const translatedSegments = fullResponse.split('\n\n%%\n\n').map(s => s.trim());
 
     console.log('[段落数]', `原文:${paragraphTexts.length} 段，译文:${translatedSegments.length} 段`);
 
     // 打印翻译结果
-    const translationTexts = [];
-    for (let i = 0; i < targetParagraphs.length; i++) {
-      const translationText = translatedSegments[i] || '';
-      translationTexts.push(translationText);
-    }
-    console.log('[译文]', translationTexts.join(' || '));
+    const translationTexts = translatedSegments.map((t, i) => `[${i + 1}/${translatedSegments.length}] ${t}`).join(' || ');
+    console.log('[译文]', translationTexts);
 
     // 为每段创建译文容器
     for (let i = 0; i < targetParagraphs.length; i++) {
@@ -2597,29 +2570,24 @@ async function translateMultipleParagraphs(
       loadingEntry.loadingEl.remove();
       const contentEl = loadingEntry.container.querySelector('.select-ask-translation-content');
       if (contentEl) {
-        contentEl.innerHTML = `<span class="select-ask-translation-error">翻译失败：${error instanceof Error ? error.message : String(error)}</span>`;
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        contentEl.textContent = `翻译失败：${errorMessage}`;
+        contentEl.classList.add('select-ask-translation-error');
       }
     }
   }
-
-  console.log('All translations completed');
 }
 
 /**
  * 处理菜单动作
  */
 async function handleMenuAction(action: string): Promise<void> {
-  console.log('=== handleMenuAction called ===');
-  console.log('Action:', action);
-  console.log('currentSelectionData:', currentSelectionData);
   if (!currentSelectionData) {
     console.error('ERROR: currentSelectionData is null!');
     return;
   }
 
   const { text, context } = currentSelectionData;
-  console.log('Selected text:', text);
-  console.log('Context:', context);
 
   // 恢复选区高亮
   restoreSelectionRange();
@@ -2648,8 +2616,6 @@ async function handleMenuAction(action: string): Promise<void> {
     currentIconMenu = null;
   }
 
-  console.log('Menu action:', action, 'Text:', text);
-
   // 获取动作标题
   const titles: Record<string, string> = {
     'explain': '解释',
@@ -2661,22 +2627,15 @@ async function handleMenuAction(action: string): Promise<void> {
 
   const title = titles[action] || action;
 
-  console.log('=== About to check action ===');
-  console.log('Action value:', action);
-
   // 获取当前选中的模型用于统计
   const selectedModel = await getSelectedChatModel();
 
   if (action === 'question') {
-    console.log('=== Handling question action ===');
     // 提问功能已删除
   } else if (action === 'summarize') {
-    console.log('=== Handling summarize action ===');
-    // 统计总结功能使用
     // 显示页面总结（仅支持侧边栏模式）
     await showPageSummary(dropdownRect);
   } else if (action === 'translate') {
-    console.log('=== Handling translate action ===');
     // 检查翻译模式配置
     const translationMode = await getTranslationMode();
 
@@ -2688,15 +2647,11 @@ async function handleMenuAction(action: string): Promise<void> {
       await showResponseInSidebar(title, text, context);
     }
   } else if (action === 'explain') {
-    console.log('=== Handling explain action ===');
     // 解释功能使用侧边栏
     await showResponseInSidebar(title, text, context);
   } else if (action === 'search') {
-    console.log('=== Handling search action ===');
     // AI 搜索功能使用侧边栏
     await showResponseInSidebar(title, text, context);
-  } else {
-    console.log('=== Unknown action:', action);
   }
 }
 
@@ -2704,16 +2659,9 @@ async function handleMenuAction(action: string): Promise<void> {
  * 显示页面总结
  */
 async function showPageSummary(dropdownRect: { left: number; top: number; right: number; bottom: number } | null = null): Promise<void> {
-  console.log('=== showPageSummary called ===');
-
   try {
     // 提取页面内容
     const extractedContent = extractMainContent();
-    console.log('Extracted content:', {
-      title: extractedContent.title,
-      wordCount: extractedContent.wordCount,
-      method: extractedContent.extractionMethod,
-    });
 
     // 截断内容（限制在6000 tokens）
     const truncatedContent = truncateContent(extractedContent.content, 6000);
@@ -2737,8 +2685,6 @@ async function showPageSummary(dropdownRect: { left: number; top: number; right:
  * 在侧边栏中显示页面总结
  */
 async function showSummaryInSidebar(title: string, prompt: string): Promise<void> {
-  console.log('=== showSummaryInSidebar called ===');
-
   // 显示侧边栏
   await showSidebar();
 
@@ -2895,7 +2841,6 @@ function showIconMenu(): void {
     const menu = createIconMenu(x, y);
     document.body.appendChild(menu);
     currentIconMenu = menu;
-    console.log('Icon menu created at:', x, y);
 
     // 2 秒后自动隐藏图标（如果还没有被点击）
     selectionTimeout = window.setTimeout(() => {
@@ -2955,8 +2900,6 @@ function handleMouseUp(e: MouseEvent): void {
  * 初始化 content script
  */
 function init(): void {
-  console.log('Select Ask content script initializing...');
-
   // 加载缓存
   loadCache();
 
@@ -2999,8 +2942,6 @@ function init(): void {
       currentIconMenu = null;
     }
   }, true);
-
-  console.log('Select Ask content script initialized');
 }
 
 // 启动
@@ -3344,7 +3285,6 @@ async function callBackendAPIForSidebar(
   inputArea: HTMLElement
 ): Promise<void> {
   const startTime = Date.now();
-  console.log('=== callBackendAPIForSidebar called ===');
 
   const actionMap: Record<string, string> = {
     '解释': 'explain',
