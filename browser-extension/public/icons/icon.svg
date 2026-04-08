@@ -1,46 +1,41 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <!-- Background with rounded corners -->
-  <rect width="512" height="512" rx="112" fill="url(#gradient)"/>
+  <rect width="512" height="512" rx="120" fill="url(#gradient)"/>
 
   <defs>
-    <!-- Background gradient -->
+    <!-- 三色渐变 - 从上到下 -->
     <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#3B82F6"/>
-      <stop offset="50%" style="stop-color:#2563EB"/>
-      <stop offset="100%" style="stop-color:#1E40AF"/>
+      <stop offset="0%" style="stop-color:#60A5FA"/>
+      <stop offset="50%" style="stop-color:#3B82F6"/>
+      <stop offset="100%" style="stop-color:#2563EB"/>
     </linearGradient>
 
-    <!-- SA gradient -->
-    <linearGradient id="saGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#FFFFFF"/>
-      <stop offset="100%" style="stop-color:#BFDBFE"/>
-    </linearGradient>
-
-    <!-- Highlight -->
+    <!-- 顶部高光 -->
     <linearGradient id="highlight" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.2"/>
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.25"/>
       <stop offset="100%" style="stop-color:#FFFFFF;stop-opacity:0"/>
     </linearGradient>
 
-    <!-- Shadow -->
+    <!-- 内部阴影 -->
+    <linearGradient id="innerShadow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.15"/>
+      <stop offset="100%" style="stop-color:#FFFFFF;stop-opacity:0"/>
+    </linearGradient>
+
+    <!-- 外阴影滤镜 -->
     <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
-      <feDropShadow dx="0" dy="4" stdDeviation="12" flood-color="#000000" flood-opacity="0.375"/>
+      <feDropShadow dx="0" dy="4" stdDeviation="12" flood-color="#000000" flood-opacity="0.31"/>
     </filter>
   </defs>
 
-  <!-- SA Fused Monogram Design -->
+  <!-- SA Text - centered -->
   <g filter="url(#shadow)">
-    <!-- Combined SA path - S flows into A -->
-    <!-- S portion -->
-    <path d="M 165 175 C 135 175 115 200 120 240 C 125 280 165 310 210 305 C 245 300 270 275 265 245 C 260 220 235 200 205 208 C 180 215 170 235 180 255 C 190 275 215 285 240 275 L 242 290 C 210 305 170 295 152 260 C 135 220 155 170 200 168 C 240 165 280 190 285 235 L 300 235 C 295 185 245 150 165 175 Z" fill="url(#saGrad)"/>
-
-    <!-- A portion - connected to S tail -->
-    <path d="M 290 185 L 315 290 L 335 290 L 325 250 L 375 250 L 385 290 L 405 290 L 375 185 L 355 185 L 365 235 L 330 235 L 320 185 Z" fill="url(#saGrad)"/>
-
-    <!-- A counter (hole) -->
-    <path d="M 335 205 L 345 205 L 340 235 L 335 235 Z" fill="#1E40AF"/>
+    <text x="256" y="295" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="280" font-weight="800" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle" letter-spacing="-16">SA</text>
   </g>
 
-  <!-- Top highlight -->
-  <rect width="512" height="256" rx="112" fill="url(#highlight)" clip-path="inset(0 0 50% 0)"/>
+  <!-- Top highlight layer -->
+  <rect width="512" height="256" rx="120" fill="url(#highlight)" clip-path="inset(0 0 50% 0)"/>
+
+  <!-- Inner shadow effect at bottom -->
+  <rect x="0" y="300" width="512" height="212" rx="0" fill="url(#innerShadow)" clip-path="inset(0 0 0 0)"/>
 </svg>
