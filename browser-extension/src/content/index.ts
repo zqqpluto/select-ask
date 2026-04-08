@@ -1336,8 +1336,19 @@ function saveSelectionRange(): void {
 function restoreSelectionRange(): void {
   if (savedRange) {
     const selection = window.getSelection();
-    selection.removeAllRanges();
-    selection.addRange(savedRange);
+    // 验证 range 是否仍然有效（容器是否在文档中）
+    try {
+      const rangeNode = savedRange.startContainer;
+      if (!rangeNode || !document.contains(rangeNode)) {
+        // range 已失效，尝试从 currentSelectionData 重新定位
+        console.warn('Saved range is no longer valid');
+        return;
+      }
+      selection.removeAllRanges();
+      selection.addRange(savedRange);
+    } catch (e) {
+      console.warn('Failed to restore selection:', e);
+    }
   }
 }
 
@@ -1438,6 +1449,11 @@ function showDropdownMenu(x: number, y: number): HTMLElement {
   menuItems.forEach((item) => {
     const button = document.createElement('button');
     button.className = 'select-ask-dropdown-item';
+    // 阻止 mousedown 导致选区丢失
+    button.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
 
     const iconSpan = document.createElement('span');
     iconSpan.className = 'select-ask-dropdown-icon';
@@ -2299,6 +2315,7 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
     await translateMultipleParagraphs(paragraphs, {
       generateTranslationId,
       insertTranslation,
+      insertLoadingAtEnd,
       TranslationManager,
       setupTranslationInteraction,
       setupSourceElementInteraction,
@@ -2324,12 +2341,10 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
   // 翻译开始时：在段落后面插入 loading（作为兄弟元素）
   // 先使用原文长度预估模式（短文本使用行内 loading，长文本使用块级 loading）
   const estimatedInline = shouldUseInlineMode(text);
-  const { loadingEl } = insertLoadingAtEnd(targetParagraph, estimatedInline);
+  const { loadingEl, container: loadingContainer } = insertLoadingAtEnd(targetParagraph, estimatedInline, estimatedInline ? range : undefined);
 
   // 创建临时条目用于管理 loading 状态
   let translationEl: HTMLElement | null = null;
-  let wrapper: HTMLElement | null = null;
-  let container: HTMLElement | null = null;
   let separatorNode: Text | undefined;
   let isInline = true; // 默认使用行内模式，等翻译完成后动态判断
 
@@ -2378,8 +2393,6 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
 
         const result = insertTranslation(targetParagraph, translationId, isInline, text, isInline ? range : undefined);
         translationEl = result.translationEl;
-        wrapper = result.wrapper;
-        container = result.container;
         separatorNode = result.separatorNode;
 
         // 更新条目
@@ -2406,14 +2419,12 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
     }
 
     // 流式完成，动态判断是否需要切换模式
-    if (translationEl && wrapper && fullTranslation.trim()) {
+    if (translationEl && fullTranslation.trim()) {
       // 使用 detectInlineMode 动态判断
       const shouldBeInline = detectInlineMode(targetParagraph, text, fullTranslation);
 
-      // 如果当前模式与应该使用的模式不同，切换 wrapper 的类名
+      // 如果当前模式与应该使用的模式不同，切换 translationEl 的类名
       if (shouldBeInline !== isInline) {
-        wrapper.classList.remove(isInline ? 'inline' : 'block');
-        wrapper.classList.add(shouldBeInline ? 'inline' : 'block');
         translationEl.classList.remove(isInline ? 'inline' : 'block');
         translationEl.classList.add(shouldBeInline ? 'inline' : 'block');
       }
@@ -2443,7 +2454,7 @@ async function translateMultipleParagraphs(
   deps: {
     generateTranslationId: (text: string) => string;
     insertTranslation: (paragraph: HTMLElement, translationId: string, isInline: boolean, originalText: string, range?: Range) => { translationEl: HTMLElement; wrapper: HTMLElement; container: HTMLElement; separatorNode?: Text };
-    insertLoadingAtEnd: (paragraph: HTMLElement) => { loadingEl: HTMLElement; container: HTMLElement };
+    insertLoadingAtEnd: (paragraph: HTMLElement, isInline?: boolean, range?: Range) => { loadingEl: HTMLElement; container: HTMLElement; separatorNode?: Text };
     TranslationManager: typeof import('./translation-manager').TranslationManager;
     setupTranslationInteraction: (translationEl: HTMLElement, entryId: string) => void;
     setupSourceElementInteraction: (paragraph: HTMLElement, translationId: string) => void;
@@ -2455,6 +2466,7 @@ async function translateMultipleParagraphs(
 
   console.log('=== translateMultipleParagraphs ===');
   console.log('Paragraphs count:', paragraphs.length);
+  console.log('Paragraph texts:', paragraphTexts.map((t, i) => `[${i}] ${t.substring(0, 50)}`));
 
   // 限制最大段落数量，防止过多请求
   const MAX_PARAGRAPHS = 100;
@@ -2479,15 +2491,15 @@ async function translateMultipleParagraphs(
     container: HTMLElement;
     // 翻译完成后填充
     translationEl?: HTMLElement;
-    wrapper?: HTMLElement;
   }> = [];
 
   for (let i = 0; i < targetParagraphs.length; i++) {
     const paragraph = targetParagraphs[i];
     const translationId = generateTranslationId('loading-' + i);
 
-    // 在段落尾部插入 inline loading（不换行）
-    const { loadingEl, container } = insertLoadingAtEnd(paragraph);
+    // 在段落内部插入 inline loading（行内显示）
+    // 多段落翻译时，loading 应该显示在每个段落内部，而不是段落后面
+    const { loadingEl, container } = insertLoadingAtEnd(paragraph, true);
 
     loadingEntries.push({
       paragraph,
@@ -2498,8 +2510,8 @@ async function translateMultipleParagraphs(
     });
   }
 
-  // 合并多段文本为一个请求（参照沉浸式翻译）
-  const combinedText = paragraphTexts.join('\n---\n');
+  // 合并多段文本为一个请求（参照沉浸式翻译使用 \n\n%%\n\n 分隔符）
+  const combinedText = paragraphTexts.join('\n\n%%\n\n');
   console.log('Combined text length:', combinedText.length);
 
   try {
@@ -2523,8 +2535,8 @@ async function translateMultipleParagraphs(
 
     console.log('Translation completed, total length:', fullResponse.length);
 
-    // 按分隔符拆分翻译结果
-    const translatedSegments = fullResponse.split('\n---\n').map(s => s.trim());
+    // 按分隔符拆分翻译结果（参照沉浸式翻译使用 \n\n%%\n\n）
+    const translatedSegments = fullResponse.split('\n\n%%\n\n').map(s => s.trim());
 
     console.log('Split into', translatedSegments.length, 'segments');
 
@@ -2551,7 +2563,6 @@ async function translateMultipleParagraphs(
       const result = insertTranslation(paragraph, translationId, isInline, originalText, undefined);
 
       loadingEntry.translationEl = result.translationEl;
-      loadingEntry.wrapper = result.wrapper;
 
       // 设置交互
       setupTranslationInteraction(result.translationEl, translationId);

@@ -7,12 +7,21 @@
  * 获取选区跨越的所有段落容器
  * 返回按文档顺序排列的段落元素数组
  * 只获取直接的段落容器，不包含嵌套的子段落
+ *
+ * 参照沉浸式翻译 v1.27.2 的实现逻辑：
+ * 1. 使用 TreeWalker 遍历选区覆盖的所有元素
+ * 2. 优先识别语义化段落标签（P, LI, TD, TH, BLOCKQUOTE 等）
+ * 3. 过滤掉包含子段落的父元素，只保留最内层的段落
+ * 4. 检查元素是否在选区内（通过文本内容判断）
  */
 export function getAllParagraphsInRange(range: Range): HTMLElement[] {
   const paragraphs: Map<HTMLElement, number> = new Map(); // 用 Map 记录顺序
   const semanticTags = ['P', 'LI', 'TD', 'TH', 'BLOCKQUOTE', 'FIGCAPTION', 'CAPTION'];
 
-  // 获取选区覆盖的所有元素节点（按文档顺序）
+  console.log('[getAllParagraphsInRange] Start, commonAncestorContainer:', range.commonAncestorContainer);
+  console.log('[getAllParagraphsInRange] Selection text:', range.toString().substring(0, 100));
+
+  // 创建 TreeWalker 遍历所有元素节点
   const elementWalker = document.createTreeWalker(
     range.commonAncestorContainer,
     NodeFilter.SHOW_ELEMENT,
@@ -20,6 +29,8 @@ export function getAllParagraphsInRange(range: Range): HTMLElement[] {
   );
 
   let node: Node | null = elementWalker.currentNode;
+
+  // 遍历所有元素
   while (node) {
     // 确保是 HTMLElement
     if (node.nodeType === Node.ELEMENT_NODE && node instanceof HTMLElement) {
@@ -31,6 +42,7 @@ export function getAllParagraphsInRange(range: Range): HTMLElement[] {
         if (semanticTags.includes(el.tagName)) {
           // 检查该元素是否有选中的文本
           if (isElementTextInRange(range, el)) {
+            console.log('[getAllParagraphsInRange] Found semantic paragraph:', el.tagName, 'textContent:', el.textContent?.trim().substring(0, 50));
             // 只记录，不立即添加（需要检查是否已被父段落包含）
             if (!paragraphs.has(el)) {
               paragraphs.set(el, paragraphs.size);
@@ -42,10 +54,30 @@ export function getAllParagraphsInRange(range: Range): HTMLElement[] {
     node = elementWalker.nextNode();
   }
 
-  // 如果找到了语义化段落，返回它们
+  // 如果找到了语义化段落，过滤掉有嵌套子段落的父元素
   if (paragraphs.size > 0) {
-    return Array.from(paragraphs.keys());
+    const allParagraphs = Array.from(paragraphs.keys());
+    const filtered: HTMLElement[] = [];
+
+    for (const p of allParagraphs) {
+      // 检查该段落是否包含其他段落（作为子元素）
+      const hasChildParagraph = allParagraphs.some(child =>
+        child !== p && p.contains(child)
+      );
+      // 只保留最内层的段落（没有子段落的）
+      if (!hasChildParagraph) {
+        console.log('[getAllParagraphsInRange] Keeping paragraph (no children):', p.tagName, p.textContent?.trim().substring(0, 50));
+        filtered.push(p);
+      } else {
+        console.log('[getAllParagraphsInRange] Filtering out parent paragraph:', p.tagName);
+      }
+    }
+
+    console.log('[getAllParagraphsInRange] Final paragraph count:', filtered.length);
+    return filtered;
   }
+
+  console.log('[getAllParagraphsInRange] No semantic paragraphs found, trying block elements...');
 
   // 兜底：查找块级元素作为段落
   const blockWalker = document.createTreeWalker(
@@ -75,6 +107,7 @@ export function getAllParagraphsInRange(range: Range): HTMLElement[] {
     node = blockWalker.nextNode();
   }
 
+  console.log('[getAllParagraphsInRange] Final block paragraph count:', paragraphs.size);
   return Array.from(paragraphs.keys());
 }
 
@@ -206,36 +239,56 @@ export function shouldUseInlineMode(text: string): boolean {
 }
 
 /**
- * 创建译文容器元素 - 沉浸式双语对照样式
- * 使用双层结构：wrapper 容器 + translation 内容
+ * 创建译文容器元素 - 参照沉浸式翻译 v1.27.2 的简化结构
+ * 采用两层结构：theme 容器 + 内容容器（移除 wrapper 层）
+ * 使用 insertAdjacentHTML + "afterend" 方式插入
  * @param id - 唯一标识
  * @param isInline - 是否使用行内模式
  */
-export function createTranslationElement(id: string, isInline: boolean): { wrapper: HTMLElement; translationEl: HTMLElement } {
-  // 创建 wrapper 容器（用于布局和状态管理）
-  const wrapper = document.createElement('div');
-  wrapper.className = `select-ask-translation-wrapper ${isInline ? 'inline' : 'block'}`;
-
-  // 创建译文内容容器
+export function createTranslationElement(id: string, isInline: boolean): { translationEl: HTMLElement; contentEl: HTMLElement } {
+  // 第一层：译文内容容器（同时作为 wrapper）
   const translationEl = document.createElement('div');
   translationEl.id = id;
-  translationEl.className = `select-ask-translation ${isInline ? 'inline' : 'block'}`;
+  translationEl.className = `select-ask-translation ${isInline ? 'inline' : 'block'} notranslate`;
 
-  // 简洁结构：内容 + 关闭按钮
-  translationEl.innerHTML = `
-    <span class="select-ask-translation-content"><span class="select-ask-translation-streaming"></span></span>
-    <button class="select-ask-translation-close" title="关闭">×</button>
-  `;
+  // 第二层：内容包装器（用于样式继承）
+  const contentWrapper = document.createElement('div');
+  contentWrapper.className = 'select-ask-translation-content-wrapper';
 
-  wrapper.appendChild(translationEl);
-  return { wrapper, translationEl };
+  // 译文内容容器
+  const contentEl = document.createElement('span');
+  contentEl.className = 'select-ask-translation-content';
+
+  // 流式加载光标
+  const streamingEl = document.createElement('span');
+  streamingEl.className = 'select-ask-translation-streaming';
+  contentEl.appendChild(streamingEl);
+
+  // 组装结构
+  contentWrapper.appendChild(contentEl);
+  translationEl.appendChild(contentWrapper);
+
+  // 添加关闭按钮（块级模式使用绝对定位）
+  if (!isInline) {
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'select-ask-translation-close';
+    closeBtn.title = '关闭';
+    closeBtn.textContent = '×';
+    translationEl.appendChild(closeBtn);
+  }
+
+  return { translationEl, contentEl };
 }
 
 /**
- * 在指定位置插入译文 - 参照沉浸式翻译架构
- * 原文保持不动，译文作为独立容器插入到原文后面（作为兄弟元素）
- * 短文本：译文作为 inline-block 紧跟原文
- * 长文本：译文作为 block 显示在原文下方
+ * 在指定位置插入译文 - 参照沉浸式翻译 v1.27.2 架构
+ * 使用 insertAdjacentElement + "afterend" 方式插入译文
+ * 译文作为原文的兄弟元素，显示在原文后面（行内）或下方（块级）
+ *
+ * 两层结构：
+ * - translationEl: 译文容器，应用主题样式和 notranslate 类
+ * - contentEl: 内容容器，通过 CSS inherit 继承原文样式
+ *
  * @param inheritStyles - 是否继承原文样式（如标题、段落等）
  */
 export function insertTranslation(
@@ -249,31 +302,30 @@ export function insertTranslation(
   // 检查是否已存在
   const existing = document.getElementById(translationId);
   if (existing) {
-    return { translationEl: existing, wrapper: existing.parentElement as HTMLElement, container: existing };
+    return { translationEl: existing, wrapper: existing, container: existing };
   }
 
-  // 创建译文容器元素（包含 wrapper）
-  const { wrapper, translationEl } = createTranslationElement(translationId, isInline);
+  // 创建译文容器元素
+  const { translationEl, contentEl } = createTranslationElement(translationId, isInline);
 
   // 存储关联关系
-  wrapper.dataset.translationFor = paragraph.tagName.toLowerCase();
-  wrapper.dataset.sourceElement = paragraph.tagName.toLowerCase();
-  wrapper.dataset.originalText = originalText;
+  translationEl.dataset.translationFor = paragraph.tagName.toLowerCase();
+  translationEl.dataset.sourceElement = paragraph.tagName.toLowerCase();
+  translationEl.dataset.originalText = originalText;
 
-  // 继承原文样式：通过 CSS inherit 属性，不需要复制 tagName
+  // 样式继承：通过 CSS inherit 自动继承（译文容器是原文的兄弟元素，需要显式设置）
   if (inheritStyles) {
-    // 设置 wrapper 继承原文的关键样式
     const computedStyle = window.getComputedStyle(paragraph);
+    // 复制所有关键样式到译文容器
     const styleProperties = [
       'font-family', 'font-size', 'font-weight', 'font-style',
-      'line-height', 'color', 'text-transform', 'letter-spacing',
-      'text-align'
+      'line-height', 'letter-spacing', 'text-transform',
+      'color', 'text-align', 'word-spacing', 'text-indent'
     ];
-
     for (const prop of styleProperties) {
       const value = computedStyle.getPropertyValue(prop);
       if (value) {
-        (wrapper.style as any)[prop.replace(/-./g, x => x[1].toUpperCase())] = value;
+        (translationEl.style as any)[prop.replace(/-./g, x => x[1].toUpperCase())] = value;
       }
     }
   }
@@ -283,22 +335,27 @@ export function insertTranslation(
     let separatorNode: Text | undefined;
     if (range && !range.collapsed) {
       // 在 Range 结束位置的文本节点后插入
-      separatorNode = insertAfterRange(range, wrapper);
+      separatorNode = insertAfterRange(range, translationEl);
     } else {
       // 兜底：直接追加到段落末尾
-      paragraph.appendChild(wrapper);
+      paragraph.appendChild(translationEl);
     }
 
-    return { translationEl, wrapper, container: wrapper, separatorNode };
+    return { translationEl, wrapper: translationEl, container: translationEl, separatorNode };
   } else {
-    // 块级模式：译文作为独立 block 插入到原文后面（作为兄弟元素）
-    if (paragraph.nextSibling) {
-      paragraph.parentNode?.insertBefore(wrapper, paragraph.nextSibling);
+    // 块级模式：译文作为独立 block 插入到原文后面（使用 insertAdjacentElement）
+    // 特殊处理：如果原文是 li 元素，不能直接插入到 ul/ol 中，需要放在 li 内部
+    const parentTag = paragraph.parentNode?.nodeName?.toUpperCase();
+
+    if (parentTag === 'UL' || parentTag === 'OL') {
+      // 原文是 li，父元素是 ul/ol：将译文插入到 li 内部末尾
+      paragraph.appendChild(translationEl);
     } else {
-      paragraph.parentNode?.appendChild(wrapper);
+      // 普通元素：使用 insertAdjacentElement + "afterend" 插入到原文后面
+      paragraph.insertAdjacentElement('afterend', translationEl);
     }
 
-    return { translationEl, wrapper, container: wrapper };
+    return { translationEl, wrapper: translationEl, container: translationEl };
   }
 }
 
@@ -307,42 +364,42 @@ export function insertTranslation(
  * 参照沉浸式翻译：loading 显示在译文容器位置，而不是段落内部
  * loading 作为独立的 block 元素，显示在原文下方（块级模式）或原文后面（行内模式）
  */
-export function insertLoadingAtEnd(paragraph: HTMLElement, isInline: boolean = false): { loadingEl: HTMLElement; container: HTMLElement } {
-  const loadingEl = document.createElement('div');
-  loadingEl.className = `select-ask-translation-loading ${isInline ? 'inline' : 'block'}`;
-  loadingEl.innerHTML = '<div class="select-ask-loading-spinner"></div><span class="select-ask-loading-text">翻译中...</span>';
+export function insertLoadingAtEnd(paragraph: HTMLElement, isInline: boolean = false, range?: Range): { loadingEl: HTMLElement; container: HTMLElement; separatorNode?: Text } {
+  if (isInline) {
+    // 行内模式：loading 作为 inline 插入到选中文本后面
+    const loadingEl = document.createElement('span');
+    loadingEl.className = 'select-ask-translation-loading-inline';
+    loadingEl.innerHTML = '<div class="select-ask-loading-spinner"></div>';
 
-  // 将 loading 插入到段落后面（作为兄弟元素）
-  if (paragraph.nextSibling) {
-    paragraph.parentNode?.insertBefore(loadingEl, paragraph.nextSibling);
+    if (range && !range.collapsed) {
+      // 在 Range 结束位置的文本节点后插入
+      return { loadingEl, container: paragraph, separatorNode: insertAfterRange(range, loadingEl) };
+    } else {
+      // 兜底：直接追加到段落末尾
+      paragraph.appendChild(loadingEl);
+      return { loadingEl, container: paragraph };
+    }
   } else {
-    paragraph.parentNode?.appendChild(loadingEl);
-  }
+    // 块级模式：loading 作为独立 block 插入到段落后面（使用 insertAdjacentElement）
+    const loadingEl = document.createElement('div');
+    loadingEl.className = 'select-ask-translation-loading block';
+    loadingEl.innerHTML = '<div class="select-ask-loading-spinner"></div><span class="select-ask-loading-text">翻译中...</span>';
 
-  return { loadingEl, container: loadingEl };
+    // 使用 insertAdjacentElement + "afterend" 插入
+    paragraph.insertAdjacentElement('afterend', loadingEl);
+
+    return { loadingEl, container: loadingEl };
+  }
 }
 
 /**
- * 在选中文本后面插入 inline loading 标记（不换行）
- * 用于翻译开始时的加载状态
+ * @deprecated 使用 insertLoadingAtEnd 替代
  */
 export function insertInlineLoading(
   paragraph: HTMLElement,
   range?: Range
 ): { loadingEl: HTMLElement; container: HTMLElement; separatorNode?: Text } {
-  // 创建 inline loading 元素
-  const loadingEl = document.createElement('span');
-  loadingEl.className = 'select-ask-translation-loading-inline';
-  loadingEl.innerHTML = '<div class="select-ask-loading-spinner"></div>';
-
-  if (range && !range.collapsed) {
-    // 在 Range 结束位置的文本节点后插入
-    return { loadingEl, container: paragraph, separatorNode: insertAfterRange(range, loadingEl) };
-  } else {
-    // 兜底：直接追加到段落末尾
-    paragraph.appendChild(loadingEl);
-    return { loadingEl, container: paragraph };
-  }
+  return insertLoadingAtEnd(paragraph, true, range);
 }
 
 /**
