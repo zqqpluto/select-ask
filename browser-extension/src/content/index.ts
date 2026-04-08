@@ -2464,8 +2464,7 @@ async function translateMultipleParagraphs(
 ): Promise<void> {
   const { generateTranslationId, insertTranslation, insertLoadingAtEnd, TranslationManager, setupTranslationInteraction, setupSourceElementInteraction, detectInlineMode, shouldUseInlineMode } = deps;
 
-  console.log('=== translateMultipleParagraphs ===');
-  console.log('Paragraphs count:', paragraphs.length);
+  console.log('[translateMultipleParagraphs] 段落数量:', paragraphs.length);
 
   // 限制最大段落数量，防止过多请求
   const MAX_PARAGRAPHS = 100;
@@ -2479,14 +2478,8 @@ async function translateMultipleParagraphs(
   // 提取每段的纯文本
   const paragraphTexts = targetParagraphs.map(p => p.textContent?.trim() || '');
 
-  console.log('===== 选中的原文段落 =====');
-  paragraphTexts.forEach((text, i) => {
-    console.log(`[段落 ${i + 1}/${paragraphTexts.length}]`);
-    console.log(text);
-    console.log('---');
-  });
-  console.log('===== 选中的原文段落结束 =====');
-  console.log('Translating', paragraphTexts.length, 'paragraphs as a single request');
+  // 打印选中的原文
+  console.log('[原文]', paragraphTexts.join(' || '));
 
   // 为每个段落创建加载状态（inline loading）
   const loadingEntries: Array<{
@@ -2544,21 +2537,21 @@ async function translateMultipleParagraphs(
     // 按分隔符拆分翻译结果（参照沉浸式翻译使用 \n\n%%\n\n）
     const translatedSegments = fullResponse.split('\n\n%%\n\n').map(s => s.trim());
 
-    console.log('===== AI 翻译结果（原始） =====');
-    console.log('翻译结果段落数:', translatedSegments.length);
-    console.log('翻译结果原始长度:', fullResponse.length);
-    console.log('---');
+    console.log('[段落数]', `原文:${paragraphTexts.length} 段，译文:${translatedSegments.length} 段`);
+
+    // 打印翻译结果
+    const translationTexts = [];
+    for (let i = 0; i < targetParagraphs.length; i++) {
+      const translationText = translatedSegments[i] || '';
+      translationTexts.push(translationText);
+    }
+    console.log('[译文]', translationTexts.join(' || '));
 
     // 为每段创建译文容器
     for (let i = 0; i < targetParagraphs.length; i++) {
       const paragraph = targetParagraphs[i];
       const originalText = paragraphTexts[i];
       const translationText = translatedSegments[i] || '';
-
-      console.log(`[译文 ${i + 1}/${targetParagraphs.length}]`);
-      console.log(`原文：${originalText.substring(0, 100)}${originalText.length > 100 ? '...' : ''}`);
-      console.log(`译文：${translationText.substring(0, 100)}${translationText.length > 100 ? '...' : ''}`);
-      console.log('---');
 
       // 找到对应的加载条目
       const loadingEntry = loadingEntries.find(e => e.paragraphIdx === i);
