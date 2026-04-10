@@ -7,76 +7,87 @@
  * 获取选区跨越的所有段落容器
  * 返回按文档顺序排列的段落元素数组
  *
- * 新策略：
- * 1. 收集所有语义化段落标签
- * 2. 过滤：只保留最内层的元素（没有子元素也在列表中的元素）
- * 3. 确保不重复提取
+ * 策略：
+ * 1. 使用 TreeWalker 只遍历被 Range 覆盖的文本节点
+ * 2. 对每个被选中的文本节点，找到其最近的语义化父元素
+ * 3. 去重：相同父元素只保留一次
+ *
+ * 这样可以确保只提取真正被选中的文本所在的元素，不会包含嵌套内容。
  */
 export function getAllParagraphsInRange(range: Range): HTMLElement[] {
-  const semanticTags = ['P', 'LI', 'TD', 'TH', 'BLOCKQUOTE', 'FIGCAPTION', 'CAPTION', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'A'];
+  const semanticTags = new Set(['P', 'LI', 'TD', 'TH', 'BLOCKQUOTE', 'FIGCAPTION', 'CAPTION', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'A']);
 
-  // 收集所有匹配的语义化元素
-  const allMatching: HTMLElement[] = [];
-  const elementWalker = document.createTreeWalker(
+  // 记录已找到的段落（按插入顺序，用于去重）
+  const paragraphs: Map<HTMLElement, number> = new Map();
+  let order = 0;
+
+  // 使用 TreeWalker 只遍历文本节点
+  const textWalker = document.createTreeWalker(
     range.commonAncestorContainer,
-    NodeFilter.SHOW_ELEMENT,
+    NodeFilter.SHOW_TEXT,
     null
   );
 
-  let node: Node | null = elementWalker.currentNode;
+  let node: Node | null = textWalker.currentNode;
   while (node) {
-    if (node.nodeType === Node.ELEMENT_NODE && node instanceof HTMLElement) {
-      const el = node;
-      if (semanticTags.includes(el.tagName) && el.textContent?.trim()) {
-        if (isElementInRange(range, el)) {
-          allMatching.push(el);
+    if (node.nodeType === Node.TEXT_NODE) {
+      const textNode = node;
+      // 检查该文本节点是否在选区内
+      if (isTextNodeInRange(range, textNode)) {
+        const text = textNode.textContent?.trim();
+        if (text) {
+          // 找到该文本节点的最近语义化父元素
+          const parent = findNearestSemanticParent(textNode, semanticTags);
+          if (parent) {
+            if (!paragraphs.has(parent)) {
+              paragraphs.set(parent, order++);
+            }
+          }
         }
       }
     }
-    node = elementWalker.nextNode();
-  }
-
-  if (allMatching.length === 0) {
-    return [];
-  }
-
-  // 过滤：只保留最内层的元素（没有子元素也在 allMatching 中的元素）
-  const innermost: HTMLElement[] = [];
-  for (const el of allMatching) {
-    const hasChildInList = allMatching.some(other =>
-      other !== el && el.contains(other)
-    );
-    if (!hasChildInList) {
-      innermost.push(el);
-    }
+    node = textWalker.nextNode();
   }
 
   // 按文档顺序排序
-  innermost.sort((a, b) => {
-    const position = a.compareDocumentPosition(b);
-    return position & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
-  });
+  const result = Array.from(paragraphs.keys());
+  result.sort((a, b) => (paragraphs.get(a) || 0) - (paragraphs.get(b) || 0));
 
-  return innermost;
+  return result;
 }
 
 /**
- * 检查元素是否在选区范围内
- * 使用 Range 边界点进行精确判断
+ * 检查文本节点是否与 Range 有重叠
  */
-function isElementInRange(range: Range, element: HTMLElement): boolean {
+function isTextNodeInRange(range: Range, textNode: Text): boolean {
   try {
-    const elementRange = document.createRange();
-    elementRange.selectNodeContents(element);
+    const textRange = document.createRange();
+    textRange.selectNodeContents(textNode);
 
-    // 检查两个范围是否有重叠
-    const startBeforeEnd = range.compareBoundaryPoints(Range.END_TO_START, elementRange) <= 0;
-    const endAfterStart = range.compareBoundaryPoints(Range.START_TO_END, elementRange) >= 0;
+    const startBeforeEnd = range.compareBoundaryPoints(Range.END_TO_START, textRange) <= 0;
+    const endAfterStart = range.compareBoundaryPoints(Range.START_TO_END, textRange) >= 0;
 
     return startBeforeEnd && endAfterStart;
   } catch {
     return true;
   }
+}
+
+/**
+ * 查找文本节点的最近语义化父元素
+ */
+function findNearestSemanticParent(node: Node, semanticTags: Set<string>): HTMLElement | null {
+  let current: Node | null = node.parentElement;
+  while (current) {
+    if (current.nodeType === Node.ELEMENT_NODE && current instanceof HTMLElement) {
+      const el = current as HTMLElement;
+      if (semanticTags.has(el.tagName)) {
+        return el;
+      }
+    }
+    current = current.parentElement;
+  }
+  return null;
 }
 
 /**
@@ -319,9 +330,10 @@ export function insertTranslation(
 
     let separatorNode: Text | undefined;
 
-    // 标题元素不能在其中插入子元素作为译文，应该插入到标题后面
+    // 标题元素在行内模式下：插入到标题内容末尾（内部）
+    // 由于译文设置了 display: inline-block，它会和标题文本在同一行显示
     if (['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(paragraph.tagName)) {
-      paragraph.insertAdjacentElement('afterend', translationEl);
+      paragraph.appendChild(translationEl);
     } else {
       // 译文作为 inline-block 插入到段落内部，紧跟选中的文本
       if (range && !range.collapsed) {
