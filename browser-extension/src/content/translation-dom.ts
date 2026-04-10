@@ -74,20 +74,23 @@ function isTextNodeInRange(range: Range, textNode: Text): boolean {
 }
 
 /**
- * 查找文本节点的最近语义化父元素
+ * 查找文本节点的最外层语义化父元素
+ * 遍历所有父元素，返回最外层的语义标签，确保嵌套的语义标签
+ * （如 <li> 内的 <a>）都被映射到同一个父元素，避免重复提取
  */
 function findNearestSemanticParent(node: Node, semanticTags: Set<string>): HTMLElement | null {
   let current: Node | null = node.parentElement;
+  let lastSemantic: HTMLElement | null = null;
   while (current) {
     if (current.nodeType === Node.ELEMENT_NODE && current instanceof HTMLElement) {
       const el = current as HTMLElement;
       if (semanticTags.has(el.tagName)) {
-        return el;
+        lastSemantic = el; // 记录但不停止，继续向上查找
       }
     }
     current = current.parentElement;
   }
-  return null;
+  return lastSemantic;
 }
 
 /**
@@ -185,6 +188,37 @@ export function detectInlineMode(
   // 如果译文宽度不超过原文容器宽度的 120%，使用行内模式
   // 这个阈值允许译文比原文稍长一些，但仍然显示在同一行
   return translatedWidth <= sourceRect.width * 1.2;
+}
+
+/**
+ * 提取指定元素在 Range 内的文本
+ * 只收集直接属于该元素的文本节点，不包括嵌套语义子元素的文本
+ * 用于多段落翻译时精确提取被选中的文本
+ */
+export function getTextInElementRange(range: Range, element: HTMLElement): string {
+  const semanticTags = new Set(['P', 'LI', 'TD', 'TH', 'BLOCKQUOTE', 'FIGCAPTION', 'CAPTION', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'A']);
+  const texts: string[] = [];
+
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null);
+  let node: Node | null = walker.currentNode;
+  while (node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const textNode = node as Text;
+      if (isTextNodeInRange(range, textNode)) {
+        // 只收集映射到目标元素的文本节点
+        const parent = findNearestSemanticParent(textNode, semanticTags);
+        if (parent === element) {
+          const text = textNode.textContent?.trim();
+          if (text) {
+            texts.push(text);
+          }
+        }
+      }
+    }
+    node = walker.nextNode();
+  }
+
+  return texts.join(' ');
 }
 
 /**

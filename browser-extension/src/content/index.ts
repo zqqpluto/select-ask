@@ -2283,7 +2283,7 @@ function enableFollowUp(
  */
 async function showInPlaceTranslation(text: string, context: any): Promise<void> {
   // 动态导入翻译模块
-  const { findParagraphContainer, getAllParagraphsInRange, generateTranslationId, insertTranslation, insertLoadingAtEnd, detectInlineMode, shouldUseInlineMode, removeTranslation } = await import('./translation-dom');
+  const { findParagraphContainer, getAllParagraphsInRange, generateTranslationId, insertTranslation, insertLoadingAtEnd, detectInlineMode, shouldUseInlineMode, removeTranslation, getTextInElementRange } = await import('./translation-dom');
   const { TranslationManager } = await import('./translation-manager');
   const { setupTranslationInteraction, setupSourceElementInteraction, closeTranslation } = await import('./translation-interaction');
 
@@ -2307,7 +2307,7 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
 
   if (paragraphs.length > 1) {
     // 多段选择：每段单独翻译，一起发送，分别插入
-    await translateMultipleParagraphs(paragraphs, {
+    await translateMultipleParagraphs(paragraphs, range, {
       generateTranslationId,
       insertTranslation,
       insertLoadingAtEnd,
@@ -2316,6 +2316,7 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
       setupSourceElementInteraction,
       detectInlineMode,
       shouldUseInlineMode,
+      getTextInElementRange,
     });
     return;
   }
@@ -2453,6 +2454,7 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
  */
 async function translateMultipleParagraphs(
   paragraphs: HTMLElement[],
+  range: Range,
   deps: {
     generateTranslationId: (text: string) => string;
     insertTranslation: (paragraph: HTMLElement, translationId: string, isInline: boolean, originalText: string, range?: Range) => { translationEl: HTMLElement; wrapper: HTMLElement; container: HTMLElement; separatorNode?: Text };
@@ -2462,9 +2464,10 @@ async function translateMultipleParagraphs(
     setupSourceElementInteraction: (paragraph: HTMLElement, translationId: string) => void;
     detectInlineMode: (sourceElement: HTMLElement, sourceText: string, translatedText: string) => boolean;
     shouldUseInlineMode: (text: string) => boolean;
+    getTextInElementRange: (range: Range, element: HTMLElement) => string;
   }
 ): Promise<void> {
-  const { generateTranslationId, insertTranslation, insertLoadingAtEnd, TranslationManager, setupTranslationInteraction, setupSourceElementInteraction, detectInlineMode, shouldUseInlineMode } = deps;
+  const { generateTranslationId, insertTranslation, insertLoadingAtEnd, TranslationManager, setupTranslationInteraction, setupSourceElementInteraction, detectInlineMode, shouldUseInlineMode, getTextInElementRange } = deps;
 
   // 限制最大段落数量，防止过多请求
   const MAX_PARAGRAPHS = 100;
@@ -2475,11 +2478,11 @@ async function translateMultipleParagraphs(
     targetParagraphs = paragraphs.slice(0, MAX_PARAGRAPHS);
   }
 
-  // 提取每段的纯文本（使用 textContent，保留原始结构）
+  // 提取每段在选区内的文本（只提取被选中的文本，不包括嵌套子元素）
   const paragraphTexts: string[] = [];
   for (let i = 0; i < targetParagraphs.length; i++) {
     const p = targetParagraphs[i];
-    let text = p.textContent?.trim() || '';
+    let text = getTextInElementRange(range, p);
     // 过滤空段落
     if (text) {
       paragraphTexts.push(text);
