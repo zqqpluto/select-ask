@@ -58,39 +58,58 @@ export function getAllParagraphsInRange(range: Range): HTMLElement[] {
 
 /**
  * 检查文本节点是否与 Range 有重叠
+ * 使用 intersectsNode API，这是浏览器原生方法
  */
 function isTextNodeInRange(range: Range, textNode: Text): boolean {
   try {
+    // 使用原生 intersectsNode 检查是否有重叠
+    if (!range.intersectsNode(textNode)) {
+      return false;
+    }
+    // 进一步检查：文本节点是否有部分或全部被选中
+    // 创建文本节点的 Range
     const textRange = document.createRange();
     textRange.selectNodeContents(textNode);
 
-    const startBeforeEnd = range.compareBoundaryPoints(Range.END_TO_START, textRange) <= 0;
-    const endAfterStart = range.compareBoundaryPoints(Range.START_TO_END, textRange) >= 0;
+    // 检查两个边界点
+    const rangeStartsBeforeTextEnd = range.compareBoundaryPoints(Range.START_TO_END, textRange) >= 0;
+    const rangeEndsAfterTextStart = range.compareBoundaryPoints(Range.END_TO_START, textRange) <= 0;
 
-    return startBeforeEnd && endAfterStart;
+    return rangeStartsBeforeTextEnd && rangeEndsAfterTextStart;
   } catch {
-    return true;
+    // 出错时返回 false（不包含该文本节点），避免过多提取
+    return false;
   }
 }
 
 /**
- * 查找文本节点的最外层语义化父元素
- * 遍历所有父元素，返回最外层的语义标签，确保嵌套的语义标签
- * （如 <li> 内的 <a>）都被映射到同一个父元素，避免重复提取
+ * 查找文本节点的最近语义化父元素
+ * 找到第一个匹配的语义标签就返回，用于精确匹配文本到其直接语义容器
  */
 function findNearestSemanticParent(node: Node, semanticTags: Set<string>): HTMLElement | null {
   let current: Node | null = node.parentElement;
-  let lastSemantic: HTMLElement | null = null;
   while (current) {
     if (current.nodeType === Node.ELEMENT_NODE && current instanceof HTMLElement) {
       const el = current as HTMLElement;
       if (semanticTags.has(el.tagName)) {
-        lastSemantic = el; // 记录但不停止，继续向上查找
+        return el;
       }
     }
     current = current.parentElement;
   }
-  return lastSemantic;
+  return null;
+}
+
+/**
+ * 检查元素是否在另一个元素内部（祖先关系）
+ */
+function isDescendantOf(child: Node, ancestor: Node): boolean {
+  let current: Node | null = child;
+  while (current) {
+    if (current === ancestor) return true;
+    current = current.parentNode;
+  }
+  return false;
 }
 
 /**
@@ -205,9 +224,21 @@ export function getTextInElementRange(range: Range, element: HTMLElement): strin
     if (node.nodeType === Node.TEXT_NODE) {
       const textNode = node as Text;
       if (isTextNodeInRange(range, textNode)) {
-        // 只收集映射到目标元素的文本节点
-        const parent = findNearestSemanticParent(textNode, semanticTags);
-        if (parent === element) {
+        // 检查该文本节点的最近语义父元素是否就是目标元素本身
+        // 如果文本被嵌套的语义元素（如子 <li>）包含，则跳过
+        let current: Node | null = textNode.parentElement;
+        let isDirectText = true;
+        while (current && current !== element) {
+          if (current.nodeType === Node.ELEMENT_NODE && current instanceof HTMLElement) {
+            const el = current as HTMLElement;
+            if (semanticTags.has(el.tagName)) {
+              isDirectText = false;
+              break;
+            }
+          }
+          current = current.parentElement;
+        }
+        if (isDirectText) {
           const text = textNode.textContent?.trim();
           if (text) {
             texts.push(text);
