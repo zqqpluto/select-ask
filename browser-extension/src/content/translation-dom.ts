@@ -15,7 +15,8 @@
  */
 export function getAllParagraphsInRange(range: Range): HTMLElement[] {
   const paragraphs: Map<HTMLElement, number> = new Map(); // 用 Map 记录顺序
-  const semanticTags = ['P', 'LI', 'TD', 'TH', 'BLOCKQUOTE', 'FIGCAPTION', 'CAPTION', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'];
+  // 包含 P, LI, TD, TH 等段落标签，以及 A 标签（列表项中的链接文本需要单独提取）
+  const semanticTags = ['P', 'LI', 'TD', 'TH', 'BLOCKQUOTE', 'FIGCAPTION', 'CAPTION', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'A'];
 
   // 创建 TreeWalker 遍历所有元素节点
   const elementWalker = document.createTreeWalker(
@@ -150,7 +151,7 @@ export function generateTranslationId(text: string): string {
 
 /**
  * 动态检测译文是否应该使用行内模式
- * 通过计算原文 + 译文的总宽度是否超过容器宽度来判断
+ * 通过计算译文宽度是否超过原文容器宽度来判断
  * @param sourceElement 原文元素
  * @param sourceText 原文文本
  * @param translatedText 译文文本
@@ -160,7 +161,7 @@ export function detectInlineMode(
   sourceText: string,
   translatedText: string
 ): boolean {
-  // 创建临时 span 测量宽度
+  // 创建临时 span 测量译文宽度
   const tempSpan = document.createElement('span');
   tempSpan.style.visibility = 'hidden';
   tempSpan.style.position = 'absolute';
@@ -177,19 +178,18 @@ export function detectInlineMode(
     (tempSpan.style as any)[prop] = computedStyle.getPropertyValue(prop);
   }
 
-  // 设置内容为原文 + 空格 + 译文
-  tempSpan.textContent = sourceText + '  ' + translatedText;
+  // 测量译文宽度
+  tempSpan.textContent = translatedText;
   document.body.appendChild(tempSpan);
-
-  // 获取总宽度
-  const totalWidth = tempSpan.offsetWidth;
+  const translatedWidth = tempSpan.offsetWidth;
   document.body.removeChild(tempSpan);
 
   // 获取原文容器的宽度
   const sourceRect = sourceElement.getBoundingClientRect();
 
-  // 如果总宽度小于等于容器宽度的 95%，使用行内模式（留 5% 余量）
-  return totalWidth <= sourceRect.width * 0.95;
+  // 如果译文宽度不超过原文容器宽度的 120%，使用行内模式
+  // 这个阈值允许译文比原文稍长一些，但仍然显示在同一行
+  return translatedWidth <= sourceRect.width * 1.2;
 }
 
 /**
@@ -232,14 +232,14 @@ export function createTranslationElement(id: string, isInline: boolean): { trans
   contentWrapper.appendChild(contentEl);
   translationEl.appendChild(contentWrapper);
 
-  // 添加关闭按钮（块级模式使用绝对定位）
-  if (!isInline) {
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'select-ask-translation-close';
-    closeBtn.title = '关闭';
-    closeBtn.textContent = '×';
-    translationEl.appendChild(closeBtn);
-  }
+  // 不再添加关闭按钮，译文不支持删除
+  // if (!isInline) {
+  //   const closeBtn = document.createElement('button');
+  //   closeBtn.className = 'select-ask-translation-close';
+  //   closeBtn.title = '关闭';
+  //   closeBtn.textContent = '×';
+  //   translationEl.appendChild(closeBtn);
+  // }
 
   return { translationEl, contentEl };
 }

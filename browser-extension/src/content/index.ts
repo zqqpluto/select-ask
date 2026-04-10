@@ -2302,6 +2302,9 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
   // 检测是否是多段选择
   const paragraphs = getAllParagraphsInRange(range);
 
+  // 获取到段落后清除选区
+  clearSelection();
+
   if (paragraphs.length > 1) {
     // 多段选择：每段单独翻译，一起发送，分别插入
     await translateMultipleParagraphs(paragraphs, {
