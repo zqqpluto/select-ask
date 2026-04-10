@@ -317,12 +317,13 @@ export function insertTranslation(
     // 垂直对齐：与原文基线对齐
     translationEl.style.verticalAlign = 'baseline';
 
+    let separatorNode: Text | undefined;
+
     // 标题元素不能在其中插入子元素作为译文，应该插入到标题后面
     if (['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(paragraph.tagName)) {
       paragraph.insertAdjacentElement('afterend', translationEl);
     } else {
       // 译文作为 inline-block 插入到段落内部，紧跟选中的文本
-      let separatorNode: Text | undefined;
       if (range && !range.collapsed) {
         // 在 Range 结束位置的文本节点后插入
         separatorNode = insertAfterRange(range, translationEl);
