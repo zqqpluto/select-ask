@@ -1351,6 +1351,16 @@ function restoreSelectionRange(): void {
 }
 
 /**
+ * 清除选中文本范围
+ */
+function clearSelection(): void {
+  const selection = window.getSelection();
+  if (selection) {
+    selection.removeAllRanges();
+  }
+}
+
+/**
  * 创建图标菜单（使用 search.png 图标）
  */
 function createIconMenu(x: number, y: number): HTMLElement {
@@ -1437,11 +1447,11 @@ function showDropdownMenu(x: number, y: number): HTMLElement {
   dropdown.style.top = `${y}px`;
 
   const menuItems = [
-    { key: 'search', label: 'AI 搜索', icon: '🔍' },
-    { key: 'explain', label: '解释', icon: '💡' },
-    { key: 'translate', label: '翻译', icon: '🌐' },
-    { key: 'summarize', label: '总结页面', icon: '📄' },
-    { key: 'question', label: '提问', icon: '❓' },
+    { key: 'search', label: 'AI 搜索', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>' },
+    { key: 'explain', label: '解释', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></svg>' },
+    { key: 'translate', label: '翻译', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 8 6 6"></path><path d="m4 14 6-6 2-3"></path><path d="M2 5h12"></path><path d="M7 2h1"></path><path d="m22 22-5-10-5 10"></path><path d="M14 18h6"></path></svg>' },
+    { key: 'summarize', label: '总结页面', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>' },
+    { key: 'question', label: '提问', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></svg>' },
   ];
 
   menuItems.forEach((item) => {
@@ -1455,7 +1465,7 @@ function showDropdownMenu(x: number, y: number): HTMLElement {
 
     const iconSpan = document.createElement('span');
     iconSpan.className = 'select-ask-dropdown-icon';
-    iconSpan.textContent = item.icon;
+    iconSpan.innerHTML = item.svg;
 
     const labelSpan = document.createElement('span');
     labelSpan.className = 'select-ask-dropdown-label';
@@ -2389,11 +2399,12 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
         tempEntry.isVisible = false;
       }
 
-      // 渲染 Markdown
+      // 渲染 Markdown（注意：marked 输出需要 sanitized，这里假设输入来自可信的 LLM）
       if (translationEl) {
         const contentEl = translationEl.querySelector('.select-ask-translation-content');
         if (contentEl) {
-          contentEl.innerHTML = await marked(fullTranslation) as string;
+          const htmlContent = await marked(fullTranslation) as string;
+          contentEl.innerHTML = htmlContent;
         }
         // 滚动到译文可见
         translationEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -2414,13 +2425,19 @@ async function showInPlaceTranslation(text: string, context: any): Promise<void>
 
     TranslationManager.update(translationId, { streamCompleted: true });
 
+    // 打印完整译文
+    if (fullTranslation.trim()) {
+      console.log('[翻译译文]:', fullTranslation);
+    }
+
   } catch (error) {
+    console.error('[翻译失败]:', error instanceof Error ? error.message : error);
     // 翻译失败，移除 loading 并显示错误
     loadingEl.remove();
     if (!tempEntry.isVisible && translationEl) {
       const contentEl = translationEl.querySelector('.select-ask-translation-content');
       if (contentEl) {
-        contentEl.innerHTML = `<span class="select-ask-translation-error">翻译失败：${error instanceof Error ? error.message : String(error)}</span>`;
+        contentEl.textContent = `翻译失败：${error instanceof Error ? error.message : String(error)}`;
       }
     }
   }
@@ -2455,11 +2472,16 @@ async function translateMultipleParagraphs(
     targetParagraphs = paragraphs.slice(0, MAX_PARAGRAPHS);
   }
 
-  // 提取每段的纯文本
-  const paragraphTexts = targetParagraphs.map(p => p.textContent?.trim() || '');
-
-  // 打印选中的原文
-  console.log('[原文]', paragraphTexts.join(' || '));
+  // 提取每段的纯文本（使用 textContent，保留原始结构）
+  const paragraphTexts: string[] = [];
+  for (let i = 0; i < targetParagraphs.length; i++) {
+    const p = targetParagraphs[i];
+    let text = p.textContent?.trim() || '';
+    // 过滤空段落
+    if (text) {
+      paragraphTexts.push(text);
+    }
+  }
 
   // 为每个段落创建加载状态（inline loading）
   const loadingEntries: Array<{
@@ -2468,12 +2490,16 @@ async function translateMultipleParagraphs(
     translationId: string;
     loadingEl: HTMLElement;
     container: HTMLElement;
+    originalText: string;
     // 翻译完成后填充
     translationEl?: HTMLElement;
   }> = [];
 
   for (let i = 0; i < targetParagraphs.length; i++) {
     const paragraph = targetParagraphs[i];
+    const originalText = paragraphTexts[i] || '';
+    if (!originalText) continue;
+
     const translationId = generateTranslationId('loading-' + i);
 
     // 在段落内部插入 inline loading（行内显示）
@@ -2486,11 +2512,15 @@ async function translateMultipleParagraphs(
       translationId,
       loadingEl,
       container,
+      originalText,
     });
   }
 
-  // 合并多段文本为一个请求（参照沉浸式翻译使用 \n\n%%\n\n 分隔符）
-  const combinedText = paragraphTexts.join('\n\n%%\n\n');
+  // 合并多段文本为一个请求（使用 \n\n 分隔，让大模型知道段落边界）
+  const combinedText = paragraphTexts.join('\n\n');
+
+  // 打印翻译请求的原文（合并后的）
+  console.log('[翻译原文]:', combinedText.substring(0, 500) + (combinedText.length > 500 ? '...' : ''));
 
   try {
     let fullResponse = '';
@@ -2511,36 +2541,78 @@ async function translateMultipleParagraphs(
       fullResponse += chunk;
     }
 
-    // 按分隔符拆分翻译结果（参照沉浸式翻译使用 \n\n%%\n\n）
-    const translatedSegments = fullResponse.split('\n\n%%\n\n').map(s => s.trim());
+    // 打印完整译文
+    if (fullResponse.trim()) {
+      console.log('[翻译译文]:', fullResponse.substring(0, 500) + (fullResponse.length > 500 ? '...' : ''));
+    }
+
+    // 尝试按双换行符拆分翻译结果（因为原文是用 \n\n 分隔的）
+    // 先尝试按 \n\n 拆分，如果段数不匹配，再尝试按句子拆分
+    let translatedSegments = fullResponse.split(/\n\n+/).map(s => s.trim()).filter(s => s.length > 0);
 
     console.log('[段落数]', `原文:${paragraphTexts.length} 段，译文:${translatedSegments.length} 段`);
 
-    // 打印翻译结果
-    const translationTexts = translatedSegments.map((t, i) => `[${i + 1}/${translatedSegments.length}] ${t}`).join(' || ');
-    console.log('[译文]', translationTexts);
+    // 详细日志：原文段落
+    paragraphTexts.forEach((t, i) => {
+      console.log(`[原文段落 ${i}]:`, t.substring(0, 100) + (t.length > 100 ? '...' : ''));
+    });
+
+    // 详细日志：译文段落
+    translatedSegments.forEach((t, i) => {
+      console.log(`[译文段落 ${i}]:`, t.substring(0, 100) + (t.length > 100 ? '...' : ''));
+    });
+
+    // 如果译文段数与原文段数不匹配，需要重新分配
+    if (translatedSegments.length !== loadingEntries.length) {
+      console.warn('[翻译段数不匹配] 原文段落:', loadingEntries.length, '译文段落:', translatedSegments.length);
+
+      // 如果译文段数多于原文段数，合并多余的段
+      if (translatedSegments.length > loadingEntries.length) {
+        const ratio = translatedSegments.length / loadingEntries.length;
+        const newSegments: string[] = [];
+        for (let i = 0; i < loadingEntries.length; i++) {
+          const start = Math.floor(i * ratio);
+          const end = Math.floor((i + 1) * ratio);
+          newSegments.push(translatedSegments.slice(start, end).join(' '));
+        }
+        translatedSegments = newSegments;
+      }
+      // 如果译文段数少于原文段数，将译文平均分配或重复使用
+      else if (translatedSegments.length < loadingEntries.length) {
+        if (translatedSegments.length === 1) {
+          // 只有一段译文，所有段落都使用这一段
+          translatedSegments = Array(loadingEntries.length).fill(translatedSegments[0]);
+        } else {
+          // 按比例分配
+          const newSegments: string[] = [];
+          const ratio = loadingEntries.length / translatedSegments.length;
+          for (let i = 0; i < loadingEntries.length; i++) {
+            const segmentIdx = Math.min(Math.floor(i / ratio), translatedSegments.length - 1);
+            newSegments.push(translatedSegments[segmentIdx]);
+          }
+          translatedSegments = newSegments;
+        }
+      }
+    }
 
     // 为每段创建译文容器
-    for (let i = 0; i < targetParagraphs.length; i++) {
-      const paragraph = targetParagraphs[i];
-      const originalText = paragraphTexts[i];
+    for (let i = 0; i < loadingEntries.length; i++) {
+      const loadingEntry = loadingEntries[i];
       const translationText = translatedSegments[i] || '';
 
-      // 找到对应的加载条目
-      const loadingEntry = loadingEntries.find(e => e.paragraphIdx === i);
-      if (!loadingEntry) continue;
+      console.log(`[插入译文 ${i}/${loadingEntries.length}]`, `段落原文:"${loadingEntry.originalText.substring(0, 50)}..." → 译文:"${translationText.substring(0, 50)}..."`);
 
       // 移除 loading
       loadingEntry.loadingEl.remove();
 
       // 动态判断使用行内还是块级模式
       const isInline = translationText
-        ? detectInlineMode(paragraph, originalText, translationText)
-        : shouldUseInlineMode(originalText);
+        ? detectInlineMode(loadingEntry.paragraph, loadingEntry.originalText, translationText)
+        : shouldUseInlineMode(loadingEntry.originalText);
 
       // 创建正式的译文容器
       const translationId = loadingEntry.translationId;
-      const result = insertTranslation(paragraph, translationId, isInline, originalText, undefined);
+      const result = insertTranslation(loadingEntry.paragraph, translationId, isInline, loadingEntry.originalText, undefined);
 
       loadingEntry.translationEl = result.translationEl;
 
@@ -2564,7 +2636,7 @@ async function translateMultipleParagraphs(
       }
     }
   } catch (error) {
-    console.error('Translation failed:', error);
+    console.error('[翻译失败]:', error instanceof Error ? error.message : error);
     // 翻译失败，移除所有 loading 并显示错误
     for (const loadingEntry of loadingEntries) {
       loadingEntry.loadingEl.remove();
@@ -2638,6 +2710,12 @@ async function handleMenuAction(action: string): Promise<void> {
   } else if (action === 'translate') {
     // 检查翻译模式配置
     const translationMode = await getTranslationMode();
+
+    // 打印翻译请求的原文
+    console.log('[翻译原文]:', text);
+
+    // 清除选区
+    clearSelection();
 
     if (translationMode === 'inline') {
       // 行内翻译模式

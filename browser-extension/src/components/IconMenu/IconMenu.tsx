@@ -3,6 +3,55 @@ import { useClickOutside } from '../../hooks/useClickOutside';
 import type { IconMenuProps } from './types';
 import './style.css';
 
+function ExplainIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+      <path d="M12 17h.01" />
+    </svg>
+  );
+}
+
+function TranslateIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="m5 8 6 6" />
+      <path d="m4 14 6-6 2-3" />
+      <path d="M2 5h12" />
+      <path d="M7 2h1" />
+      <path d="m22 22-5-10-5 10" />
+      <path d="M14 18h6" />
+    </svg>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.35-4.35" />
+    </svg>
+  );
+}
+
+function QuestionIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+      <path d="M12 17h.01" />
+    </svg>
+  );
+}
+
+const ICONS: Record<string, React.FC> = {
+  explain: ExplainIcon,
+  translate: TranslateIcon,
+  search: SearchIcon,
+  question: QuestionIcon,
+};
+
 export function IconMenu({ position, onExplain, onTranslate, onQuestion, onQuestions, onClose }: IconMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -18,10 +67,10 @@ export function IconMenu({ position, onExplain, onTranslate, onQuestion, onQuest
   };
 
   const menuItems = [
-    { key: 'explain', label: '解释', icon: '💡', action: onExplain },
-    { key: 'translate', label: '翻译', icon: '🌐', action: onTranslate },
-    { key: 'search', label: '搜索', icon: '🔍', action: onSearch },
-    { key: 'question', label: '提问', icon: '❓', action: onQuestion },
+    { key: 'explain', label: '解释', Icon: ICONS.explain, action: onExplain },
+    { key: 'translate', label: '翻译', Icon: ICONS.translate, action: onTranslate },
+    { key: 'search', label: '搜索', Icon: ICONS.search, action: onSearch },
+    { key: 'question', label: '提问', Icon: ICONS.question, action: onQuestion },
   ] as const;
 
   return (
@@ -40,7 +89,9 @@ export function IconMenu({ position, onExplain, onTranslate, onQuestion, onQuest
                 item.action();
               }}
             >
-              <span className="select-ask-icon-menu-icon">{item.icon}</span>
+              <span className="select-ask-icon-menu-icon">
+                <item.Icon />
+              </span>
               <span className="select-ask-icon-menu-label">{item.label}</span>
             </button>
           </li>

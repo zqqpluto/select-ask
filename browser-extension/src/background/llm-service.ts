@@ -114,6 +114,7 @@ export async function handleLLMStream(
     const model = await getModelConfig(request.modelId);
 
     if (!model) {
+      console.error('[llm-service] 模型配置不存在，modelId:', request.modelId);
       port.postMessage({ type: 'LLM_STREAM_ERROR', error: '模型配置不存在' });
       port.postMessage({ type: 'LLM_STREAM_END' });
       return;
@@ -139,6 +140,7 @@ export async function handleLLMStream(
       // content script 格式：使用 buildMessages 构建
       messages = buildMessages(request.action, request.text, request.question, request.context, request.answer);
     } else {
+      console.error('[llm-service] 无效的请求格式');
       port.postMessage({ type: 'LLM_STREAM_ERROR', error: '无效的请求格式' });
       port.postMessage({ type: 'LLM_STREAM_END' });
       return;
@@ -155,7 +157,7 @@ export async function handleLLMStream(
 
     port.postMessage({ type: 'LLM_STREAM_END' });
   } catch (error) {
-    console.error('LLM stream error:', error);
+    console.error('[llm-service] LLM stream error:', error);
     const errorMessage = error instanceof Error ? error.message : '未知错误';
     port.postMessage({ type: 'LLM_STREAM_ERROR', error: errorMessage });
     port.postMessage({ type: 'LLM_STREAM_END' });

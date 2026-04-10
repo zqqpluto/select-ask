@@ -17,12 +17,17 @@ async function* streamViaBackground(
   question?: string,
   context?: LLMContext
 ): AsyncGenerator<string, void, unknown> {
+  console.log('[content-llm] 开始 - action:', action, 'textLength:', text.length);
+
   // 获取当前模型
   const model = await getSelectedChatModel();
 
   if (!model) {
+    console.error('[content-llm] 模型未配置');
     throw new Error('请先在设置中选择问答模型');
   }
+
+  console.log('[content-llm] 模型:', model.name);
 
   // 创建端口连接
   const port = chrome.runtime.connect({ name: LLM_STREAM_PORT_NAME });
@@ -43,6 +48,7 @@ async function* streamViaBackground(
         messageQueue.push(message);
       }
     } else if (message.type === 'LLM_STREAM_ERROR') {
+      console.error('[content-llm] 错误:', message.error);
       error = new Error(message.error);
       if (resolveNext) {
         resolveNext({ value: '', done: true });
@@ -317,7 +323,12 @@ export async function* streamExplain(
 export async function* streamTranslate(
   text: string
 ): AsyncGenerator<string, void, unknown> {
-  yield* streamViaBackground('translate', text);
+  try {
+    yield* streamViaBackground('translate', text);
+  } catch (error) {
+    console.error('[streamTranslate] 失败:', error instanceof Error ? error.message : error);
+    throw error;
+  }
 }
 
 /**

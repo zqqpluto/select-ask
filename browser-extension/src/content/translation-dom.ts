@@ -6,17 +6,16 @@
 /**
  * 获取选区跨越的所有段落容器
  * 返回按文档顺序排列的段落元素数组
- * 只获取直接的段落容器，不包含嵌套的子段落
  *
- * 参照沉浸式翻译 v1.27.2 的实现逻辑：
+ * 核心逻辑：
  * 1. 使用 TreeWalker 遍历选区覆盖的所有元素
- * 2. 优先识别语义化段落标签（P, LI, TD, TH, BLOCKQUOTE 等）
- * 3. 过滤掉包含子段落的父元素，只保留最内层的段落
- * 4. 检查元素是否在选区内（通过文本内容判断）
+ * 2. 识别语义化段落标签（P, LI, TD, TH, BLOCKQUOTE, H1-H6 等）
+ * 3. 检查元素是否在选区内（通过 Range 边界判断）
+ * 4. 只保留最内层的段落（避免父子嵌套导致重复）
  */
 export function getAllParagraphsInRange(range: Range): HTMLElement[] {
   const paragraphs: Map<HTMLElement, number> = new Map(); // 用 Map 记录顺序
-  const semanticTags = ['P', 'LI', 'TD', 'TH', 'BLOCKQUOTE', 'FIGCAPTION', 'CAPTION'];
+  const semanticTags = ['P', 'LI', 'TD', 'TH', 'BLOCKQUOTE', 'FIGCAPTION', 'CAPTION', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'];
 
   // 创建 TreeWalker 遍历所有元素节点
   const elementWalker = document.createTreeWalker(
@@ -37,8 +36,8 @@ export function getAllParagraphsInRange(range: Range): HTMLElement[] {
       if (el.textContent?.trim()) {
         // 检查是否是语义化段落标签
         if (semanticTags.includes(el.tagName)) {
-          // 检查该元素是否有选中的文本
-          if (isElementTextInRange(range, el)) {
+          // 使用 Range 边界判断来检查元素是否在选区内
+          if (isElementInRange(range, el)) {
             // 只记录，不立即添加（需要检查是否已被父段落包含）
             if (!paragraphs.has(el)) {
               paragraphs.set(el, paragraphs.size);
@@ -66,54 +65,30 @@ export function getAllParagraphsInRange(range: Range): HTMLElement[] {
       }
     }
 
+    // 按原文顺序排序（使用 Map 中记录的索引）
+    filtered.sort((a, b) => (paragraphs.get(a) || 0) - (paragraphs.get(b) || 0));
+
     return filtered;
-  }
-
-  // 兜底：查找块级元素作为段落
-  const blockWalker = document.createTreeWalker(
-    range.commonAncestorContainer,
-    NodeFilter.SHOW_ELEMENT,
-    null
-  );
-
-  node = blockWalker.currentNode;
-  while (node) {
-    if (node.nodeType === Node.ELEMENT_NODE && node instanceof HTMLElement) {
-      const el = node;
-      const display = window.getComputedStyle(el).display;
-
-      if (['block', 'list-item', 'table-cell', 'flex', 'grid'].includes(display)) {
-        if (el.textContent?.trim() && isElementTextInRange(range, el)) {
-          // 排除容器型元素，除非只有一个子元素
-          if (!['DIV', 'SECTION', 'ARTICLE', 'MAIN'].includes(el.tagName) ||
-              el.childElementCount <= 1) {
-            if (!paragraphs.has(el)) {
-              paragraphs.set(el, paragraphs.size);
-            }
-          }
-        }
-      }
-    }
-    node = blockWalker.nextNode();
   }
 
   return Array.from(paragraphs.keys());
 }
 
 /**
- * 检查元素内的文本是否在选区范围内
+ * 检查元素是否在选区范围内
+ * 使用 Range 边界点进行精确判断
  */
-function isElementTextInRange(range: Range, element: HTMLElement): boolean {
-  // 简单检查：元素是否与选区有交集
+function isElementInRange(range: Range, element: HTMLElement): boolean {
   try {
     const elementRange = document.createRange();
     elementRange.selectNodeContents(element);
 
     // 检查两个范围是否有重叠
-    return !range.compareBoundaryPoints(Range.END_TO_START, elementRange) ||
-           !range.compareBoundaryPoints(Range.START_TO_END, elementRange) ||
-           range.compareBoundaryPoints(Range.START_TO_START, elementRange) <= 0 &&
-           range.compareBoundaryPoints(Range.END_TO_END, elementRange) >= 0;
+    // 如果 elementRange 的结束点在 range 开始之前，或者 elementRange 的开始点在 range 结束之后，则没有重叠
+    const startBeforeEnd = range.compareBoundaryPoints(Range.END_TO_START, elementRange) <= 0;
+    const endAfterStart = range.compareBoundaryPoints(Range.START_TO_END, elementRange) >= 0;
+
+    return startBeforeEnd && endAfterStart;
   } catch {
     return true; // 兜底：假设在范围内
   }
@@ -307,15 +282,48 @@ export function insertTranslation(
     const computedStyle = window.getComputedStyle(paragraph);
     // 复制所有关键样式到译文容器
     const styleProperties = [
+      // 基础文本样式
       'font-family', 'font-size', 'font-weight', 'font-style',
       'line-height', 'letter-spacing', 'text-transform',
-      'color', 'text-align', 'word-spacing', 'text-indent'
+      'color', 'text-align', 'word-spacing', 'text-indent',
+      // 标题特有样式
+      'margin-top', 'margin-bottom', 'margin-left', 'margin-right',
+      'padding-top', 'padding-bottom', 'padding-left', 'padding-right',
+      // 超链接特有样式
+      'text-decoration', 'text-decoration-color', 'text-decoration-line',
+      'text-decoration-style', 'cursor',
+      // 其他布局样式
+      'display', 'vertical-align',
     ];
     for (const prop of styleProperties) {
       const value = computedStyle.getPropertyValue(prop);
       if (value) {
         (translationEl.style as any)[prop.replace(/-./g, x => x[1].toUpperCase())] = value;
       }
+    }
+
+    // 针对标题元素，确保字号正确继承
+    if (['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(paragraph.tagName)) {
+      // 标题元素通常有默认的大字号，确保继承
+      const fontSize = computedStyle.getPropertyValue('font-size');
+      if (fontSize) {
+        translationEl.style.fontSize = fontSize;
+      }
+    }
+
+    // 针对超链接元素，确保链接样式正确继承
+    if (paragraph.tagName === 'A') {
+      // 链接元素通常有下划线和特定颜色，确保继承
+      const textDecoration = computedStyle.getPropertyValue('text-decoration');
+      if (textDecoration) {
+        translationEl.style.textDecoration = textDecoration;
+      }
+      const color = computedStyle.getPropertyValue('color');
+      if (color) {
+        translationEl.style.color = color;
+      }
+      // 链接鼠标样式
+      translationEl.style.cursor = 'pointer';
     }
   }
 
