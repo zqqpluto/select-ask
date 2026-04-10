@@ -7,18 +7,16 @@
  * 获取选区跨越的所有段落容器
  * 返回按文档顺序排列的段落元素数组
  *
- * 核心逻辑：
- * 1. 使用 TreeWalker 遍历选区覆盖的所有元素
- * 2. 识别语义化段落标签（P, LI, TD, TH, BLOCKQUOTE, H1-H6 等）
- * 3. 检查元素是否在选区内（通过 Range 边界判断）
- * 4. 只保留最内层的段落（避免父子嵌套导致重复）
+ * 新策略：
+ * 1. 收集所有语义化段落标签
+ * 2. 过滤：只保留最内层的元素（没有子元素也在列表中的元素）
+ * 3. 确保不重复提取
  */
 export function getAllParagraphsInRange(range: Range): HTMLElement[] {
-  const paragraphs: Map<HTMLElement, number> = new Map(); // 用 Map 记录顺序
-  // 包含 P, LI, TD, TH 等段落标签，以及 A 标签（列表项中的链接文本需要单独提取）
   const semanticTags = ['P', 'LI', 'TD', 'TH', 'BLOCKQUOTE', 'FIGCAPTION', 'CAPTION', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'A'];
 
-  // 创建 TreeWalker 遍历所有元素节点
+  // 收集所有匹配的语义化元素
+  const allMatching: HTMLElement[] = [];
   const elementWalker = document.createTreeWalker(
     range.commonAncestorContainer,
     NodeFilter.SHOW_ELEMENT,
@@ -26,53 +24,40 @@ export function getAllParagraphsInRange(range: Range): HTMLElement[] {
   );
 
   let node: Node | null = elementWalker.currentNode;
-
-  // 遍历所有元素
   while (node) {
-    // 确保是 HTMLElement
     if (node.nodeType === Node.ELEMENT_NODE && node instanceof HTMLElement) {
       const el = node;
-
-      // 检查元素是否在选区内（通过文本内容判断）
-      if (el.textContent?.trim()) {
-        // 检查是否是语义化段落标签
-        if (semanticTags.includes(el.tagName)) {
-          // 使用 Range 边界判断来检查元素是否在选区内
-          if (isElementInRange(range, el)) {
-            // 只记录，不立即添加（需要检查是否已被父段落包含）
-            if (!paragraphs.has(el)) {
-              paragraphs.set(el, paragraphs.size);
-            }
-          }
+      if (semanticTags.includes(el.tagName) && el.textContent?.trim()) {
+        if (isElementInRange(range, el)) {
+          allMatching.push(el);
         }
       }
     }
     node = elementWalker.nextNode();
   }
 
-  // 如果找到了语义化段落，过滤掉有嵌套子段落的父元素
-  if (paragraphs.size > 0) {
-    const allParagraphs = Array.from(paragraphs.keys());
-    const filtered: HTMLElement[] = [];
-
-    for (const p of allParagraphs) {
-      // 检查该段落是否包含其他段落（作为子元素）
-      const hasChildParagraph = allParagraphs.some(child =>
-        child !== p && p.contains(child)
-      );
-      // 只保留最内层的段落（没有子段落的）
-      if (!hasChildParagraph) {
-        filtered.push(p);
-      }
-    }
-
-    // 按原文顺序排序（使用 Map 中记录的索引）
-    filtered.sort((a, b) => (paragraphs.get(a) || 0) - (paragraphs.get(b) || 0));
-
-    return filtered;
+  if (allMatching.length === 0) {
+    return [];
   }
 
-  return Array.from(paragraphs.keys());
+  // 过滤：只保留最内层的元素（没有子元素也在 allMatching 中的元素）
+  const innermost: HTMLElement[] = [];
+  for (const el of allMatching) {
+    const hasChildInList = allMatching.some(other =>
+      other !== el && el.contains(other)
+    );
+    if (!hasChildInList) {
+      innermost.push(el);
+    }
+  }
+
+  // 按文档顺序排序
+  innermost.sort((a, b) => {
+    const position = a.compareDocumentPosition(b);
+    return position & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+  });
+
+  return innermost;
 }
 
 /**
@@ -85,13 +70,12 @@ function isElementInRange(range: Range, element: HTMLElement): boolean {
     elementRange.selectNodeContents(element);
 
     // 检查两个范围是否有重叠
-    // 如果 elementRange 的结束点在 range 开始之前，或者 elementRange 的开始点在 range 结束之后，则没有重叠
     const startBeforeEnd = range.compareBoundaryPoints(Range.END_TO_START, elementRange) <= 0;
     const endAfterStart = range.compareBoundaryPoints(Range.START_TO_END, elementRange) >= 0;
 
     return startBeforeEnd && endAfterStart;
   } catch {
-    return true; // 兜底：假设在范围内
+    return true;
   }
 }
 
@@ -328,14 +312,24 @@ export function insertTranslation(
   }
 
   if (isInline) {
-    // 行内模式：译文作为 inline-block 插入到段落内部，紧跟选中的文本
-    let separatorNode: Text | undefined;
-    if (range && !range.collapsed) {
-      // 在 Range 结束位置的文本节点后插入
-      separatorNode = insertAfterRange(range, translationEl);
+    // 行内模式：确保译文是 inline-block，不被原文的 display 样式影响
+    translationEl.style.display = 'inline-block';
+    // 垂直对齐：与原文基线对齐
+    translationEl.style.verticalAlign = 'baseline';
+
+    // 标题元素不能在其中插入子元素作为译文，应该插入到标题后面
+    if (['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(paragraph.tagName)) {
+      paragraph.insertAdjacentElement('afterend', translationEl);
     } else {
-      // 兜底：直接追加到段落末尾
-      paragraph.appendChild(translationEl);
+      // 译文作为 inline-block 插入到段落内部，紧跟选中的文本
+      let separatorNode: Text | undefined;
+      if (range && !range.collapsed) {
+        // 在 Range 结束位置的文本节点后插入
+        separatorNode = insertAfterRange(range, translationEl);
+      } else {
+        // 兜底：直接追加到段落末尾
+        paragraph.appendChild(translationEl);
+      }
     }
 
     return { translationEl, wrapper: translationEl, container: translationEl, separatorNode };
