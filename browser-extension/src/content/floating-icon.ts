@@ -128,6 +128,8 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
 
 /**
  * 设置拖拽：支持任意方向拖动，松手后弹性回到右侧垂直居中
+ * 关键：CSS 初始状态是 right:0 + transform:translateY(-50%)
+ * 拖拽时用 left/top 绝对定位，弹回时用 getBoundingClientRect 计算精确目标
  */
 function setupDrag(container: HTMLElement, btn: HTMLElement) {
   let offsetX = 0; // 鼠标相对于图标左边缘的偏移
@@ -159,21 +161,38 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
     container.style.transform = 'none';
   }
 
+  function animateBack() {
+    // 先清除拖拽时的 left/top，让浏览器按 CSS 重新计算尺寸
+    container.style.left = '';
+    container.style.top = '';
+    container.style.right = '';
+    container.style.transform = '';
+
+    // 强制重排，确保浏览器已经应用了 CSS 默认值
+    void container.offsetHeight;
+
+    // 现在获取图标的实际尺寸
+    const rect = container.getBoundingClientRect();
+    const iconWidth = rect.width;
+    const iconHeight = rect.height;
+
+    // 目标位置：紧贴右侧 + 垂直居中
+    const targetLeft = window.innerWidth - iconWidth;
+    const targetTop = window.innerHeight / 2 - iconHeight / 2;
+
+    container.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+    container.style.left = `${targetLeft}px`;
+    container.style.top = `${targetTop}px`;
+    container.style.right = 'auto';
+    container.style.transform = 'none';
+  }
+
   function onPointerUp() {
     if (!isPointerDown) return;
     isPointerDown = false;
     isDragging = false;
 
-    // 清除 left/top，恢复 CSS 默认定位
-    container.style.left = '';
-    container.style.top = '';
-    container.style.right = '';
-    container.style.transform = '';
-    // 然后添加过渡动画
-    container.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
-    container.style.right = '0';
-    container.style.top = '50%';
-    container.style.transform = 'translateY(-50%)';
+    animateBack();
   }
 
   function onPointerCancel() {
@@ -181,14 +200,7 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
     isPointerDown = false;
     isDragging = false;
 
-    container.style.left = '';
-    container.style.top = '';
-    container.style.right = '';
-    container.style.transform = '';
-    container.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
-    container.style.right = '0';
-    container.style.top = '50%';
-    container.style.transform = 'translateY(-50%)';
+    animateBack();
   }
 
   btn.addEventListener('pointerdown', onPointerDown);
