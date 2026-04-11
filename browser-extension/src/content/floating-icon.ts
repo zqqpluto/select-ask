@@ -4,7 +4,7 @@
  */
 
 const ICON_Z_INDEX = 2147483646;
-const RIGHT_MARGIN = 12; // 默认右边距 px
+const RIGHT_MARGIN = 0; // 默认右边距 px（靠最右边）
 let floatingIconEl: HTMLElement | null = null;
 let hoverTimer: ReturnType<typeof setTimeout> | null = null;
 let leaveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -39,7 +39,6 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   const menu = document.createElement('div');
   menu.className = 'select-ask-floating-icon-menu';
   menu.appendChild(buildMenuItem('full-translate', options.isTranslating ?? false ? 'stop-translate' : 'translate'));
-  menu.appendChild(buildMenuItem('restore', 'restore'));
 
   container.appendChild(btn);
   container.appendChild(menu);
@@ -156,7 +155,6 @@ function buildMenuItem(action: string, iconType: string): HTMLButtonElement {
 
   const titleMap: Record<string, string> = {
     'full-translate': '', // 动态设置
-    'restore': '恢复原文',
   };
   btn.title = titleMap[action] || '';
 
@@ -202,11 +200,7 @@ function buildIconSvg(type: string): SVGSVGElement | null {
       return sSvg;
 
     case 'restore':
-      const rSvg = createSvg('18', '18', '0 0 24 24');
-      appendSvgPath(rSvg, 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8');
-      appendSvgPath(rSvg, 'M3 3v5h5');
-      appendSvgPath(rSvg, 'M12 7v5l4 2');
-      return rSvg;
+      return null;
 
     default:
       return null;

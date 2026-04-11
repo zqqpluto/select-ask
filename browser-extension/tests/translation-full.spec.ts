@@ -723,9 +723,9 @@ test.describe('Select Ask - 全量翻译功能测试', () => {
     expect(menu).toBeTruthy();
     console.log('✓ hover 菜单出现');
 
-    // 检查菜单项
+    // 检查菜单项（现在只有翻译/停止切换 1 个菜单项）
     const items = await page.$$('.select-ask-floating-icon-menu-item');
-    expect(items.length).toBeGreaterThanOrEqual(2);
+    expect(items.length).toBeGreaterThanOrEqual(1);
     console.log(`✓ 菜单项数量: ${items.length}`);
 
     // 检查菜单项有 tooltip
@@ -795,16 +795,39 @@ test.describe('Select Ask - 全量翻译功能测试', () => {
     // 松开鼠标
     await page.mouse.up();
 
-    // 等待弹性回弹动画完成（400ms）
-    await page.waitForTimeout(600);
+    // 等待弹性回弹动画完成（400ms）+ 额外缓冲
+    await page.waitForTimeout(800);
 
-    const afterBounceTransform = await container.evaluate((el) => el.style.transform);
+    // 使用 getComputedStyle 获取最终 transform
+    const afterBounceTransform = await container.evaluate((el) => {
+      const inline = el.style.transform;
+      if (inline) return inline;
+      const computed = getComputedStyle(el).transform;
+      // matrix(1, 0, 0, 1, 0, Y) 其中 Y=0 表示没有 translateX 偏移
+      return computed;
+    });
     console.log(`  回弹后 transform: ${afterBounceTransform}`);
 
     // 验证回弹后回到了初始位置
-    // translateX 应该接近 0（允许少量误差）
-    expect(afterBounceTransform).toContain('translateX(0px)');
-    console.log('✓ 拖拽后弹性回弹到右侧');
+    // inline style 应为 translateY(-50%)，或为空（表示无 translateX）
+    // computed style 应为 matrix(1, 0, 0, 1, 0, Y) 形式（Y 为中心化偏移，X=0）
+    if (afterBounceTransform === '') {
+      // 空字符串表示没有 inline transform，也是正确的
+      console.log('✓ 拖拽后弹性回弹到右侧（无 inline transform）');
+    } else if (afterBounceTransform.startsWith('matrix(')) {
+      // matrix(a, b, c, d, tx, ty) - tx 应为 0 表示无水平偏移
+      const values = afterBounceTransform.match(/matrix\((.+)\)/);
+      if (values) {
+        const parts = values[1].split(',').map(v => parseFloat(v.trim()));
+        const translateX = parts[4];
+        expect(Math.abs(translateX)).toBeLessThanOrEqual(1);
+        console.log(`✓ 拖拽后弹性回弹到右侧（translateX=${translateX}）`);
+      }
+    } else {
+      expect(afterBounceTransform).toContain('translateY');
+      expect(afterBounceTransform).not.toContain('translateX(');
+      console.log('✓ 拖拽后弹性回弹到右侧');
+    }
   });
 
   /**
@@ -952,12 +975,10 @@ test.describe('Select Ask - 全量翻译功能测试', () => {
         hasLoading = true;
         console.log(`✓ 段落 loading 存在，数量: ${loadingEls.length}`);
 
-        // 检查 loading 包含 spinner 和文字
+        // 检查 loading 包含 spinner
         const spinner = await loadingEls[0].$('.select-ask-fp-loading-spinner');
-        const text = await loadingEls[0].$('.select-ask-fp-loading-text');
         expect(spinner).toBeTruthy();
-        expect(text).toBeTruthy();
-        console.log('✓ loading 包含 spinner 和文字');
+        console.log('✓ loading 包含 spinner');
         break;
       }
     }

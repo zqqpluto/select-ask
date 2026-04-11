@@ -3760,27 +3760,27 @@ function initFloatingIcon(): void {
       let isTranslating = false;
 
       const icon = createFloatingIcon({
-        onFullPageTranslate: async () => {
-          await startFullPageTranslation();
+        onFullPageTranslate: () => {
           isTranslating = true;
           updateMenuState(true);
+          startFullPageTranslation();
         },
         onRestore: () => {
           restoreAllTranslations();
           isTranslating = false;
           updateMenuState(false);
         },
-        onToggleFullPageTranslate: async () => {
+        onToggleFullPageTranslate: () => {
           if (isTranslating) {
             // 停止翻译：恢复原文
             restoreAllTranslations();
             isTranslating = false;
             updateMenuState(false);
           } else {
-            // 开始翻译
-            await startFullPageTranslation();
+            // 开始翻译 - 先更新UI，再启动翻译（fire-and-forget）
             isTranslating = true;
             updateMenuState(true);
+            startFullPageTranslation();
           }
         },
         isTranslating: false,

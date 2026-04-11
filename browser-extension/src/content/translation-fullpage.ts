@@ -180,8 +180,12 @@ function insertTranslationWrapper(
 
   const contentSpan = document.createElement('span');
   contentSpan.className = 'select-ask-fp-translation-content';
-  // marked.parse 返回的是安全的 HTML（用户可控文本经 LLM 翻译）
-  contentSpan.innerHTML = marked.parse(translationText) as string;
+
+  // marked.parse 返回安全的 HTML（用户可控文本经 LLM 翻译）
+  // 如果结果只包含单个 <p> 标签，剥离外层 <p> 避免多余间距
+  const rawHtml = marked.parse(translationText) as string;
+  const singleParaMatch = rawHtml.match(/^<p>([\s\S]*)<\/p>$/i);
+  contentSpan.innerHTML = singleParaMatch ? singleParaMatch[1] : rawHtml;
 
   wrapper.appendChild(label);
   wrapper.appendChild(contentSpan);
@@ -209,12 +213,7 @@ function showLoadingOnParagraph(element: HTMLElement): void {
   const spinner = document.createElement('span');
   spinner.className = 'select-ask-fp-loading-spinner';
 
-  const text = document.createElement('span');
-  text.className = 'select-ask-fp-loading-text';
-  text.textContent = '翻译中...';
-
   loadingEl.appendChild(spinner);
-  loadingEl.appendChild(text);
   element.appendChild(loadingEl);
 }
 
