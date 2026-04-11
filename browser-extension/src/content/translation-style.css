@@ -673,6 +673,52 @@
   margin: 2px 0;
 }
 
+/* 译文标签 */
+.select-ask-fp-translation-label {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #ffffff;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin: 0 6px 4px 0;
+  line-height: 1.4;
+  vertical-align: middle;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 段落翻译中 loading（参照沉浸式翻译风格） */
+.select-ask-fp-paragraph-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #9ca3af;
+  padding: 2px 0;
+  opacity: 0.8;
+}
+
+.select-ask-fp-loading-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: selectAskFpSpin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+.select-ask-fp-loading-text {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+@keyframes selectAskFpSpin {
+  to { transform: rotate(360deg); }
+}
+
 .select-ask-fp-translation-content p {
   margin: 0 0 4px 0;
 }
@@ -744,6 +790,24 @@
 @media (prefers-color-scheme: dark) {
   .select-ask-fp-translation-content {
     color: #9ca3af;
+  }
+
+  .select-ask-fp-translation-label {
+    background: linear-gradient(135deg, #818cf8, #a78bfa);
+    color: #1f2937;
+  }
+
+  .select-ask-fp-paragraph-loading {
+    color: #6b7280;
+  }
+
+  .select-ask-fp-loading-spinner {
+    border-color: #374151;
+    border-top-color: #818cf8;
+  }
+
+  .select-ask-fp-loading-text {
+    color: #6b7280;
   }
 
   .select-ask-fp-control-bar {
