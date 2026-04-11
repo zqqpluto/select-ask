@@ -128,48 +128,59 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
 
 /**
  * 设置拖拽：支持任意方向拖动，松手后弹性回到右侧垂直居中
- * 参照豆包实现：
- * - CSS 始终固定 right:0 + top:50% + transform:translateY(-50%)
- * - 拖拽时用 translate3d(dx, dy, 0) 偏移，不改变 left/top/right
- * - 松开时设置 transition 动画，将 X 归零、Y 保留（已裁切）
+ *
+ * 完全参照豆包实现：
+ * 1. CSS 固定 position:fixed + right:0 + top:50% + translateY(-50%)
+ * 2. 拖拽时在 btn 上设置 transform: translate3d(dx, dy, 0)
+ * 3. 松开时设置 transition 动画，X 归零，Y 保留裁切后的值
+ * 4. transitionend 回调中清空 transform 和 transition，恢复纯 CSS 居中
  */
 function setupDrag(container: HTMLElement, btn: HTMLElement) {
-  let startClientX = 0;
-  let startClientY = 0;
-  let dragDx = 0;
-  let dragDy = 0;
+  let startX = 0;
+  let startY = 0;
+  let currentX = 0;
+  let currentY = 0;
   let isPointerDown = false;
 
-  function applyTransform(dx: number, dy: number, transition?: string) {
-    if (transition) {
-      container.style.transition = transition;
-    } else {
-      container.style.transition = 'none';
-    }
-    container.style.transform = `translateY(calc(-50% + ${dy}px)) translateX(${dx}px)`;
+  function setTransform(dx: number, dy: number, transition?: string) {
+    btn.style.transition = transition || 'none';
+    btn.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+    currentX = dx;
+    currentY = dy;
+  }
+
+  function clampY(value: number): number {
+    const min = -(window.innerHeight / 2 - 38);
+    const max = window.innerHeight / 2 - 38;
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function clampX(value: number): number {
+    const min = -(window.innerWidth - 38);
+    const max = 0;
+    return Math.max(min, Math.min(max, value));
   }
 
   function onPointerDown(e: PointerEvent) {
     if (e.button !== 0) return;
     isPointerDown = true;
-    startClientX = e.clientX - dragDx;
-    startClientY = e.clientY - dragDy;
-    applyTransform(dragDx, dragDy);
+
+    const [lastX, lastY] = [currentX, currentY];
+    startX = e.clientX - lastX;
+    startY = e.clientY - lastY;
+    setTransform(lastX, lastY);
   }
 
   function onPointerMove(e: PointerEvent) {
     if (!isPointerDown) return;
 
-    dragDx = e.clientX - startClientX;
-    dragDy = e.clientY - startClientY;
-
-    // 垂直方向限制：不超过屏幕上下边界
-    const maxUp = -(window.innerHeight / 2 - 20);
-    const maxDown = window.innerHeight / 2 - 20;
-    dragDy = Math.max(maxUp, Math.min(maxDown, dragDy));
+    let dx = e.clientX - startX;
+    let dy = e.clientY - startY;
+    dx = clampX(dx);
+    dy = clampY(dy);
 
     isDragging = true;
-    applyTransform(dragDx, dragDy);
+    setTransform(dx, dy);
   }
 
   function onPointerUp() {
@@ -177,8 +188,18 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
     isPointerDown = false;
     isDragging = false;
 
-    // X 归零（回到右侧），Y 保持当前位置
-    applyTransform(0, dragDy, 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)');
+    const clampedY = clampY(currentY);
+
+    // 动画：X 归零，Y 裁切后保留
+    setTransform(0, clampedY, 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)');
+
+    // transitionend 后清空，让 CSS 重新接管（同豆包做法）
+    btn.addEventListener('transitionend', () => {
+      btn.style.transition = '';
+      btn.style.transform = '';
+      currentX = 0;
+      currentY = 0;
+    }, { once: true });
   }
 
   function onPointerCancel() {
@@ -186,14 +207,22 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
     isPointerDown = false;
     isDragging = false;
 
-    // 弹回右侧
-    applyTransform(0, dragDy, 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)');
+    const clampedY = clampY(currentY);
+    setTransform(0, clampedY, 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)');
+
+    btn.addEventListener('transitionend', () => {
+      btn.style.transition = '';
+      btn.style.transform = '';
+      currentX = 0;
+      currentY = 0;
+    }, { once: true });
   }
 
   btn.addEventListener('pointerdown', onPointerDown);
   document.addEventListener('pointermove', onPointerMove);
   document.addEventListener('pointerup', onPointerUp);
   document.addEventListener('pointercancel', onPointerCancel);
+}
 }
 
 let currentOffsetX = 0; // deprecated, kept for compatibility
