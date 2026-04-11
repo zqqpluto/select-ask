@@ -129,11 +129,12 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
 /**
  * 设置拖拽：支持任意方向拖动，松手后弹性回到右侧垂直居中
  *
- * 完全参照豆包实现：
- * 1. CSS 固定 position:fixed + right:0 + top:50% + translateY(-50%)
- * 2. 拖拽时在 btn 上设置 transform: translate3d(dx, dy, 0)
- * 3. 松开时设置 transition 动画，X 归零，Y 保留裁切后的值
- * 4. transitionend 回调中清空 transform 和 transition，恢复纯 CSS 居中
+ * 核心思路：
+ * - container：CSS 固定 position:fixed + right:0 + top:50% + transform:translateY(-50%)
+ * - 拖拽时在 container 上覆盖 transform: translate(dx, dy)
+ * - 松开时动画回弹到 right:0 + top:50%
+ * - 关键：用 container 而非 btn 做 transform，避免与 CSS translateY(-50%) 冲突
+ * - 动画结束后清除 inline style，让 CSS 完全接管
  */
 function setupDrag(container: HTMLElement, btn: HTMLElement) {
   let startX = 0;
@@ -142,9 +143,13 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
   let currentY = 0;
   let isPointerDown = false;
 
+  // 用 CSS 变量驱动 transform，避免 inline style 冲突
   function setTransform(dx: number, dy: number, transition?: string) {
-    btn.style.transition = transition || 'none';
-    btn.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+    container.style.transition = transition || 'none';
+    container.style.left = `${dx}px`;
+    container.style.top = `calc(50% + ${dy}px)`;
+    container.style.right = 'auto';
+    container.style.transform = 'none';
     currentX = dx;
     currentY = dy;
   }
@@ -165,10 +170,9 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
     if (e.button !== 0) return;
     isPointerDown = true;
 
-    const [lastX, lastY] = [currentX, currentY];
-    startX = e.clientX - lastX;
-    startY = e.clientY - lastY;
-    setTransform(lastX, lastY);
+    startX = e.clientX - currentX;
+    startY = e.clientY - currentY;
+    setTransform(currentX, currentY);
   }
 
   function onPointerMove(e: PointerEvent) {
@@ -183,39 +187,29 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
     setTransform(dx, dy);
   }
 
+  function snapBack() {
+    // 清除 inline style，让 CSS 重新接管（right:0 + top:50%）
+    container.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+    container.style.left = 'auto';
+    container.style.top = '50%';
+    container.style.right = '0px';
+    container.style.transform = 'translateY(-50%)';
+    currentX = 0;
+    currentY = 0;
+  }
+
   function onPointerUp() {
     if (!isPointerDown) return;
     isPointerDown = false;
     isDragging = false;
-
-    const clampedY = clampY(currentY);
-
-    // 动画：X 归零，Y 裁切后保留
-    setTransform(0, clampedY, 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)');
-
-    // transitionend 后清空，让 CSS 重新接管（同豆包做法）
-    btn.addEventListener('transitionend', () => {
-      btn.style.transition = '';
-      btn.style.transform = '';
-      currentX = 0;
-      currentY = 0;
-    }, { once: true });
+    snapBack();
   }
 
   function onPointerCancel() {
     if (!isPointerDown) return;
     isPointerDown = false;
     isDragging = false;
-
-    const clampedY = clampY(currentY);
-    setTransform(0, clampedY, 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)');
-
-    btn.addEventListener('transitionend', () => {
-      btn.style.transition = '';
-      btn.style.transform = '';
-      currentX = 0;
-      currentY = 0;
-    }, { once: true });
+    snapBack();
   }
 
   btn.addEventListener('pointerdown', onPointerDown);
