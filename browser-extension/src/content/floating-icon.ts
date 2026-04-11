@@ -131,27 +131,23 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
  *
  * 核心思路：
  * - container：CSS 固定 position:fixed + right:0 + top:50% + transform:translateY(-50%)
- * - 拖拽时在 container 上覆盖 transform: translate(dx, dy)
- * - 松开时动画回弹到 right:0 + top:50%
- * - 关键：用 container 而非 btn 做 transform，避免与 CSS translateY(-50%) 冲突
- * - 动画结束后清除 inline style，让 CSS 完全接管
+ * - 拖拽时在 container 上叠加 transform: translate(dx, dy) translateY(-50%)
+ * - 松开时动画回弹到 transform: translateY(-50%)
+ * - 用 transitionend 清理 inline style，让 CSS 完全接管
  */
 function setupDrag(container: HTMLElement, btn: HTMLElement) {
   let startX = 0;
   let startY = 0;
-  let currentX = 0;
-  let currentY = 0;
+  let currentDx = 0;
+  let currentDy = 0;
   let isPointerDown = false;
 
-  // 用 CSS 变量驱动 transform，避免 inline style 冲突
+  // 用 transform 统一控制偏移，CSS translateY(-50%) 始终保留
   function setTransform(dx: number, dy: number, transition?: string) {
     container.style.transition = transition || 'none';
-    container.style.left = `${dx}px`;
-    container.style.top = `calc(50% + ${dy}px)`;
-    container.style.right = 'auto';
-    container.style.transform = 'none';
-    currentX = dx;
-    currentY = dy;
+    container.style.transform = `translate(${dx}px, ${dy}px) translateY(-50%)`;
+    currentDx = dx;
+    currentDy = dy;
   }
 
   function clampY(value: number): number {
@@ -170,9 +166,11 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
     if (e.button !== 0) return;
     isPointerDown = true;
 
-    startX = e.clientX - currentX;
-    startY = e.clientY - currentY;
-    setTransform(currentX, currentY);
+    // 基于当前累积偏移计算起点
+    startX = e.clientX - currentDx;
+    startY = e.clientY - currentDy;
+    setTransform(currentDx, currentDy);
+    btn.setPointerCapture(e.pointerId);
   }
 
   function onPointerMove(e: PointerEvent) {
@@ -188,14 +186,17 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
   }
 
   function snapBack() {
-    // 清除 inline style，让 CSS 重新接管（right:0 + top:50%）
-    container.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
-    container.style.left = 'auto';
-    container.style.top = '50%';
-    container.style.right = '0px';
+    currentDx = 0;
+    currentDy = 0;
+    container.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
     container.style.transform = 'translateY(-50%)';
-    currentX = 0;
-    currentY = 0;
+  }
+
+  function onTransitionEnd() {
+    // 动画结束后清除 inline style，让 CSS 完全接管
+    if (!container.style.transition.includes('0.4s')) return;
+    container.style.transition = '';
+    container.style.transform = '';
   }
 
   function onPointerUp() {
@@ -213,12 +214,11 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
   }
 
   btn.addEventListener('pointerdown', onPointerDown);
+  btn.addEventListener('transitionend', onTransitionEnd);
   document.addEventListener('pointermove', onPointerMove);
   document.addEventListener('pointerup', onPointerUp);
   document.addEventListener('pointercancel', onPointerCancel);
 }
-
-let currentOffsetX = 0; // deprecated, kept for compatibility
 
 /**
  * 构建 Logo 图片
