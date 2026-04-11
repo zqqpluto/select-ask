@@ -128,63 +128,48 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
 
 /**
  * 设置拖拽：支持任意方向拖动，松手后弹性回到右侧垂直居中
- * 关键：CSS 初始状态是 right:0 + transform:translateY(-50%)
- * 拖拽时用 left/top 绝对定位，弹回时用 getBoundingClientRect 计算精确目标
+ * 参照豆包实现：
+ * - CSS 始终固定 right:0 + top:50% + transform:translateY(-50%)
+ * - 拖拽时用 translate3d(dx, dy, 0) 偏移，不改变 left/top/right
+ * - 松开时设置 transition 动画，将 X 归零、Y 保留（已裁切）
  */
 function setupDrag(container: HTMLElement, btn: HTMLElement) {
-  let offsetX = 0; // 鼠标相对于图标左边缘的偏移
-  let offsetY = 0; // 鼠标相对于图标上边缘的偏移
+  let startClientX = 0;
+  let startClientY = 0;
+  let dragDx = 0;
+  let dragDy = 0;
   let isPointerDown = false;
+
+  function applyTransform(dx: number, dy: number, transition?: string) {
+    if (transition) {
+      container.style.transition = transition;
+    } else {
+      container.style.transition = 'none';
+    }
+    container.style.transform = `translateY(calc(-50% + ${dy}px)) translateX(${dx}px)`;
+  }
 
   function onPointerDown(e: PointerEvent) {
     if (e.button !== 0) return;
     isPointerDown = true;
-
-    const rect = container.getBoundingClientRect();
-    offsetX = e.clientX - rect.left;
-    offsetY = e.clientY - rect.top;
-
-    btn.style.transition = 'none';
-    container.style.transition = 'none';
+    startClientX = e.clientX - dragDx;
+    startClientY = e.clientY - dragDy;
+    applyTransform(dragDx, dragDy);
   }
 
   function onPointerMove(e: PointerEvent) {
     if (!isPointerDown) return;
 
+    dragDx = e.clientX - startClientX;
+    dragDy = e.clientY - startClientY;
+
+    // 垂直方向限制：不超过屏幕上下边界
+    const maxUp = -(window.innerHeight / 2 - 20);
+    const maxDown = window.innerHeight / 2 - 20;
+    dragDy = Math.max(maxUp, Math.min(maxDown, dragDy));
+
     isDragging = true;
-    const newLeft = e.clientX - offsetX;
-    const newTop = e.clientY - offsetY;
-
-    container.style.left = `${newLeft}px`;
-    container.style.top = `${newTop}px`;
-    container.style.right = 'auto';
-    container.style.transform = 'none';
-  }
-
-  function animateBack() {
-    // 先清除拖拽时的 left/top，让浏览器按 CSS 重新计算尺寸
-    container.style.left = '';
-    container.style.top = '';
-    container.style.right = '';
-    container.style.transform = '';
-
-    // 强制重排，确保浏览器已经应用了 CSS 默认值
-    void container.offsetHeight;
-
-    // 现在获取图标的实际尺寸
-    const rect = container.getBoundingClientRect();
-    const iconWidth = rect.width;
-    const iconHeight = rect.height;
-
-    // 目标位置：紧贴右侧 + 垂直居中
-    const targetLeft = window.innerWidth - iconWidth;
-    const targetTop = window.innerHeight / 2 - iconHeight / 2;
-
-    container.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
-    container.style.left = `${targetLeft}px`;
-    container.style.top = `${targetTop}px`;
-    container.style.right = 'auto';
-    container.style.transform = 'none';
+    applyTransform(dragDx, dragDy);
   }
 
   function onPointerUp() {
@@ -192,7 +177,8 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
     isPointerDown = false;
     isDragging = false;
 
-    animateBack();
+    // X 归零（回到右侧），Y 保持当前位置
+    applyTransform(0, dragDy, 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)');
   }
 
   function onPointerCancel() {
@@ -200,7 +186,8 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
     isPointerDown = false;
     isDragging = false;
 
-    animateBack();
+    // 弹回右侧
+    applyTransform(0, dragDy, 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)');
   }
 
   btn.addEventListener('pointerdown', onPointerDown);
