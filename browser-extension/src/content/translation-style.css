@@ -349,3 +349,409 @@
     color: #f87171;
   }
 }
+
+/* =============================================
+   悬浮翻译窗口样式
+============================================= */
+
+.select-ask-float-window {
+  position: fixed;
+  z-index: 2147483646;
+  min-width: 300px;
+  max-width: 560px;
+  max-height: 420px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #1f2937;
+  overflow: hidden;
+}
+
+@keyframes selectAskFloatIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.select-ask-float-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  cursor: move;
+  user-select: none;
+}
+
+.select-ask-float-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.select-ask-float-lang-select {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 12px;
+  color: #374151;
+  cursor: pointer;
+  outline: none;
+}
+
+.select-ask-float-lang-select:hover {
+  border-color: #9ca3af;
+}
+
+.select-ask-float-close {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #9ca3af;
+  font-size: 16px;
+  line-height: 1;
+  border-radius: 4px;
+  transition: all 0.12s ease;
+  flex-shrink: 0;
+}
+
+.select-ask-float-close:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: #374151;
+}
+
+.select-ask-float-content {
+  padding: 12px 14px;
+  max-height: 340px;
+  overflow-y: auto;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.select-ask-float-body {
+  display: inline;
+}
+
+.select-ask-float-body p {
+  margin: 0 0 6px 0;
+  display: block;
+}
+
+.select-ask-float-body p:last-child {
+  margin-bottom: 0;
+}
+
+.select-ask-float-body code {
+  background: #f3f4f6;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 13px;
+  font-family: ui-monospace, 'SF Mono', 'Monaco', Consolas, monospace;
+}
+
+.select-ask-float-body pre {
+  background: #f9fafb;
+  padding: 8px 10px;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 6px 0;
+  border: 1px solid #e5e7eb;
+}
+
+.select-ask-float-body pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.select-ask-float-streaming-cursor::after {
+  content: '|';
+  animation: selectAskBlink 1s step-end infinite;
+  color: #9ca3af;
+  margin-left: 2px;
+}
+
+.select-ask-float-error {
+  color: #dc2626;
+  font-size: 13px;
+}
+
+/* 暗色模式 - 悬浮窗口 */
+@media (prefers-color-scheme: dark) {
+  .select-ask-float-window {
+    background: #1f2937;
+    border-color: #374151;
+    color: #e5e7eb;
+  }
+
+  .select-ask-float-header {
+    background: #111827;
+    border-color: #374151;
+  }
+
+  .select-ask-float-title {
+    color: #e5e7eb;
+  }
+
+  .select-ask-float-lang-select {
+    background: #374151;
+    border-color: #4b5563;
+    color: #e5e7eb;
+  }
+
+  .select-ask-float-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #e5e7eb;
+  }
+
+  .select-ask-float-body code {
+    background: #374151;
+    color: #e5e7eb;
+  }
+
+  .select-ask-float-body pre {
+    background: #111827;
+    border-color: #4b5563;
+  }
+
+  .select-ask-float-streaming-cursor::after {
+    color: #6b7280;
+  }
+
+  .select-ask-float-error {
+    color: #f87171;
+  }
+}
+
+/* =============================================
+   右侧悬浮图标 + 菜单样式
+============================================= */
+
+.select-ask-floating-icon {
+  position: fixed;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2147483646;
+}
+
+.select-ask-floating-icon-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  color: #6b7280;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.select-ask-floating-icon-btn:active {
+  cursor: grabbing;
+}
+
+.select-ask-floating-icon-btn:hover {
+  background: #f3f4f6;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  color: #374151;
+}
+
+.select-ask-floating-icon-btn.active {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #6366f1;
+}
+
+.select-ask-floating-icon-menu {
+  position: absolute;
+  top: 52px;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  padding: 6px;
+  display: none;
+  animation: selectAskMenuSlideIn 0.2s ease-out;
+}
+
+@keyframes selectAskMenuSlideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.select-ask-floating-icon-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s ease, transform 0.1s ease;
+  color: #4b5563;
+  padding: 0;
+}
+
+.select-ask-floating-icon-menu-item:hover {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.select-ask-floating-icon-menu-item:active {
+  transform: scale(0.92);
+}
+
+/* 暗色模式 - 悬浮图标 */
+@media (prefers-color-scheme: dark) {
+  .select-ask-floating-icon-btn {
+    background: #1f2937;
+    border-color: #374151;
+    color: #9ca3af;
+  }
+
+  .select-ask-floating-icon-btn:hover {
+    background: #374151;
+    color: #e5e7eb;
+  }
+
+  .select-ask-floating-icon-btn.active {
+    background: #1e1b4b;
+    border-color: #4338ca;
+    color: #a5b4fc;
+  }
+
+  .select-ask-floating-icon-menu {
+    background: #1f2937;
+    border-color: #374151;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  }
+
+  .select-ask-floating-icon-menu-item {
+    color: #d1d5db;
+  }
+
+  .select-ask-floating-icon-menu-item:hover {
+    background: #374151;
+    color: #f3f4f6;
+  }
+}
+
+/* =============================================
+   全文翻译样式
+============================================= */
+
+/* 译文内容 - 使用 <font> 标签包裹，display:block 不破坏布局 */
+.select-ask-fp-translation-content {
+  display: block;
+  color: #6b7280;
+  font-size: inherit;
+  line-height: inherit;
+  margin: 2px 0;
+}
+
+.select-ask-fp-translation-content p {
+  margin: 0 0 4px 0;
+}
+
+.select-ask-fp-translation-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* 底部控制栏 */
+.select-ask-fp-control-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483646;
+  background: #1f2937;
+  color: #f9fafb;
+  padding: 8px 16px;
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: opacity 0.3s ease;
+}
+
+.select-ask-fp-status-text {
+  white-space: nowrap;
+  color: #e5e7eb;
+}
+
+.select-ask-fp-progress-bar {
+  width: 120px;
+  height: 4px;
+  background: #374151;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.select-ask-fp-progress-fill {
+  height: 100%;
+  background: #6366f1;
+  transition: width 0.3s ease;
+}
+
+.select-ask-fp-btn {
+  padding: 4px 10px;
+  border: 1px solid #4b5563;
+  background: transparent;
+  color: #e5e7eb;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.12s ease;
+  white-space: nowrap;
+}
+
+.select-ask-fp-btn:hover {
+  background: #374151;
+}
+
+.select-ask-fp-stop-btn:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+/* 暗色模式 - 全文翻译 */
+@media (prefers-color-scheme: dark) {
+  .select-ask-fp-translation-content {
+    color: #9ca3af;
+  }
+
+  .select-ask-fp-control-bar {
+    background: #111827;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+
+  .select-ask-fp-progress-bar {
+    background: #374151;
+  }
+}

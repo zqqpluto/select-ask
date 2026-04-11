@@ -2277,6 +2277,94 @@ function enableFollowUp(
 
 
 /**
+ * 悬浮窗口翻译 - 在选区附近显示悬浮窗口进行翻译
+ * 支持窗口内切换目标语言
+ */
+async function showFloatingTranslation(text: string, context: any): Promise<void> {
+  const { createFloatingTranslationWindow } = await import('./floating-window');
+  const { getTargetLanguage } = await import('../utils/config-manager');
+  const { streamTranslate } = await import('../services/content-llm');
+
+  // 恢复选区
+  restoreSelectionRange();
+
+  // 获取选区
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) {
+    console.warn('No selection found');
+    return;
+  }
+
+  const range = selection.getRangeAt(0);
+  const targetLang = await getTargetLanguage(text);
+
+  // 清除选区
+  clearSelection();
+
+  // 移除图标和下拉菜单
+  removeIconMenus();
+
+  let currentTargetLang = targetLang;
+  let floatWindow: ReturnType<typeof createFloatingTranslationWindow> | null = null;
+  let abortController = new AbortController();
+
+  async function startTranslation(lang: string) {
+    if (!floatWindow) return;
+
+    floatWindow.setContent('');
+    floatWindow.setStreaming(true);
+    abortController = new AbortController();
+
+    let fullText = '';
+    let isReasoning = false;
+    try {
+      for await (const chunk of streamTranslate(text, lang)) {
+        if (abortController.signal.aborted) break;
+        // 过滤推理标签
+        if (chunk === '[REASONING]') { isReasoning = true; continue; }
+        if (chunk === '[REASONING_DONE]') { isReasoning = false; continue; }
+        if (isReasoning) continue;
+        fullText += chunk;
+        floatWindow?.appendContent(chunk);
+      }
+      floatWindow?.setStreaming(false);
+    } catch (error) {
+      if (!abortController.signal.aborted) {
+        floatWindow?.setError(error instanceof Error ? error.message : '翻译出错');
+      }
+    }
+  }
+
+  // 创建悬浮窗口
+  floatWindow = createFloatingTranslationWindow(range, {
+    initialTargetLanguage: targetLang,
+    originalText: text,
+    onLanguageChange: async (newLang) => {
+      if (newLang === 'auto') {
+        // 智能模式：根据文本语言自动选择目标
+        currentTargetLang = await getTargetLanguage(text);
+      } else {
+        currentTargetLang = newLang;
+      }
+      // 保存语言偏好
+      const { setTargetLanguage } = await import('../utils/config-manager');
+      await setTargetLanguage(currentTargetLang);
+      // 重新翻译
+      startTranslation(currentTargetLang);
+    },
+    onClose: () => {
+      abortController.abort();
+      floatWindow = null;
+    },
+  });
+
+  floatWindow.show();
+
+  // 开始翻译
+  startTranslation(currentTargetLang);
+}
+
+/**
  * 行内翻译 - 短文本显示在原文右侧，长文本显示在原文下方
  * 支持单段和多段文本选择
  * loading 始终显示在段落尾部（不换行），翻译完成后再根据文本长度决定译文显示位置
@@ -2720,10 +2808,10 @@ async function handleMenuAction(action: string): Promise<void> {
     // 打印翻译请求的原文
     console.log('[翻译原文]:', text);
 
-    // 清除选区
-    clearSelection();
-
-    if (translationMode === 'inline') {
+    if (translationMode === 'floating') {
+      // 悬浮窗口翻译模式
+      await showFloatingTranslation(text, context);
+    } else if (translationMode === 'inline') {
       // 行内翻译模式
       await showInPlaceTranslation(text, context);
     } else {
@@ -3639,17 +3727,106 @@ async function showHistorySidebarFromPopup(): Promise<void> {
 
 
 // ============= 初始化全局翻译交互监听 =============
-// 在 DOM 加载完成后初始化全局 ESC 键监听
+// 在 DOM 加载完成后初始化全局 ESC 键监听器和悬浮图标
 if (typeof document !== 'undefined') {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', async () => {
       const { initGlobalInteractions } = await import('./translation-interaction');
       initGlobalInteractions();
+      initFloatingIcon();
     });
   } else {
     (async () => {
       const { initGlobalInteractions } = await import('./translation-interaction');
       initGlobalInteractions();
+      initFloatingIcon();
     })();
+  }
+}
+
+/**
+ * 初始化右侧悬浮图标
+ */
+function initFloatingIcon(): void {
+  // 延迟初始化，确保页面完全加载
+  setTimeout(async () => {
+    try {
+      const { createFloatingIcon, destroyFloatingIcon, updateMenuState } = await import('./floating-icon');
+      const { restoreAllTranslations } = await import('./translation-fullpage');
+
+      // 检查是否已经存在
+      if (document.querySelector('.select-ask-floating-icon')) return;
+
+      let isTranslating = false;
+
+      const icon = createFloatingIcon({
+        onFullPageTranslate: async () => {
+          await startFullPageTranslation();
+          isTranslating = true;
+          updateMenuState(true);
+        },
+        onRestore: () => {
+          restoreAllTranslations();
+          isTranslating = false;
+          updateMenuState(false);
+        },
+        onToggleFullPageTranslate: async () => {
+          if (isTranslating) {
+            // 停止翻译：恢复原文
+            restoreAllTranslations();
+            isTranslating = false;
+            updateMenuState(false);
+          } else {
+            // 开始翻译
+            await startFullPageTranslation();
+            isTranslating = true;
+            updateMenuState(true);
+          }
+        },
+        isTranslating: false,
+      });
+
+      document.body.appendChild(icon);
+    } catch (error) {
+      console.error('[悬浮图标] 初始化失败:', error);
+    }
+  }, 500);
+}
+
+/**
+ * 启动全文翻译
+ */
+async function startFullPageTranslation(): Promise<void> {
+  try {
+    const { createFullPageTranslationController, restoreAllTranslations } = await import('./translation-fullpage');
+    const { getTargetLanguage } = await import('../utils/config-manager');
+    const { streamTranslate } = await import('../services/content-llm');
+
+    const targetLang = await getTargetLanguage();
+
+    // 如果已有翻译在进行，先恢复
+    const existingControlBar = document.querySelector('.select-ask-fp-control-bar');
+    if (existingControlBar) {
+      restoreAllTranslations();
+      return;
+    }
+
+    const controller = createFullPageTranslationController({
+      targetLanguage: targetLang,
+      streamTranslate,
+      onProgress: (status) => {
+        console.log(`[全文翻译] 进度: ${status.completed}/${status.total}`);
+      },
+      onDone: () => {
+        console.log('[全文翻译] 完成');
+      },
+      onError: (error) => {
+        console.error('[全文翻译] 错误:', error.message);
+      },
+    });
+
+    await controller.start();
+  } catch (error) {
+    console.error('[全文翻译] 启动失败:', error);
   }
 }
