@@ -103,7 +103,8 @@
       "mcp__plugin_serena_serena__find_symbol",
       "Bash(awk 'NR>=7100 && NR<=7200' \"/Users/zhaoqiqiang/Library/Application Support/Google/Chrome/Default/Extensions/bpoadfkcbjbfhfodiogcnhhhpibjhbnh/1.27.2_0/content_script.js\")",
       "Bash(awk NR>=7100 && NR<=7300:*)",
-      "Bash(awk NR>=1 && NR<=500:*)"
+      "Bash(awk NR>=1 && NR<=500:*)",
+      "Bash(npx playwright:*)"
     ]
   }
 }
