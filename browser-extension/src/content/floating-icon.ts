@@ -223,7 +223,6 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
   document.addEventListener('pointerup', onPointerUp);
   document.addEventListener('pointercancel', onPointerCancel);
 }
-}
 
 let currentOffsetX = 0; // deprecated, kept for compatibility
 
