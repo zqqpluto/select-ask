@@ -398,6 +398,7 @@
 .select-ask-float-lang-select {
   flex: 1;
   min-width: 0;
+  max-width: 120px;
   padding: 2px 6px;
   border: 1px solid #d1d5db;
   border-radius: 4px;
@@ -406,6 +407,9 @@
   color: #374151;
   cursor: pointer;
   outline: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .select-ask-float-lang-select:hover {
@@ -565,6 +569,8 @@
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
+  position: relative;
+  overflow: hidden;
 }
 
 .select-ask-floating-icon-btn:active {
@@ -583,47 +589,132 @@
   color: #6366f1;
 }
 
+/* Logo 图片 */
+.select-ask-floating-icon-logo {
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* 关闭按钮（悬浮在 logo 时出现在右下角） */
+.select-ask-floating-icon-close {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  opacity: 0;
+  transform: scale(0.8);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  padding: 0;
+  z-index: 1;
+}
+
+.select-ask-floating-icon-close.visible {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+.select-ask-floating-icon-close:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+/* 子菜单容器（在按钮下方） */
 .select-ask-floating-icon-menu {
   position: absolute;
-  top: 52px;
+  top: calc(100% + 8px);
   right: 0;
-  width: 44px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-  padding: 6px;
-  display: none;
-  animation: selectAskMenuSlideIn 0.2s ease-out;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  transform: translateY(-6px) scale(0.9);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-@keyframes selectAskMenuSlideIn {
-  from { opacity: 0; transform: translateY(-6px); }
-  to { opacity: 1; transform: translateY(0); }
+.select-ask-floating-icon-menu.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
 }
 
+/* 菜单项 - 圆形按钮（参照图片样式） */
 .select-ask-floating-icon-menu-item {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border: none;
-  background: transparent;
+  background: #f3f4f6;
   cursor: pointer;
   border-radius: 50%;
-  transition: background 0.15s ease, transform 0.1s ease;
+  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
   color: #4b5563;
   padding: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .select-ask-floating-icon-menu-item:hover {
-  background: #f3f4f6;
+  background: #e5e7eb;
   color: #1f2937;
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 .select-ask-floating-icon-menu-item:active {
-  transform: scale(0.92);
+  transform: scale(0.95);
+}
+
+/* 自定义 Tooltip */
+.select-ask-floating-icon-tooltip {
+  position: absolute;
+  right: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: #1f2937;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.select-ask-floating-icon-tooltip::after {
+  content: '';
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 5px solid transparent;
+  border-left-color: #1f2937;
+}
+
+.select-ask-floating-icon-tooltip.visible {
+  opacity: 1;
 }
 
 /* 暗色模式 - 悬浮图标 */
@@ -658,6 +749,15 @@
   .select-ask-floating-icon-menu-item:hover {
     background: #374151;
     color: #f3f4f6;
+  }
+
+  .select-ask-floating-icon-tooltip {
+    background: #e5e7eb;
+    color: #1f2937;
+  }
+
+  .select-ask-floating-icon-tooltip::after {
+    border-left-color: #e5e7eb;
   }
 }
 

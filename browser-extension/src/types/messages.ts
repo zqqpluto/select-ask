@@ -32,6 +32,7 @@ export interface LLMStreamRequest {
   question?: string; // 仅用于 question action
   context?: LLMContext;
   modelId: string; // 使用哪个模型
+  targetLanguage?: string; // 仅用于 translate action，指定目标语言
 }
 
 /**

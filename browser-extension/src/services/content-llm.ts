@@ -15,7 +15,8 @@ async function* streamViaBackground(
   action: 'explain' | 'translate' | 'question' | 'search',
   text: string,
   question?: string,
-  context?: LLMContext
+  context?: LLMContext,
+  targetLanguage?: string
 ): AsyncGenerator<string, void, unknown> {
   console.log('[content-llm] 开始 - action:', action, 'textLength:', text.length);
 
@@ -81,6 +82,7 @@ async function* streamViaBackground(
       question,
       context,
       modelId: model.id,
+      targetLanguage,
     },
   });
 
@@ -184,8 +186,9 @@ function buildSearchPrompt(text: string, context?: LLMContext): LLMMessage[] {
 
 /**
  * 获取目标翻译语言
+ * 支持显式指定或使用浏览器语言
  */
-function getTargetLanguage(): string {
+function getTargetLanguage(override?: string): string {
   const browserLang = navigator.language || (navigator as any).userLanguage;
   // 语言代码映射到语言名称
   const languageNames: Record<string, string> = {
@@ -209,17 +212,12 @@ function getTargetLanguage(): string {
     'vi': '越南语',
   };
 
-  // 查找匹配的语言
-  if (browserLang) {
-    // 先尝试完全匹配
-    if (languageNames[browserLang]) {
-      return languageNames[browserLang];
-    }
-    // 再尝试匹配语言代码前缀
-    const langCode = browserLang.split('-')[0];
-    if (languageNames[langCode]) {
-      return languageNames[langCode];
-    }
+  // 如果显式指定了语言
+  const langToUse = override || browserLang;
+  if (langToUse) {
+    if (languageNames[langToUse]) return languageNames[langToUse];
+    const langCode = langToUse.split('-')[0];
+    if (languageNames[langCode]) return languageNames[langCode];
   }
 
   // 默认返回中文
@@ -227,10 +225,10 @@ function getTargetLanguage(): string {
 }
 
 /**
- * 构建翻译 Prompt（保留用于显示）
+ * 构建翻译 Prompt（支持指定目标语言）
  */
-function buildTranslatePrompt(text: string): LLMMessage[] {
-  const targetLang = getTargetLanguage();
+function buildTranslatePrompt(text: string, targetLanguage?: string): LLMMessage[] {
+  const targetLang = getTargetLanguage(targetLanguage);
   const userContent = `将"${text}"翻译成${targetLang}`;
 
   return [
@@ -321,10 +319,11 @@ export async function* streamExplain(
  * 执行翻译操作
  */
 export async function* streamTranslate(
-  text: string
+  text: string,
+  targetLanguage?: string
 ): AsyncGenerator<string, void, unknown> {
   try {
-    yield* streamViaBackground('translate', text);
+    yield* streamViaBackground('translate', text, undefined, undefined, targetLanguage);
   } catch (error) {
     console.error('[streamTranslate] 失败:', error instanceof Error ? error.message : error);
     throw error;

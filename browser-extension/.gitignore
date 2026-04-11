@@ -29,3 +29,9 @@ dist-ssr
 # Test config (API keys)
 test-api-config.json
 *.test.json
+TEST_CONFIG.md
+docs/test-config.md
+
+# Test files containing secrets
+tests/extension-features.spec.ts
+tests/extension-real.spec.ts

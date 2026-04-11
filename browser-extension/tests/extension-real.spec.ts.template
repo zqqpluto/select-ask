@@ -1,0 +1,28 @@
+/**
+ * Select Ask - 真实功能测试
+ *
+ * 注意：此文件包含测试用的 API 密钥，不会被提交到 GitHub。
+ * 如需运行测试，请复制此文件为 extension-real.spec.ts 并填入你的 API 密钥。
+ */
+
+import { test, expect, Page, BrowserContext, chromium } from '@playwright/test';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+import { createServer, Server } from 'http';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const EXTENSION_PATH = path.join(__dirname, '../dist');
+
+// API 配置 - 从环境变量读取
+const TEST_MODEL_CONFIG = {
+  id: process.env.TEST_MODEL_ID || 'test-deepseek-model',
+  name: process.env.TEST_MODEL_NAME || 'DeepSeek Test',
+  provider: (process.env.TEST_PROVIDER || 'deepseek') as any,
+  apiKey: process.env.TEST_API_KEY || '',
+  baseUrl: process.env.TEST_API_BASE_URL || 'https://api.deepseek.com',
+  modelId: process.env.TEST_MODEL_ID || 'deepseek-reasoner',
+  enabled: true,
+  enableChat: true,
+};

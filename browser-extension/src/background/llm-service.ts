@@ -16,7 +16,9 @@ function buildMessages(
   action: Action,
   text: string,
   question?: string,
-  context?: LLMContext
+  context?: LLMContext,
+  _answer?: string,
+  targetLanguage?: string
 ): LLMMessage[] {
   const messages: LLMMessage[] = [];
 
@@ -39,8 +41,7 @@ function buildMessages(
       break;
 
     case 'translate': {
-      const browserLang = (self as any).navigator?.language || 'zh-CN';
-      // 语言代码映射到英文语言名（沉浸式翻译标准）
+      // 如果显式指定了目标语言代码，转换为语言名称
       const langMap: Record<string, string> = {
         'zh': 'Chinese', 'zh-CN': 'Chinese', 'zh-TW': 'Chinese (Traditional)',
         'en': 'English', 'en-US': 'English', 'en-GB': 'English',
@@ -49,11 +50,34 @@ function buildMessages(
         'pt': 'Portuguese', 'it': 'Italian', 'ar': 'Arabic', 'th': 'Thai',
         'vi': 'Vietnamese'
       };
-      const targetLang = langMap[browserLang] || langMap[browserLang.split('-')[0]] || 'Chinese';
 
-      // 检测源语言（简单检测：如果包含中文字符则为 Chinese，否则为 English）
-      const hasChineseChar = /[\u4e00-\u9fa5]/.test(text);
-      const sourceLang = hasChineseChar ? 'Chinese' : 'English';
+      let targetLang: string;
+      if (targetLanguage && langMap[targetLanguage]) {
+        targetLang = langMap[targetLanguage];
+      } else {
+        // 回退到浏览器语言
+        const browserLang = (self as any).navigator?.language || 'zh-CN';
+        targetLang = langMap[browserLang] || langMap[browserLang.split('-')[0]] || 'Chinese';
+      }
+
+      // 检测源语言（基于 Unicode 字符范围）
+      let chineseCount = 0, japaneseKanaCount = 0, koreanCount = 0, latinCount = 0, totalCount = 0;
+      for (let i = 0; i < text.length; i++) {
+        const code = text.charCodeAt(i);
+        if (code <= 0x7f && !/[a-zA-Z]/.test(text[i])) continue;
+        totalCount++;
+        if ((code >= 0x4e00 && code <= 0x9fff) || (code >= 0x3400 && code <= 0x4dbf)) chineseCount++;
+        if ((code >= 0x3040 && code <= 0x309f) || (code >= 0x30a0 && code <= 0x30ff)) japaneseKanaCount++;
+        if (code >= 0xac00 && code <= 0xd7af) koreanCount++;
+        if (/[a-zA-Z]/.test(text[i])) latinCount++;
+      }
+
+      const ratios: Record<string, number> = { 'Chinese': chineseCount / (totalCount || 1), 'Japanese': japaneseKanaCount / (totalCount || 1), 'Korean': koreanCount / (totalCount || 1), 'English': latinCount / (totalCount || 1) };
+      let sourceLang = 'English';
+      let bestRatio = 0;
+      for (const [lang, ratio] of Object.entries(ratios)) {
+        if (ratio > bestRatio) { bestRatio = ratio; sourceLang = lang; }
+      }
 
       userContent = USER_PROMPTS.translate(text, targetLang, sourceLang);
 
@@ -107,6 +131,8 @@ export async function handleLLMStream(
     context?: LLMContext;
     modelId: string;
     messages?: { role: string; content: string }[];
+    targetLanguage?: string;
+    answer?: string;
   }
 ): Promise<void> {
   try {
@@ -138,7 +164,7 @@ export async function handleLLMStream(
       }));
     } else if (request.action && request.text) {
       // content script 格式：使用 buildMessages 构建
-      messages = buildMessages(request.action, request.text, request.question, request.context, request.answer);
+      messages = buildMessages(request.action, request.text, request.question, request.context, request.answer, request.targetLanguage);
     } else {
       console.error('[llm-service] 无效的请求格式');
       port.postMessage({ type: 'LLM_STREAM_ERROR', error: '无效的请求格式' });

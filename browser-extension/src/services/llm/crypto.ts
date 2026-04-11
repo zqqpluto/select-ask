@@ -111,6 +111,11 @@ export async function encryptApiKey(plainText: string): Promise<string> {
 export async function decryptApiKey(encryptedText: string): Promise<string> {
   if (!encryptedText) return '';
 
+  // 如果已经是明文 key（以 sk- 等前缀开头），直接返回
+  if (encryptedText.startsWith('sk-') || encryptedText.startsWith('ghp_') || encryptedText.startsWith('xoxb-')) {
+    return encryptedText;
+  }
+
   try {
     const key = await getOrCreateEncryptionKey();
 

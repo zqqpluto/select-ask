@@ -8,10 +8,14 @@ import {
   setSelectedQuestionModel,
   testModelConnection,
   getModelConfig,
+  getModelConfigs,
   setModelEnableChat,
   getSelectedChatModel,
   setSelectedChatModel,
+  getFallbackLanguage,
+  setFallbackLanguage,
 } from '../utils/config-manager';
+import { TARGET_LANGUAGES } from '../types/config';
 import { getHistory, deleteSession, clearHistory, addMessageToSession } from '../utils/history-manager';
 import { MODEL_PRESETS, PROVIDER_NAMES, PROVIDER_DEFAULTS } from '../types/config';
 import { LLM_STREAM_PORT_NAME } from '../types/messages';
@@ -129,6 +133,7 @@ export default function App() {
     sidebarWidth: 420,
     autoGenerateQuestions: true,
   });
+  const [fallbackLang, setFallbackLang] = useState<string>('en');
   const [showModal, setShowModal] = useState(false);
   const [editingModel, setEditingModel] = useState<ModelConfig | null>(null);
   const [formData, setFormData] = useState<ModelFormData>(DEFAULT_FORM_DATA);
@@ -143,6 +148,7 @@ export default function App() {
   const [streamingReasoning, setStreamingReasoning] = useState('');
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const [showApiKeyInModal, setShowApiKeyInModal] = useState(false);
+  const [visibleApiKeys, setVisibleApiKeys] = useState<Set<string>>(new Set());
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [showQuestionModelDropdown, setShowQuestionModelDropdown] = useState(false);
   // 历史对话相关状态
@@ -189,12 +195,17 @@ export default function App() {
 
   const loadConfig = async () => {
     const config = await getAppConfig();
-    setModels(config.models);
+    const models = await getModelConfigs();
+    setModels(models);
 
     // Load preferences
     if (config.preferences) {
       setPreferences(config.preferences);
     }
+
+    // Load fallback language
+    const fbLang = await getFallbackLanguage();
+    setFallbackLang(fbLang);
 
     const chatEnabledModels = config.models.filter(m => m.enabled && m.enableChat !== false);
     const chatModelIds = config.selectedChatModelIds || [];
@@ -420,6 +431,11 @@ export default function App() {
       return;
     }
 
+    if (!formData.apiKey.trim()) {
+      alert('请输入 API Key');
+      return;
+    }
+
     const config: ModelConfig = {
       id: editingModel?.id || formData.id || `model-${Date.now()}`,
       name: formData.name,
@@ -447,7 +463,7 @@ export default function App() {
       id: model.id,
       name: model.name,
       provider: model.provider,
-      apiKey: model.apiKey,
+      apiKey: model.apiKey || '',
       baseUrl: model.baseUrl,
       modelId: model.modelId,
       enableChat: model.enableChat !== false,
@@ -881,6 +897,30 @@ export default function App() {
                     <span className={`text-xs ${preferences.sendWithEnter ? 'text-blue-600 font-medium' : 'text-gray-600'}`}>
                       Enter
                     </span>
+                  </div>
+                </div>
+
+                {/* 翻译策略 */}
+                <div className="p-4 bg-gray-50 rounded-xl">
+                  <h3 className="text-sm font-medium text-gray-900">翻译策略</h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    智能翻译：非系统语言 → 系统语言；系统语言 → 下方设置的语言
+                  </p>
+                  <div className="flex items-center gap-3 mt-3">
+                    <span className="text-xs text-gray-600">系统语言翻译成：</span>
+                    <select
+                      value={fallbackLang}
+                      onChange={async (e) => {
+                        const newLang = e.target.value;
+                        setFallbackLang(newLang);
+                        await setFallbackLanguage(newLang);
+                      }}
+                      className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    >
+                      {TARGET_LANGUAGES.map(lang => (
+                        <option key={lang.code} value={lang.code}>{lang.label}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>

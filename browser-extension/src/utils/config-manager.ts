@@ -3,10 +3,10 @@
  * 管理模型配置和应用设置
  */
 
-import type { AppConfig, ModelConfig, DisplayMode, TranslationConfig, TranslationMode, TranslationOverlapMode } from '../types/config';
+import type { AppConfig, ModelConfig, DisplayMode, TranslationConfig, TranslationMode, TranslationOverlapMode, FullPageTranslationConfig } from '../types/config';
+import { DEFAULT_TRANSLATION_CONFIG, DEFAULT_FULLPAGE_TRANSLATION_CONFIG, TARGET_LANGUAGES } from '../types/config';
 import { encryptApiKey, decryptApiKey } from '../services/llm/crypto';
 import { getStorageSync, setStorageSync } from '../utils/storage';
-import { DEFAULT_TRANSLATION_CONFIG } from '../types/config';
 
 const CONFIG_KEY = 'app_config';
 
@@ -45,11 +45,19 @@ export async function saveAppConfig(config: AppConfig): Promise<void> {
 }
 
 /**
- * 获取所有模型配置
+ * 获取所有模型配置（解密后的 API Key）
  */
 export async function getModelConfigs(): Promise<ModelConfig[]> {
   const config = await getAppConfig();
-  return config.models;
+  const decryptedModels: ModelConfig[] = [];
+  for (const model of config.models) {
+    const decryptedKey = await decryptApiKey(model.apiKey);
+    decryptedModels.push({
+      ...model,
+      apiKey: decryptedKey,
+    });
+  }
+  return decryptedModels;
 }
 
 /**
@@ -355,4 +363,166 @@ export async function setTranslationOverlapMode(mode: TranslationOverlapMode): P
   const translationConfig = await getTranslationConfig();
   translationConfig.overlapMode = mode;
   await saveTranslationConfig(translationConfig);
+}
+
+// ============= 目标语言相关函数 =============
+
+/**
+ * 检测文本的主要语言
+ * 基于字符 Unicode 范围进行启发式判断
+ */
+export function detectLanguage(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed) return 'en';
+
+  let chineseCount = 0;
+  let japaneseKanaCount = 0;
+  let koreanCount = 0;
+  let latinCount = 0;
+  let totalCount = 0;
+
+  for (let i = 0; i < trimmed.length; i++) {
+    const code = trimmed.charCodeAt(i);
+    // 跳过空白和标点
+    if (code <= 0x7f && !/[a-zA-Z]/.test(trimmed[i])) continue;
+
+    totalCount++;
+    // 中日韩统一表意文字
+    if ((code >= 0x4e00 && code <= 0x9fff) || (code >= 0x3400 && code <= 0x4dbf)) {
+      chineseCount++;
+    }
+    // 日文平假名 + 片假名
+    if ((code >= 0x3040 && code <= 0x309f) || (code >= 0x30a0 && code <= 0x30ff)) {
+      japaneseKanaCount++;
+    }
+    // 韩文音节
+    if (code >= 0xac00 && code <= 0xd7af) {
+      koreanCount++;
+    }
+    // 拉丁字母
+    if (/[a-zA-Z]/.test(trimmed[i])) {
+      latinCount++;
+    }
+  }
+
+  if (totalCount === 0) return 'en';
+
+  // 取占比最高的语言
+  const ratios = {
+    'zh-CN': chineseCount / totalCount,
+    'ja': japaneseKanaCount / totalCount,
+    'ko': koreanCount / totalCount,
+    'en': latinCount / totalCount,
+  };
+
+  let best = 'en';
+  let bestRatio = 0;
+  for (const [lang, ratio] of Object.entries(ratios)) {
+    if (ratio > bestRatio) {
+      bestRatio = ratio;
+      best = lang;
+    }
+  }
+  return best;
+}
+
+/**
+ * 获取当前浏览器语言代码
+ */
+function getBrowserLanguageCode(): string {
+  const lang = navigator.language;
+  // 尝试精确匹配
+  const exact = TARGET_LANGUAGES.find(l => l.code === lang);
+  if (exact) return exact.code;
+  // 尝试前缀匹配（如 zh-CN -> zh-CN, en-US -> en）
+  const prefix = lang.split('-')[0];
+  const prefixMatch = TARGET_LANGUAGES.find(l => l.code.startsWith(prefix));
+  if (prefixMatch) return prefixMatch.code;
+  // 默认英语
+  return 'en';
+}
+
+/**
+ * 获取翻译目标语言
+ *
+ * 智能目标语言策略：
+ * - 未传入 sourceText 时：返回用户手动设置的目标语言，或跟随浏览器语言
+ * - 传入 sourceText 时：检测文本语言
+ *   - 文本语言 != 系统语言 → 翻译成系统语言
+ *   - 文本语言 == 系统语言 → 翻译成 fallbackLanguage（默认英文，可在设置中调整）
+ */
+export async function getTargetLanguage(sourceText?: string): Promise<string> {
+  const config = await getAppConfig();
+  const stored = (config.preferences as any).targetLanguage;
+
+  // 用户手动设置了目标语言且不是 auto → 直接返回
+  if (stored && stored !== 'auto') return stored;
+
+  const systemLang = getBrowserLanguageCode();
+
+  if (!sourceText) {
+    return systemLang;
+  }
+
+  const sourceLang = detectLanguage(sourceText);
+
+  // 文本语言与系统语言不同 → 翻译成系统语言
+  if (sourceLang !== systemLang) {
+    return systemLang;
+  }
+
+  // 文本语言 == 系统语言 → 翻译成 fallback 语言（默认英文）
+  const fallback = (config.preferences as any).fallbackLanguage || 'en';
+  return fallback;
+}
+
+/**
+ * 设置翻译目标语言（手动选择时保存）
+ */
+export async function setTargetLanguage(lang: string): Promise<void> {
+  const config = await getAppConfig();
+  (config.preferences as any).targetLanguage = lang;
+  await saveAppConfig(config);
+}
+
+/**
+ * 设置翻译 fallback 语言（当选中文字与系统语言相同时的翻译目标）
+ */
+export async function setFallbackLanguage(lang: string): Promise<void> {
+  const config = await getAppConfig();
+  (config.preferences as any).fallbackLanguage = lang;
+  await saveAppConfig(config);
+}
+
+/**
+ * 获取翻译 fallback 语言
+ */
+export async function getFallbackLanguage(): Promise<string> {
+  const config = await getAppConfig();
+  return (config.preferences as any).fallbackLanguage || 'en';
+}
+
+// ============= 全文翻译配置相关函数 =============
+
+/**
+ * 获取全文翻译配置
+ */
+export async function getFullPageTranslationConfig(): Promise<FullPageTranslationConfig> {
+  const config = await getAppConfig();
+  const stored = (config.preferences as any).fullPageTranslation;
+  if (!stored) return { ...DEFAULT_FULLPAGE_TRANSLATION_CONFIG };
+  return {
+    ...DEFAULT_FULLPAGE_TRANSLATION_CONFIG,
+    ...stored,
+  };
+}
+
+/**
+ * 保存全文翻译配置
+ */
+export async function saveFullPageTranslationConfig(fullPage: Partial<FullPageTranslationConfig>): Promise<void> {
+  const config = await getAppConfig();
+  const current = await getFullPageTranslationConfig();
+  (config.preferences as any).fullPageTranslation = { ...current, ...fullPage };
+  await saveAppConfig(config);
 }

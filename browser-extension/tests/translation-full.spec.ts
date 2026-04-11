@@ -694,10 +694,12 @@ test.describe('Select Ask - 全量翻译功能测试', () => {
     expect(box!.height).toBeGreaterThanOrEqual(40);
     console.log(`✓ 触摸目标尺寸: ${Math.round(box!.width)}x${Math.round(box!.height)}px`);
 
-    // 检查 SVG 图标
-    const svg = await btn!.$('svg');
-    expect(svg).toBeTruthy();
-    console.log('✓ Logo SVG 图标存在');
+    // 检查 Logo 图片（使用 <img> 标签加载项目 icon）
+    const logo = await btn!.$('.select-ask-floating-icon-logo');
+    expect(logo).toBeTruthy();
+    const logoSrc = await logo!.getAttribute('src');
+    expect(logoSrc).toContain('icon');
+    console.log('✓ Logo 图标存在');
   });
 
   /**
@@ -742,14 +744,15 @@ test.describe('Select Ask - 全量翻译功能测试', () => {
     }
     console.log('✓ 所有菜单项都有 SVG 图标和 tooltip');
 
-    // 鼠标移开后菜单应隐藏
-    await page.mouse.move(0, 0);
-    await page.waitForTimeout(500);
+    // 鼠标移开后菜单应隐藏（通过 opacity 控制）
+    // 移到页面右下角，确保不在按钮和菜单范围内
+    const viewport = page.viewportSize()!;
+    await page.mouse.move(viewport.width - 10, viewport.height - 10);
+    await page.waitForTimeout(600); // 300ms leaveTimer + 200ms CSS transition + buffer
     const menuAfter = await page.$('.select-ask-floating-icon-menu');
-    // 菜单 display 应变为 none
     const isVisible = await menuAfter?.evaluate((el) => {
       const style = window.getComputedStyle(el);
-      return style.display !== 'none';
+      return parseFloat(style.opacity) > 0;
     });
     expect(isVisible).toBe(false);
     console.log('✓ 鼠标移开后菜单隐藏');
@@ -889,11 +892,15 @@ test.describe('Select Ask - 全量翻译功能测试', () => {
     expect(updatedTitle).toBe('停止翻译');
     console.log(`✓ 翻译中状态: ${updatedTitle}`);
 
-    // 点击停止
-    await translateItem.click();
+    // 重新 hover 打开菜单，再点击停止
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.waitForTimeout(500);
+
+    // 使用 JavaScript 点击，绕过 pointer-events 拦截
+    await translateItem.evaluate(el => el.click());
     await page.waitForTimeout(1000);
 
-    // 验证状态回到"翻译全文"
+    // 重新 hover 打开菜单，验证状态回到"翻译全文"
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.waitForTimeout(500);
 

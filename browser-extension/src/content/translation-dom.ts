@@ -62,20 +62,7 @@ export function getAllParagraphsInRange(range: Range): HTMLElement[] {
  */
 function isTextNodeInRange(range: Range, textNode: Text): boolean {
   try {
-    // 使用原生 intersectsNode 检查是否有重叠
-    if (!range.intersectsNode(textNode)) {
-      return false;
-    }
-    // 进一步检查：文本节点是否有部分或全部被选中
-    // 创建文本节点的 Range
-    const textRange = document.createRange();
-    textRange.selectNodeContents(textNode);
-
-    // 检查两个边界点
-    const rangeStartsBeforeTextEnd = range.compareBoundaryPoints(Range.START_TO_END, textRange) >= 0;
-    const rangeEndsAfterTextStart = range.compareBoundaryPoints(Range.END_TO_START, textRange) <= 0;
-
-    return rangeStartsBeforeTextEnd && rangeEndsAfterTextStart;
+    return range.intersectsNode(textNode);
   } catch {
     // 出错时返回 false（不包含该文本节点），避免过多提取
     return false;

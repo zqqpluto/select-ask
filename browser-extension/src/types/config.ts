@@ -215,13 +215,51 @@ export function createModelConfig(
 }
 
 /**
+ * 目标语言
+ */
+export interface TargetLanguage {
+  code: string;       // 'en', 'ja', 'zh-CN' 等
+  label: string;      // 'English', '日本語', '中文' 等
+}
+
+/**
+ * 可用目标语言列表
+ */
+export const TARGET_LANGUAGES: TargetLanguage[] = [
+  { code: 'zh-CN', label: '中文' },
+  { code: 'en', label: 'English' },
+  { code: 'ja', label: '日本語' },
+  { code: 'ko', label: '한국어' },
+  { code: 'fr', label: 'Français' },
+  { code: 'de', label: 'Deutsch' },
+  { code: 'es', label: 'Español' },
+  { code: 'ru', label: 'Русский' },
+];
+
+/**
+ * 全文翻译配置
+ */
+export interface FullPageTranslationConfig {
+  targetLanguage: string;    // 目标语言代码，默认跟随浏览器语言
+  showBilingual: boolean;    // 双语模式：原文+译文同时显示
+}
+
+/**
  * 翻译配置默认值
  */
 export const DEFAULT_TRANSLATION_CONFIG: TranslationConfig = {
-  mode: 'inline',
+  mode: 'floating',
   overlapMode: 'replace',
   showCloseButton: true,
   doubleClickToClose: true,
   autoScroll: true,
   hideOnScrollAway: false,
+};
+
+/**
+ * 全文翻译配置默认值
+ */
+export const DEFAULT_FULLPAGE_TRANSLATION_CONFIG: FullPageTranslationConfig = {
+  targetLanguage: 'auto',    // auto = 跟随浏览器语言
+  showBilingual: true,
 };
