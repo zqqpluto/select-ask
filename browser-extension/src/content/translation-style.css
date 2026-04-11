@@ -553,8 +553,8 @@
 }
 
 .select-ask-floating-icon-btn {
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   border: 1px solid #e5e7eb;
   background: #ffffff;
@@ -591,8 +591,8 @@
 
 /* Logo 图片 */
 .select-ask-floating-icon-logo {
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;

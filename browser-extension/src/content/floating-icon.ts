@@ -11,7 +11,7 @@ let floatingIconEl: HTMLElement | null = null;
 let hoverTimer: ReturnType<typeof setTimeout> | null = null;
 let leaveTimer: ReturnType<typeof setTimeout> | null = null;
 
-// 拖拽状态
+// 拖拽状态 - 防止拖拽中触发 hover 菜单
 let isDragging = false;
 
 export interface FloatingIconOptions {
@@ -127,75 +127,77 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
 }
 
 /**
- * 设置拖拽：只允许水平拖拽，松手后弹性回到右侧
- * 参考豆包实现：三个事件都绑定在同一个元素上 + pointerCapture
+ * 设置拖拽：支持任意方向拖动，松手后弹性回到右侧垂直居中
  */
 function setupDrag(container: HTMLElement, btn: HTMLElement) {
-  let startX = 0;
-  let startOffsetX = 0;
-  let hasDragged = false;
-
-  const DRAG_THRESHOLD = 5; // px
+  let offsetX = 0; // 鼠标相对于图标左边缘的偏移
+  let offsetY = 0; // 鼠标相对于图标上边缘的偏移
+  let isPointerDown = false;
 
   function onPointerDown(e: PointerEvent) {
     if (e.button !== 0) return;
-    startX = e.clientX;
-    startOffsetX = currentOffsetX;
-    hasDragged = false;
-    btn.setPointerCapture(e.pointerId);
+    isPointerDown = true;
+
+    const rect = container.getBoundingClientRect();
+    offsetX = e.clientX - rect.left;
+    offsetY = e.clientY - rect.top;
+
     btn.style.transition = 'none';
     container.style.transition = 'none';
-    e.preventDefault();
   }
 
   function onPointerMove(e: PointerEvent) {
-    const dx = e.clientX - startX;
+    if (!isPointerDown) return;
 
-    // 未超过阈值，不算拖拽
-    if (!hasDragged && Math.abs(dx) < DRAG_THRESHOLD) return;
+    isDragging = true;
+    const newLeft = e.clientX - offsetX;
+    const newTop = e.clientY - offsetY;
 
-    if (!hasDragged) {
-      hasDragged = true;
-      isDragging = true;
-    }
-
-    currentOffsetX = startOffsetX + dx;
-    const maxLeft = -(window.innerWidth - 60);
-    const maxRight = 0;
-    currentOffsetX = Math.max(maxLeft, Math.min(maxRight, currentOffsetX));
-    container.style.transform = `translateY(-50%) translateX(${currentOffsetX}px)`;
+    container.style.left = `${newLeft}px`;
+    container.style.top = `${newTop}px`;
+    container.style.right = 'auto';
+    container.style.transform = 'none';
   }
 
-  function onPointerUp(e: PointerEvent) {
-    try { btn.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
-    if (isDragging) {
-      isDragging = false;
-      currentOffsetX = 0;
-      container.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
-      container.style.transform = 'translateY(-50%)';
-      btn.style.transition = '';
-    }
-    hasDragged = false;
+  function onPointerUp() {
+    if (!isPointerDown) return;
+    isPointerDown = false;
+    isDragging = false;
+
+    // 清除 left/top，恢复 CSS 默认定位
+    container.style.left = '';
+    container.style.top = '';
+    container.style.right = '';
+    container.style.transform = '';
+    // 然后添加过渡动画
+    container.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+    container.style.right = '0';
+    container.style.top = '50%';
+    container.style.transform = 'translateY(-50%)';
   }
 
   function onPointerCancel() {
-    hasDragged = false;
-    if (isDragging) {
-      isDragging = false;
-      currentOffsetX = 0;
-      container.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
-      container.style.transform = 'translateY(-50%)';
-      btn.style.transition = '';
-    }
+    if (!isPointerDown) return;
+    isPointerDown = false;
+    isDragging = false;
+
+    container.style.left = '';
+    container.style.top = '';
+    container.style.right = '';
+    container.style.transform = '';
+    container.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+    container.style.right = '0';
+    container.style.top = '50%';
+    container.style.transform = 'translateY(-50%)';
   }
 
   btn.addEventListener('pointerdown', onPointerDown);
-  btn.addEventListener('pointermove', onPointerMove);
-  btn.addEventListener('pointerup', onPointerUp);
-  btn.addEventListener('pointercancel', onPointerCancel);
+  document.addEventListener('pointermove', onPointerMove);
+  document.addEventListener('pointerup', onPointerUp);
+  document.addEventListener('pointercancel', onPointerCancel);
 }
 
-let currentOffsetX = 0;
+let currentOffsetX = 0; // deprecated, kept for compatibility
 
 /**
  * 构建 Logo 图片
