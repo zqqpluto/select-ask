@@ -687,11 +687,11 @@ test.describe('Select Ask - 全量翻译功能测试', () => {
     expect(btn).toBeTruthy();
     console.log('✓ 悬浮按钮存在');
 
-    // 检查按钮尺寸（44x44 触摸目标）
+    // 检查按钮尺寸（38x38 触摸目标）
     const box = await btn!.boundingBox();
     expect(box).toBeTruthy();
-    expect(box!.width).toBeGreaterThanOrEqual(40); // 允许 4px 误差
-    expect(box!.height).toBeGreaterThanOrEqual(40);
+    expect(box!.width).toBeGreaterThanOrEqual(36);
+    expect(box!.height).toBeGreaterThanOrEqual(36);
     console.log(`✓ 触摸目标尺寸: ${Math.round(box!.width)}x${Math.round(box!.height)}px`);
 
     // 检查 Logo 图片（使用 <img> 标签加载项目 icon）
@@ -770,9 +770,15 @@ test.describe('Select Ask - 全量翻译功能测试', () => {
     const btn = await page.$('.select-ask-floating-icon-btn');
     if (!container || !btn) throw new Error('未找到悬浮图标');
 
-    // 获取初始 transform
+    // 获取初始 transform 和 bounding rect
     const initialTransform = await container.evaluate((el) => el.style.transform || getComputedStyle(el).transform);
+    const initialRect = await container.evaluate((el) => {
+      const rect = el.getBoundingClientRect();
+      return { right: rect.right, left: rect.left, top: rect.top, width: rect.width };
+    });
+    const winWidth = await page.evaluate(() => window.innerWidth);
     console.log(`  初始 transform: ${initialTransform}`);
+    console.log(`  初始 rect:`, initialRect, `winWidth: ${winWidth}`);
 
     // 获取按钮位置
     const btnBox = await btn.boundingBox();
@@ -801,6 +807,14 @@ test.describe('Select Ask - 全量翻译功能测试', () => {
     // 等待弹性回弹动画完成（400ms）+ 额外缓冲
     await page.waitForTimeout(800);
 
+    // 获取 bounding rect 来验证实际视觉位置
+    const afterBounceRect = await container.evaluate((el) => {
+      const rect = el.getBoundingClientRect();
+      return { right: rect.right, left: rect.left, top: rect.top, bottom: rect.bottom, width: rect.width };
+    });
+    console.log(`  回弹后 bounding rect:`, afterBounceRect);
+    console.log(`  window.innerWidth: ${winWidth}, right edge diff: ${winWidth - afterBounceRect.right}px`);
+
     // 使用 getComputedStyle 获取最终 transform
     const afterBounceTransform = await container.evaluate((el) => {
       const inline = el.style.transform;
@@ -812,25 +826,9 @@ test.describe('Select Ask - 全量翻译功能测试', () => {
     console.log(`  回弹后 transform: ${afterBounceTransform}`);
 
     // 验证回弹后回到了初始位置
-    // inline style 应为 translateY(-50%)，或为空（表示无 translateX）
-    // computed style 应为 matrix(1, 0, 0, 1, 0, Y) 形式（Y 为中心化偏移，X=0）
-    if (afterBounceTransform === '') {
-      // 空字符串表示没有 inline transform，也是正确的
-      console.log('✓ 拖拽后弹性回弹到右侧（无 inline transform）');
-    } else if (afterBounceTransform.startsWith('matrix(')) {
-      // matrix(a, b, c, d, tx, ty) - tx 应为 0 表示无水平偏移
-      const values = afterBounceTransform.match(/matrix\((.+)\)/);
-      if (values) {
-        const parts = values[1].split(',').map(v => parseFloat(v.trim()));
-        const translateX = parts[4];
-        expect(Math.abs(translateX)).toBeLessThanOrEqual(1);
-        console.log(`✓ 拖拽后弹性回弹到右侧（translateX=${translateX}）`);
-      }
-    } else {
-      expect(afterBounceTransform).toContain('translateY');
-      expect(afterBounceTransform).not.toContain('translateX(');
-      console.log('✓ 拖拽后弹性回弹到右侧');
-    }
+    // bounding rect 的 right 应该等于 window.innerWidth
+    const edgeDiff = Math.abs(winWidth - afterBounceRect.right);
+    expect(edgeDiff).toBeLessThanOrEqual(2);
   });
 
   /**

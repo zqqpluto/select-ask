@@ -28,6 +28,17 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   container.className = 'select-ask-floating-icon';
   container.style.zIndex = String(ICON_Z_INDEX);
 
+  // 用 JS 显式设置初始位置，紧贴屏幕右边缘（避开 CSS right:0 与滚动条的 15px 缝隙）
+  function snapToRight(dy?: number) {
+    const y = dy ?? 0;
+    container.style.transition = 'none';
+    container.style.left = `${window.innerWidth - 38}px`;
+    container.style.top = `calc(50% + ${y}px)`;
+    container.style.right = 'auto';
+    container.style.transform = 'none';
+  }
+  snapToRight(0);
+
   // 主按钮 - 使用项目 logo
   const btn = document.createElement('button');
   btn.className = 'select-ask-floating-icon-btn';
@@ -188,15 +199,11 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
   function snapBack() {
     currentDx = 0;
     currentDy = 0;
-    container.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
-    container.style.transform = 'translateY(-50%)';
-  }
-
-  function onTransitionEnd() {
-    // 动画结束后清除 inline style，让 CSS 完全接管
-    if (!container.style.transition.includes('0.4s')) return;
-    container.style.transition = '';
-    container.style.transform = '';
+    container.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+    container.style.left = `${window.innerWidth - 38}px`;
+    container.style.top = '50%';
+    container.style.right = 'auto';
+    container.style.transform = 'none';
   }
 
   function onPointerUp() {
@@ -214,7 +221,6 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
   }
 
   btn.addEventListener('pointerdown', onPointerDown);
-  btn.addEventListener('transitionend', onTransitionEnd);
   document.addEventListener('pointermove', onPointerMove);
   document.addEventListener('pointerup', onPointerUp);
   document.addEventListener('pointercancel', onPointerCancel);
