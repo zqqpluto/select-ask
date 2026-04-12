@@ -586,12 +586,10 @@
   color: #374151;
 }
 
-/* 展开状态：去除底部圆角，与菜单连为一体 */
+/* 展开状态：颜色变化，形状保持圆形 */
 .select-ask-floating-icon-btn.active {
   background: #ffffff;
-  border-radius: 19px 19px 0 0;
-  border-color: #e5e7eb;
-  border-bottom-color: transparent;
+  border-color: transparent;
   color: #6366f1;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
@@ -643,16 +641,16 @@
   color: #ef4444;
 }
 
-/* 菜单容器 - 胶囊形状，与 logo 无缝连接 */
+/* 菜单容器 - 与 logo 等宽，2px 重叠覆盖 logo 底部实现无缝连接 */
 .select-ask-floating-icon-menu {
   position: absolute;
-  top: calc(100% - 1px);
+  top: calc(100% - 2px);
   right: 0;
-  width: 38px;
+  width: 36px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-top: none;
-  border-radius: 0 0 19px 19px;
+  border-radius: 0 0 18px 18px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   padding: 12px 0 6px 0;
   display: flex;
@@ -718,8 +716,7 @@
 
   .select-ask-floating-icon-btn.active {
     background: #1f2937;
-    border-color: #374151;
-    border-bottom-color: transparent;
+    border-color: transparent;
     color: #a5b4fc;
   }
 
