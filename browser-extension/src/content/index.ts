@@ -3981,3 +3981,29 @@ async function startPageSummarize(): Promise<void> {
     console.error('[页面总结] 启动失败:', error);
   }
 }
+
+/**
+ * 监听配置变更 - 实时更新悬浮图标显示/隐藏
+ */
+if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
+  chrome.storage.onChanged.addListener((changes, namespace) => {
+    if (namespace !== 'sync' || !changes.appConfig) return;
+
+    const newValue = changes.newValue;
+    const oldValue = changes.oldValue;
+    const wasVisible = oldValue?.showFloatingIcon !== false;
+    const nowVisible = newValue?.showFloatingIcon !== false;
+
+    if (wasVisible && !nowVisible) {
+      // 配置关闭：销毁悬浮图标
+      import('./floating-icon').then(({ destroyFloatingIcon }) => {
+        destroyFloatingIcon();
+        console.log('[悬浮图标] 已因配置关闭而销毁');
+      });
+    } else if (!wasVisible && nowVisible) {
+      // 配置开启：重新创建
+      initFloatingIcon();
+      console.log('[悬浮图标] 已因配置开启而重建');
+    }
+  });
+}
