@@ -592,7 +592,7 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
-/* Logo 包装 - 固定 38x38，在胶囊顶部 */
+/* Logo 包装 - 固定 38x38 圆形，在胶囊顶部 */
 .select-ask-floating-icon-logo-wrap {
   width: 38px;
   height: 38px;
@@ -601,6 +601,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 50%;
 }
 
 .select-ask-floating-icon-logo {
