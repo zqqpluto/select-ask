@@ -35,3 +35,7 @@ docs/test-config.md
 # Test files containing secrets
 tests/extension-features.spec.ts
 tests/extension-real.spec.ts
+
+# Playwright test outputs
+playwright-report/
+test-results/
