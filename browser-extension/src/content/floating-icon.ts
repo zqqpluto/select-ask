@@ -72,26 +72,28 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   const initY = ratioToPixel(savedRatio);
   container.style.transform = `translate3d(0, ${initY}px, 0)`;
 
+  // 统一卡片容器（iOS 风格）
+  const card = document.createElement('div');
+  card.className = 'select-ask-floating-icon-card';
+
   // 主按钮 - 使用项目 logo
   const btn = document.createElement('button');
   btn.className = 'select-ask-floating-icon-btn';
   btn.title = 'Select Ask';
   btn.appendChild(buildLogoImg());
+  card.appendChild(btn);
 
-  container.appendChild(btn);
-
-  // 关闭按钮（hover 时出现在右下角）
+  // 关闭按钮（logo 按钮内部左上角）
   const closeBtn = document.createElement('button');
   closeBtn.className = 'select-ask-floating-icon-close';
   closeBtn.title = '关闭';
-  // 用安全的 DOM 方法构建 SVG
   const closeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  closeSvg.setAttribute('width', '16');
-  closeSvg.setAttribute('height', '16');
+  closeSvg.setAttribute('width', '12');
+  closeSvg.setAttribute('height', '12');
   closeSvg.setAttribute('viewBox', '0 0 24 24');
   closeSvg.setAttribute('fill', 'none');
   closeSvg.setAttribute('stroke', 'currentColor');
-  closeSvg.setAttribute('stroke-width', '2');
+  closeSvg.setAttribute('stroke-width', '3');
   closeSvg.setAttribute('stroke-linecap', 'round');
   closeSvg.setAttribute('stroke-linejoin', 'round');
   const line1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -107,14 +109,21 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
     container.remove();
     floatingIconEl = null;
   });
-  container.appendChild(closeBtn);
+  btn.appendChild(closeBtn);
 
-  // 子菜单容器（在按钮下方）
+  // 分隔线
+  const divider = document.createElement('div');
+  divider.className = 'select-ask-floating-icon-divider';
+  card.appendChild(divider);
+
+  // 子菜单容器
   const menu = document.createElement('div');
   menu.className = 'select-ask-floating-icon-menu';
   menu.appendChild(buildTranslateMenuItem(options));
   menu.appendChild(buildSummarizeMenuItem(options));
-  container.appendChild(menu);
+  card.appendChild(menu);
+
+  container.appendChild(card);
 
   // ========== 拖拽逻辑（参照豆包：只拖 Y 轴） ==========
   setupDrag(container, btn);
@@ -126,6 +135,7 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
     hoverTimer = setTimeout(() => {
       menu.classList.add('visible');
       closeBtn.classList.add('visible');
+      divider.classList.add('visible');
       btn.classList.add('active');
     }, 200);
   }
@@ -135,6 +145,7 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
     leaveTimer = setTimeout(() => {
       menu.classList.remove('visible');
       closeBtn.classList.remove('visible');
+      divider.classList.remove('visible');
       btn.classList.remove('active');
     }, 300);
   }

@@ -542,6 +542,7 @@
 
 /* =============================================
    右侧悬浮图标 + 菜单样式
+   设计：iOS 控制中心风格 — 统一卡片容器，logo 和菜单融为一体
 ============================================= */
 
 .select-ask-floating-icon {
@@ -550,21 +551,38 @@
   bottom: 0;
   z-index: 2147483646;
   /* 垂直位置由 JS 通过 translate3d(0, Y, 0) 控制 */
-  align-items: flex-end;
   display: flex;
   flex-direction: column;
-  user-select: none;
-  -webkit-user-select: none;
+  align-items: flex-end;
   pointer-events: auto;
 }
 
-.select-ask-floating-icon-btn {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  border: 1px solid #e5e7eb;
+/* ---- 统一卡片容器 ---- */
+/* 卡片背景、圆角、阴影都由容器控制，logo 和菜单在卡片内融合 */
+.select-ask-floating-icon-card {
+  width: 48px;
+  border-radius: 18px;
   background: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1), 0 1px 4px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+  position: relative;
+}
+
+.select-ask-floating-icon-card:hover {
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+/* ---- Logo 按钮 ---- */
+/* 在卡片内作为顶部区域，始终可见 */
+.select-ask-floating-icon-btn {
+  width: 48px;
+  height: 48px;
+  border: none;
+  background: transparent;
   cursor: grab;
   display: flex;
   align-items: center;
@@ -575,8 +593,8 @@
   -webkit-user-select: none;
   touch-action: none;
   position: relative;
-  overflow: hidden;
-  z-index: 1;
+  flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .select-ask-floating-icon-btn:active {
@@ -584,48 +602,50 @@
 }
 
 .select-ask-floating-icon-btn:hover {
-  background: #f3f4f6;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  background: #f9fafb;
   color: #374151;
 }
 
 .select-ask-floating-icon-btn.active {
   background: #eef2ff;
-  border-color: #c7d2fe;
   color: #6366f1;
 }
 
 /* Logo 图片 */
 .select-ask-floating-icon-logo {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
 }
 
-/* 关闭按钮（悬浮在 logo 外侧左下角） */
+/* ---- 关闭按钮 ---- */
+/* 缩小到 14px，显示在 logo 按钮内部左上角 */
 .select-ask-floating-icon-close {
   position: absolute;
-  bottom: 0;
-  left: -10px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  top: 4px;
+  left: 4px;
+  width: 14px;
+  height: 14px;
+  border: none;
+  background: transparent;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #9ca3af;
   opacity: 0;
-  transform: scale(0.8);
+  transform: scale(0.6);
   pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.15s ease, transform 0.15s ease, color 0.15s ease;
   padding: 0;
   z-index: 1;
+}
+
+.select-ask-floating-icon-close svg {
+  width: 10px;
+  height: 10px;
 }
 
 .select-ask-floating-icon-close.visible {
@@ -635,51 +655,52 @@
 }
 
 .select-ask-floating-icon-close:hover {
-  background: #fef2f2;
-  border-color: #fca5a5;
-  color: #dc2626;
+  color: #ef4444;
 }
 
-/* 子菜单容器（在按钮下方） - 统一背景框 */
+/* ---- 分隔线 ---- */
+.select-ask-floating-icon-divider {
+  height: 1px;
+  background: #f0f0f0;
+  margin: 0 10px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.select-ask-floating-icon-divider.visible {
+  opacity: 1;
+}
+
+/* ---- 菜单区域 ---- */
+/* 在卡片内，通过 max-height 控制展开/收起 */
 .select-ask-floating-icon-menu {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
-  padding: 4px;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  max-height: 0;
   opacity: 0;
-  transform: translateY(-6px) scale(0.95);
-  pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: max-height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
 }
 
 .select-ask-floating-icon-menu.visible {
+  max-height: 160px;
   opacity: 1;
-  transform: translateY(0) scale(1);
-  pointer-events: auto;
 }
 
-/* 菜单项 - 纯图标按钮 */
+/* 菜单项 - 纯图标，48x48 触摸区域 */
 .select-ask-floating-icon-menu-item {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 48px;
+  height: 48px;
   border: none;
   background: transparent;
   cursor: pointer;
-  border-radius: 8px;
   transition: background 0.15s ease, color 0.15s ease;
   color: #6b7280;
   padding: 0;
-  margin: 0 auto;
+  margin: 0;
 }
 
 .select-ask-floating-icon-menu-item svg {
@@ -732,9 +753,17 @@
 
 /* 暗色模式 - 悬浮图标 */
 @media (prefers-color-scheme: dark) {
-  .select-ask-floating-icon-btn {
+  .select-ask-floating-icon-card {
     background: #1f2937;
     border-color: #374151;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .select-ask-floating-icon-card:hover {
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
+  }
+
+  .select-ask-floating-icon-btn {
     color: #9ca3af;
   }
 
@@ -745,14 +774,11 @@
 
   .select-ask-floating-icon-btn.active {
     background: #1e1b4b;
-    border-color: #4338ca;
     color: #a5b4fc;
   }
 
-  .select-ask-floating-icon-menu {
-    background: #1f2937;
-    border-color: #374151;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.2);
+  .select-ask-floating-icon-divider {
+    background: #374151;
   }
 
   .select-ask-floating-icon-menu-item {
