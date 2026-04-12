@@ -113,6 +113,7 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   const menu = document.createElement('div');
   menu.className = 'select-ask-floating-icon-menu';
   menu.appendChild(buildTranslateMenuItem(options));
+  menu.appendChild(buildSummarizeMenuItem(options));
   container.appendChild(menu);
 
   // ========== 拖拽逻辑（参照豆包：只拖 Y 轴） ==========
@@ -178,11 +179,7 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
     const oldSvg = translateItem.querySelector('svg');
     if (oldSvg) oldSvg.remove();
     const newIcon = buildTranslateIcon(isTranslating ? 'stop-translate' : 'translate');
-    if (newIcon) translateItem.insertBefore(newIcon, translateItem.firstChild);
-
-    // 更新文本
-    const label = translateItem.querySelector('.select-ask-floating-icon-menu-label');
-    if (label) label.textContent = isTranslating ? '停止翻译' : '翻译全文';
+    if (newIcon) translateItem.appendChild(newIcon);
   }
 
   // 暴露刷新方法
@@ -324,7 +321,7 @@ function buildLogoImg(): HTMLImageElement {
 }
 
 /**
- * 构建翻译菜单项 - 带文本的列表项
+ * 构建翻译菜单项 - 纯图标按钮
  */
 function buildTranslateMenuItem(options: FloatingIconOptions): HTMLButtonElement {
   const isTranslating = options.isTranslating ?? false;
@@ -337,10 +334,25 @@ function buildTranslateMenuItem(options: FloatingIconOptions): HTMLButtonElement
   const icon = buildTranslateIcon(isTranslating ? 'stop-translate' : 'translate');
   if (icon) btn.appendChild(icon);
 
-  const label = document.createElement('span');
-  label.className = 'select-ask-floating-icon-menu-label';
-  label.textContent = isTranslating ? '停止翻译' : '翻译全文';
-  btn.appendChild(label);
+  return btn;
+}
+
+/**
+ * 构建总结页面菜单项 - 纯图标按钮
+ */
+function buildSummarizeMenuItem(options: FloatingIconOptions): HTMLButtonElement {
+  const btn = document.createElement('button');
+  btn.className = 'select-ask-floating-icon-menu-item';
+  btn.setAttribute('data-action', 'summarize-page');
+  btn.title = '总结页面';
+
+  const icon = buildSummarizeIcon();
+  if (icon) btn.appendChild(icon);
+
+  btn.addEventListener('click', () => {
+    hideMenu();
+    options.onSummarizePage?.();
+  });
 
   return btn;
 }
@@ -378,6 +390,19 @@ function buildTranslateIcon(type: string): SVGSVGElement | null {
     default:
       return null;
   }
+}
+
+/**
+ * 构建总结图标 SVG
+ */
+function buildSummarizeIcon(): SVGSVGElement | null {
+  const svg = createSvg('20', '20', '0 0 24 24');
+  appendSvgPath(svg, 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z');
+  appendSvgPath(svg, 'M14 2v6h6');
+  appendSvgPath(svg, 'M16 13H8');
+  appendSvgPath(svg, 'M16 17H8');
+  appendSvgPath(svg, 'M10 9H8');
+  return svg;
 }
 
 function createSvg(width: string, height: string, viewBox: string): SVGSVGElement {

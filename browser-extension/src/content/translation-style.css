@@ -650,7 +650,9 @@
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
   padding: 4px;
-  min-width: 130px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   opacity: 0;
   transform: translateY(-6px) scale(0.95);
   pointer-events: none;
@@ -663,34 +665,26 @@
   pointer-events: auto;
 }
 
-/* 菜单项 - 列表式，图标+文本 */
+/* 菜单项 - 纯图标按钮 */
 .select-ask-floating-icon-menu-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  width: 100%;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
   border: none;
   background: transparent;
   cursor: pointer;
   border-radius: 8px;
-  transition: background 0.15s ease;
-  color: #374151;
-  padding: 8px 10px;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.4;
+  transition: background 0.15s ease, color 0.15s ease;
+  color: #6b7280;
+  padding: 0;
+  margin: 0 auto;
 }
 
 .select-ask-floating-icon-menu-item svg {
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-}
-
-.select-ask-floating-icon-menu-label {
-  flex: 1;
-  text-align: left;
-  white-space: nowrap;
+  width: 20px;
+  height: 20px;
 }
 
 .select-ask-floating-icon-menu-item:hover {
@@ -762,7 +756,7 @@
   }
 
   .select-ask-floating-icon-menu-item {
-    color: #d1d5db;
+    color: #9ca3af;
   }
 
   .select-ask-floating-icon-menu-item:hover {

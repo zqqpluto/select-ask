@@ -3796,6 +3796,9 @@ function initFloatingIcon(): void {
             startFullPageTranslation();
           }
         },
+        onSummarizePage: () => {
+          startPageSummarize();
+        },
         isTranslating: false,
       });
 
