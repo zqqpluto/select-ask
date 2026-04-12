@@ -227,7 +227,7 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
   let dragOffsetY = 0;
 
   function setPos(x: number, y: number, transition?: string) {
-    const minX = -(window.innerWidth - 38);
+    const minX = -(window.innerWidth - 40);
     const maxX = -5;
     const minY = 0;
     const maxY = window.innerHeight - 42;
