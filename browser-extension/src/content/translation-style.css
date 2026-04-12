@@ -617,13 +617,13 @@
   -webkit-user-drag: none;
 }
 
-/* 关闭按钮（logo 图标左上角外围） */
+/* 关闭按钮（logo 图标左上角外围，相对于 container 定位） */
 .select-ask-floating-icon-close {
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 14px;
-  height: 14px;
+  top: -5px;
+  left: -5px;
+  width: 16px;
+  height: 16px;
   border: none;
   background: #d1d5db;
   border-radius: 50%;
@@ -638,11 +638,12 @@
   transition: opacity 0.15s ease, transform 0.15s ease, background 0.15s ease;
   padding: 0;
   z-index: 3;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .select-ask-floating-icon-close svg {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
 }
 
 .select-ask-floating-icon-close.visible {

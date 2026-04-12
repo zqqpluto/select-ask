@@ -80,8 +80,9 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   const logoArea = document.createElement('div');
   logoArea.className = 'select-ask-floating-icon-logo-area';
   logoArea.appendChild(buildLogoImg());
+  btn.appendChild(logoArea);
 
-  // 关闭按钮（logo 左上角外侧）
+  // 关闭按钮（logo 左上角外侧，容器的 sibling）
   const closeBtn = document.createElement('button');
   closeBtn.className = 'select-ask-floating-icon-close';
   closeBtn.title = '关闭';
@@ -103,12 +104,14 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   closeSvg.appendChild(line1);
   closeSvg.appendChild(line2);
   closeBtn.appendChild(closeSvg);
-  closeBtn.addEventListener('click', () => {
+  closeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
     container.remove();
     floatingIconEl = null;
   });
-  logoArea.appendChild(closeBtn);
-  btn.appendChild(logoArea);
+  // 防止关闭按钮的 pointerdown 冒泡到 container/btn
+  closeBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+  container.appendChild(closeBtn);
 
   // 子菜单容器 - 放在 btn 内部，overflow:hidden 控制显隐
   const menu = document.createElement('div');
