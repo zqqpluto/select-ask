@@ -87,7 +87,6 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   const menu = document.createElement('div');
   menu.className = 'select-ask-floating-icon-menu';
   menu.appendChild(buildTranslateMenuItem(options));
-  menu.appendChild(buildSummarizeMenuItem(options));
   menu.appendChild(buildHistoryMenuItem());
   menu.appendChild(buildSettingsMenuItem());
   btn.appendChild(menu);

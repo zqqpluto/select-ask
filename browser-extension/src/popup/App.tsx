@@ -49,7 +49,7 @@ export default function App() {
       // 立即通知当前 tab 的 content script 更新悬浮图标
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0]?.id) {
-          chrome.tabs.sendMessage(tabs[0].id, { action: 'floatingIconToggle' });
+          chrome.tabs.sendMessage(tabs[0].id, { action: 'floatingIconToggle', enabled: checked });
         }
       });
     } catch (error) {

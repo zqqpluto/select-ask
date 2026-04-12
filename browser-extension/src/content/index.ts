@@ -3652,9 +3652,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ success: true });
   } else if (message.action === 'floatingIconToggle') {
     // 来自 popup 的悬浮图标开关请求
-    import('./floating-icon').then(({ destroyFloatingIcon }) => {
-      destroyFloatingIcon();
-    });
+    if (message.enabled === false) {
+      import('./floating-icon').then(({ destroyFloatingIcon }) => {
+        destroyFloatingIcon();
+      });
+    } else {
+      initFloatingIcon();
+    }
     sendResponse({ success: true });
   }
   return true;
