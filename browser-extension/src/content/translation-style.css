@@ -603,7 +603,7 @@
   justify-content: center;
   border-radius: 50%;
   background: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 .select-ask-floating-icon-logo {
@@ -760,7 +760,7 @@
 
   .select-ask-floating-icon-logo-wrap {
     background: #1f2937;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
   }
 
   .select-ask-floating-icon-close {
