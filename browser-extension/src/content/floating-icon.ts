@@ -76,13 +76,13 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   const btn = document.createElement('button');
   btn.className = 'select-ask-floating-icon-btn';
 
-  // Logo 区域（固定 38x38，不被压缩）
-  const logoArea = document.createElement('div');
-  logoArea.className = 'select-ask-floating-icon-logo-area';
-  logoArea.appendChild(buildLogoImg());
-  btn.appendChild(logoArea);
+  // 内容包装器（负责 overflow 裁切 + 圆角）
+  const contentWrap = document.createElement('div');
+  contentWrap.className = 'select-ask-floating-icon-content';
+  contentWrap.appendChild(buildLogoImg());
+  btn.appendChild(contentWrap);
 
-  // 关闭按钮（logo 左上角外侧，容器的 sibling）
+  // 关闭按钮（btn 的子元素但在 contentWrap 外面，不受 overflow 裁切影响定位）
   const closeBtn = document.createElement('button');
   closeBtn.className = 'select-ask-floating-icon-close';
   closeBtn.title = '关闭';
@@ -109,16 +109,15 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
     container.remove();
     floatingIconEl = null;
   });
-  // 防止关闭按钮的 pointerdown 冒泡到 container/btn
   closeBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
-  container.appendChild(closeBtn);
+  btn.appendChild(closeBtn);
 
-  // 子菜单容器 - 放在 btn 内部，overflow:hidden 控制显隐
+  // 子菜单容器 - 放在 btn 外部（兄弟元素），绝对定位到按钮下方实现向下弹出
   const menu = document.createElement('div');
   menu.className = 'select-ask-floating-icon-menu';
   menu.appendChild(buildTranslateMenuItem(options));
   menu.appendChild(buildSummarizeMenuItem(options));
-  btn.appendChild(menu);
+  container.appendChild(menu);
 
   container.appendChild(btn);
 
