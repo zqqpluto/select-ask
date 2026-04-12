@@ -542,7 +542,7 @@
 
 /* =============================================
    右侧悬浮图标 + 菜单样式
-   设计：logo 始终圆形，菜单胶囊与 logo 无缝融合
+   设计：按钮即胶囊容器，hover 时向下展开露出菜单
 ============================================= */
 
 .select-ask-floating-icon {
@@ -550,30 +550,32 @@
   right: 0;
   bottom: 0;
   z-index: 2147483646;
-  /* 垂直位置由 JS 通过 translate3d(0, Y, 0) 控制 */
   pointer-events: auto;
 }
 
-/* Logo 按钮 - 始终圆形 */
+/* 胶囊容器 - 默认只显示 logo 区域 */
 .select-ask-floating-icon-btn {
   width: 38px;
   height: 38px;
-  border-radius: 50%;
+  border-radius: 19px;
   border: 1px solid #e5e7eb;
   background: #ffffff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   cursor: grab;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
   color: #6b7280;
   padding: 0;
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
   position: relative;
-  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-  z-index: 2;
+  transition: height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.2s ease,
+              background 0.15s ease,
+              color 0.15s ease;
+  overflow: hidden;
 }
 
 .select-ask-floating-icon-btn:active {
@@ -583,49 +585,44 @@
 .select-ask-floating-icon-btn:hover {
   background: #f9fafb;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-  color: #374151;
 }
 
-/* 展开状态：去除边框，用 box-shadow 维持轮廓 */
+/* 展开状态：容器变高，露出菜单 */
 .select-ask-floating-icon-btn.active {
+  height: auto;
   background: #ffffff;
-  border-color: transparent;
-  box-shadow: 0 0 0 1px rgba(229, 231, 235, 0.5), 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
   color: #6366f1;
 }
 
-/* 用伪元素遮住 logo 底部边框，实现与菜单的无缝连接 */
-.select-ask-floating-icon-btn.active::after {
-  content: '';
-  position: absolute;
-  bottom: -3px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: calc(100% - 2px);
-  height: 6px;
-  background: #ffffff;
-  z-index: 3;
+/* Logo 区域 - 固定 38x38，不被压缩 */
+.select-ask-floating-icon-logo-area {
+  width: 38px;
+  height: 38px;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
 }
 
-/* Logo 图片 */
 .select-ask-floating-icon-logo {
   width: 24px;
   height: 24px;
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
-  transition: opacity 0.15s ease;
 }
 
-/* 关闭按钮（logo 左上角外侧，容器级别） */
+/* 关闭按钮（logo 左上角外侧，小巧低调） */
 .select-ask-floating-icon-close {
   position: absolute;
-  top: -5px;
-  left: -5px;
-  width: 18px;
-  height: 18px;
+  top: -3px;
+  left: -3px;
+  width: 13px;
+  height: 13px;
   border: none;
-  background: #ef4444;
+  background: #d1d5db;
   border-radius: 50%;
   cursor: pointer;
   display: flex;
@@ -633,16 +630,16 @@
   justify-content: center;
   color: #ffffff;
   opacity: 0;
-  transform: scale(0.5);
+  transform: scale(0.6);
   pointer-events: none;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity 0.15s ease, transform 0.15s ease, background 0.15s ease;
   padding: 0;
   z-index: 3;
 }
 
 .select-ask-floating-icon-close svg {
-  width: 10px;
-  height: 10px;
+  width: 7px;
+  height: 7px;
 }
 
 .select-ask-floating-icon-close.visible {
@@ -652,31 +649,21 @@
 }
 
 .select-ask-floating-icon-close:hover {
-  background: #dc2626;
+  background: #ef4444;
 }
 
-/* 菜单容器 - 与 logo 等宽，5px 重叠实现无缝连接 */
+/* 菜单区域 - 在 logo 下方，展开时被容器 reveal */
 .select-ask-floating-icon-menu {
-  position: absolute;
-  top: calc(100% - 5px);
-  right: -1px;
-  width: 38px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-top: 1px solid transparent;
-  border-radius: 0 0 19px 19px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  padding: 12px 0 6px 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
+  padding: 4px 0 8px 0;
   opacity: 0;
   transform: translateY(-4px);
   pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-  overflow: hidden;
-  z-index: 1;
+  transition: opacity 0.2s ease 0.05s, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s;
 }
 
 .select-ask-floating-icon-menu.visible {
@@ -685,7 +672,7 @@
   pointer-events: auto;
 }
 
-/* 菜单项 - 圆形小按钮 */
+/* 菜单项 - 圆形按钮 */
 .select-ask-floating-icon-menu-item {
   display: flex;
   align-items: center;
@@ -699,20 +686,60 @@
   transition: background 0.15s ease, color 0.15s ease;
   color: #6b7280;
   padding: 0;
+  position: relative;
 }
 
 .select-ask-floating-icon-menu-item svg {
   width: 18px;
   height: 18px;
+  pointer-events: none;
 }
 
 .select-ask-floating-icon-menu-item:hover {
   background: #f3f4f6;
-  color: #1f2937;
+  color: #6366f1;
 }
 
 .select-ask-floating-icon-menu-item:active {
   background: #e5e7eb;
+}
+
+/* 菜单项 tooltip - 左侧弹出 */
+.select-ask-floating-icon-menu-item::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  right: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: #1f2937;
+  color: #ffffff;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 10;
+}
+
+.select-ask-floating-icon-menu-item::after {
+  content: '';
+  position: absolute;
+  right: calc(100% + 4px);
+  top: 50%;
+  transform: translateY(-50%);
+  border: 4px solid transparent;
+  border-left-color: #1f2937;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 10;
+}
+
+.select-ask-floating-icon-menu-item:hover::before,
+.select-ask-floating-icon-menu-item:hover::after {
+  opacity: 1;
 }
 
 /* 暗色模式 - 悬浮图标 */
@@ -730,18 +757,15 @@
 
   .select-ask-floating-icon-btn.active {
     background: #1f2937;
-    border-color: transparent;
     color: #a5b4fc;
   }
 
-  .select-ask-floating-icon-btn.active::after {
-    background: #1f2937;
+  .select-ask-floating-icon-close {
+    background: #4b5563;
   }
 
-  .select-ask-floating-icon-menu {
-    background: #1f2937;
-    border-color: #374151;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  .select-ask-floating-icon-close:hover {
+    background: #ef4444;
   }
 
   .select-ask-floating-icon-menu-item {
@@ -757,13 +781,13 @@
     background: #4b5563;
   }
 
-  .select-ask-floating-icon-tooltip {
-    background: #e5e7eb;
+  .select-ask-floating-icon-menu-item::before {
+    background: #f3f4f6;
     color: #1f2937;
   }
 
-  .select-ask-floating-icon-tooltip::after {
-    border-left-color: #e5e7eb;
+  .select-ask-floating-icon-menu-item::after {
+    border-left-color: #f3f4f6;
   }
 }
 

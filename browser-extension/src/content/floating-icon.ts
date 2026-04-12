@@ -72,14 +72,16 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   const initY = ratioToPixel(savedRatio);
   container.style.transform = `translate3d(0, ${initY}px, 0)`;
 
-  // 主按钮 - 圆形，始终可见
+  // 主按钮 - 胶囊容器
   const btn = document.createElement('button');
   btn.className = 'select-ask-floating-icon-btn';
-  btn.title = 'Select Ask';
-  btn.appendChild(buildLogoImg());
-  container.appendChild(btn);
 
-  // 关闭按钮（容器级别，logo 左上角外侧）
+  // Logo 区域（固定 38x38，不被压缩）
+  const logoArea = document.createElement('div');
+  logoArea.className = 'select-ask-floating-icon-logo-area';
+  logoArea.appendChild(buildLogoImg());
+
+  // 关闭按钮（logo 左上角外侧）
   const closeBtn = document.createElement('button');
   closeBtn.className = 'select-ask-floating-icon-close';
   closeBtn.title = '关闭';
@@ -105,14 +107,17 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
     container.remove();
     floatingIconEl = null;
   });
-  container.appendChild(closeBtn);
+  logoArea.appendChild(closeBtn);
+  btn.appendChild(logoArea);
 
-  // 子菜单容器 - 绝对定位在 logo 下方
+  // 子菜单容器 - 放在 btn 内部，overflow:hidden 控制显隐
   const menu = document.createElement('div');
   menu.className = 'select-ask-floating-icon-menu';
   menu.appendChild(buildTranslateMenuItem(options));
   menu.appendChild(buildSummarizeMenuItem(options));
-  container.appendChild(menu);
+  btn.appendChild(menu);
+
+  container.appendChild(btn);
 
   // ========== 拖拽逻辑（参照豆包：只拖 Y 轴） ==========
   setupDrag(container, btn);
@@ -171,7 +176,7 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
     if (!translateItem) return;
     const isTranslating = options.isTranslating ?? false;
     translateItem.setAttribute('data-icon', isTranslating ? 'stop-translate' : 'translate');
-    translateItem.title = isTranslating ? '停止翻译' : '翻译全文';
+    translateItem.setAttribute('data-tooltip', isTranslating ? '停止翻译' : '翻译全文');
 
     // 更新图标
     const oldSvg = translateItem.querySelector('svg');
@@ -327,7 +332,7 @@ function buildTranslateMenuItem(options: FloatingIconOptions): HTMLButtonElement
   btn.className = 'select-ask-floating-icon-menu-item';
   btn.setAttribute('data-action', 'full-translate');
   btn.setAttribute('data-icon', isTranslating ? 'stop-translate' : 'translate');
-  btn.title = isTranslating ? '停止翻译' : '翻译全文';
+  btn.setAttribute('data-tooltip', isTranslating ? '停止翻译' : '翻译全文');
 
   const icon = buildTranslateIcon(isTranslating ? 'stop-translate' : 'translate');
   if (icon) btn.appendChild(icon);
@@ -342,7 +347,7 @@ function buildSummarizeMenuItem(options: FloatingIconOptions): HTMLButtonElement
   const btn = document.createElement('button');
   btn.className = 'select-ask-floating-icon-menu-item';
   btn.setAttribute('data-action', 'summarize-page');
-  btn.title = '总结页面';
+  btn.setAttribute('data-tooltip', '总结页面');
 
   const icon = buildSummarizeIcon();
   if (icon) btn.appendChild(icon);
