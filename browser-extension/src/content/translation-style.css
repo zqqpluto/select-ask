@@ -646,7 +646,7 @@
   cursor: pointer;
   border-radius: 50%;
   transition: background 0.15s ease, color 0.15s ease;
-  color: #6b7280;
+  color: #374151;
   padding: 0;
   position: relative;
 }
