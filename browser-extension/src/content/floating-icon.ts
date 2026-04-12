@@ -72,16 +72,12 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   const initY = ratioToPixel(savedRatio);
   container.style.transform = `translate3d(0, ${initY}px, 0)`;
 
-  // 统一卡片容器（iOS 风格）
-  const card = document.createElement('div');
-  card.className = 'select-ask-floating-icon-card';
-
-  // 主按钮 - 使用项目 logo
+  // 主按钮 - 圆形，始终可见
   const btn = document.createElement('button');
   btn.className = 'select-ask-floating-icon-btn';
   btn.title = 'Select Ask';
   btn.appendChild(buildLogoImg());
-  card.appendChild(btn);
+  container.appendChild(btn);
 
   // 关闭按钮（logo 按钮内部左上角）
   const closeBtn = document.createElement('button');
@@ -111,19 +107,12 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   });
   btn.appendChild(closeBtn);
 
-  // 分隔线
-  const divider = document.createElement('div');
-  divider.className = 'select-ask-floating-icon-divider';
-  card.appendChild(divider);
-
-  // 子菜单容器
+  // 子菜单容器 - 绝对定位在 logo 下方
   const menu = document.createElement('div');
   menu.className = 'select-ask-floating-icon-menu';
   menu.appendChild(buildTranslateMenuItem(options));
   menu.appendChild(buildSummarizeMenuItem(options));
-  card.appendChild(menu);
-
-  container.appendChild(card);
+  container.appendChild(menu);
 
   // ========== 拖拽逻辑（参照豆包：只拖 Y 轴） ==========
   setupDrag(container, btn);
@@ -135,7 +124,6 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
     hoverTimer = setTimeout(() => {
       menu.classList.add('visible');
       closeBtn.classList.add('visible');
-      divider.classList.add('visible');
       btn.classList.add('active');
     }, 200);
   }
@@ -145,7 +133,6 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
     leaveTimer = setTimeout(() => {
       menu.classList.remove('visible');
       closeBtn.classList.remove('visible');
-      divider.classList.remove('visible');
       btn.classList.remove('active');
     }, 300);
   }

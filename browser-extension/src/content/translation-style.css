@@ -542,7 +542,7 @@
 
 /* =============================================
    右侧悬浮图标 + 菜单样式
-   设计：iOS 控制中心风格 — 统一卡片容器，logo 和菜单融为一体
+   设计：logo 始终圆形，菜单从下方绝对定位弹出
 ============================================= */
 
 .select-ask-floating-icon {
@@ -551,38 +551,17 @@
   bottom: 0;
   z-index: 2147483646;
   /* 垂直位置由 JS 通过 translate3d(0, Y, 0) 控制 */
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
   pointer-events: auto;
 }
 
-/* ---- 统一卡片容器 ---- */
-/* 卡片背景、圆角、阴影都由容器控制，logo 和菜单在卡片内融合 */
-.select-ask-floating-icon-card {
-  width: 48px;
-  border-radius: 18px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1), 0 1px 4px rgba(0, 0, 0, 0.04);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  transition: height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
-  position: relative;
-}
-
-.select-ask-floating-icon-card:hover {
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.06);
-}
-
-/* ---- Logo 按钮 ---- */
-/* 在卡片内作为顶部区域，始终可见 */
+/* Logo 按钮 - 始终圆形 */
 .select-ask-floating-icon-btn {
-  width: 48px;
-  height: 48px;
-  border: none;
-  background: transparent;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   cursor: grab;
   display: flex;
   align-items: center;
@@ -593,8 +572,7 @@
   -webkit-user-select: none;
   touch-action: none;
   position: relative;
-  flex-shrink: 0;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .select-ask-floating-icon-btn:active {
@@ -602,30 +580,31 @@
 }
 
 .select-ask-floating-icon-btn:hover {
-  background: #f9fafb;
+  background: #f3f4f6;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   color: #374151;
 }
 
 .select-ask-floating-icon-btn.active {
   background: #eef2ff;
+  border-color: #c7d2fe;
   color: #6366f1;
 }
 
 /* Logo 图片 */
 .select-ask-floating-icon-logo {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
 }
 
-/* ---- 关闭按钮 ---- */
-/* 缩小到 14px，显示在 logo 按钮内部左上角 */
+/* 关闭按钮（logo 内部左上角，缩小） */
 .select-ask-floating-icon-close {
   position: absolute;
-  top: 4px;
-  left: 4px;
+  top: 3px;
+  left: 3px;
   width: 14px;
   height: 14px;
   border: none;
@@ -658,33 +637,31 @@
   color: #ef4444;
 }
 
-/* ---- 分隔线 ---- */
-.select-ask-floating-icon-divider {
-  height: 1px;
-  background: #f0f0f0;
-  margin: 0 10px;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.select-ask-floating-icon-divider.visible {
-  opacity: 1;
-}
-
-/* ---- 菜单区域 ---- */
-/* 在卡片内，通过 max-height 控制展开/收起 */
+/* 菜单容器 - 绝对定位在 logo 下方，向下弹出 */
 .select-ask-floating-icon-menu {
-  overflow: hidden;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 48px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1), 0 1px 4px rgba(0, 0, 0, 0.04);
+  padding: 4px 0;
   display: flex;
   flex-direction: column;
-  max-height: 0;
+  align-items: center;
   opacity: 0;
-  transition: max-height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
 }
 
 .select-ask-floating-icon-menu.visible {
-  max-height: 160px;
   opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
 /* 菜单项 - 纯图标，48x48 触摸区域 */
@@ -692,11 +669,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   border: none;
   background: transparent;
   cursor: pointer;
+  border-radius: 10px;
   transition: background 0.15s ease, color 0.15s ease;
   color: #6b7280;
   padding: 0;
@@ -717,53 +695,11 @@
   background: #e5e7eb;
 }
 
-/* 自定义 Tooltip */
-.select-ask-floating-icon-tooltip {
-  position: absolute;
-  right: calc(100% + 8px);
-  top: 50%;
-  transform: translateY(-50%);
-  background: #1f2937;
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 500;
-  padding: 4px 10px;
-  border-radius: 6px;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-  z-index: 1;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.select-ask-floating-icon-tooltip::after {
-  content: '';
-  position: absolute;
-  left: 100%;
-  top: 50%;
-  transform: translateY(-50%);
-  border: 5px solid transparent;
-  border-left-color: #1f2937;
-}
-
-.select-ask-floating-icon-tooltip.visible {
-  opacity: 1;
-}
-
 /* 暗色模式 - 悬浮图标 */
 @media (prefers-color-scheme: dark) {
-  .select-ask-floating-icon-card {
+  .select-ask-floating-icon-btn {
     background: #1f2937;
     border-color: #374151;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(0, 0, 0, 0.2);
-  }
-
-  .select-ask-floating-icon-card:hover {
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
-  }
-
-  .select-ask-floating-icon-btn {
     color: #9ca3af;
   }
 
@@ -774,11 +710,14 @@
 
   .select-ask-floating-icon-btn.active {
     background: #1e1b4b;
+    border-color: #4338ca;
     color: #a5b4fc;
   }
 
-  .select-ask-floating-icon-divider {
-    background: #374151;
+  .select-ask-floating-icon-menu {
+    background: #1f2937;
+    border-color: #374151;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(0, 0, 0, 0.2);
   }
 
   .select-ask-floating-icon-menu-item {
