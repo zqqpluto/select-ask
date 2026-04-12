@@ -3650,6 +3650,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // 来自 popup 的总结页面请求
     startPageSummarize();
     sendResponse({ success: true });
+  } else if (message.action === 'floatingIconToggle') {
+    // 来自 popup 的悬浮图标开关请求
+    import('./floating-icon').then(({ destroyFloatingIcon }) => {
+      destroyFloatingIcon();
+    });
+    sendResponse({ success: true });
   }
   return true;
 });

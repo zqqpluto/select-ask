@@ -45,6 +45,13 @@ export default function App() {
       config.showFloatingIcon = checked;
       await chrome.storage.sync.set({ appConfig: config });
       setFloatingIconEnabled(checked);
+
+      // 立即通知当前 tab 的 content script 更新悬浮图标
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0]?.id) {
+          chrome.tabs.sendMessage(tabs[0].id, { action: 'floatingIconToggle' });
+        }
+      });
     } catch (error) {
       console.error('Failed to update floating icon setting:', error);
     }

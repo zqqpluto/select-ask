@@ -88,6 +88,8 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   menu.className = 'select-ask-floating-icon-menu';
   menu.appendChild(buildTranslateMenuItem(options));
   menu.appendChild(buildSummarizeMenuItem(options));
+  menu.appendChild(buildHistoryMenuItem());
+  menu.appendChild(buildSettingsMenuItem());
   btn.appendChild(menu);
 
   container.appendChild(btn);
@@ -164,9 +166,7 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   if (translateItem) {
     translateItem.addEventListener('click', () => {
       hideMenu();
-      options.isTranslating = !options.isTranslating;
       options.onToggleFullPageTranslate?.();
-      setTimeout(() => refreshMenuState(), 50);
     });
   }
 
@@ -350,6 +350,46 @@ function buildSummarizeMenuItem(options: FloatingIconOptions): HTMLButtonElement
 }
 
 /**
+ * 构建历史记录菜单项 - 纯图标按钮
+ */
+function buildHistoryMenuItem(): HTMLButtonElement {
+  const btn = document.createElement('button');
+  btn.className = 'select-ask-floating-icon-menu-item';
+  btn.setAttribute('data-action', 'history');
+  btn.setAttribute('data-tooltip', '历史记录');
+
+  const icon = buildHistoryIcon();
+  if (icon) btn.appendChild(icon);
+
+  btn.addEventListener('click', () => {
+    hideMenu();
+    chrome.tabs.create({ url: chrome.runtime.getURL('src/options/index.html') + '?tab=history' });
+  });
+
+  return btn;
+}
+
+/**
+ * 构建设置菜单项 - 纯图标按钮
+ */
+function buildSettingsMenuItem(): HTMLButtonElement {
+  const btn = document.createElement('button');
+  btn.className = 'select-ask-floating-icon-menu-item';
+  btn.setAttribute('data-action', 'settings');
+  btn.setAttribute('data-tooltip', '设置');
+
+  const icon = buildSettingsIcon();
+  if (icon) btn.appendChild(icon);
+
+  btn.addEventListener('click', () => {
+    hideMenu();
+    chrome.runtime.openOptionsPage();
+  });
+
+  return btn;
+}
+
+/**
  * 构建翻译图标 SVG
  */
 function buildTranslateIcon(type: string): SVGSVGElement | null {
@@ -392,6 +432,27 @@ function buildSummarizeIcon(): SVGSVGElement | null {
   appendSvgPath(svg, 'M16 13H8');
   appendSvgPath(svg, 'M16 17H8');
   appendSvgPath(svg, 'M10 9H8');
+  return svg;
+}
+
+/**
+ * 构建历史记录图标 SVG
+ */
+function buildHistoryIcon(): SVGSVGElement | null {
+  const svg = createSvg('20', '20', '0 0 24 24');
+  appendSvgPath(svg, 'M12 8v4l3 3');
+  appendSvgPath(svg, 'M3.05 11a9 9 0 1 1 .6 3');
+  appendSvgPath(svg, 'M3 7v4h4');
+  return svg;
+}
+
+/**
+ * 构建设置图标 SVG
+ */
+function buildSettingsIcon(): SVGSVGElement | null {
+  const svg = createSvg('20', '20', '0 0 24 24');
+  appendSvgPath(svg, 'M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z');
+  appendSvgPath(svg, 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z');
   return svg;
 }
 

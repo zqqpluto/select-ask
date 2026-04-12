@@ -603,7 +603,7 @@
   justify-content: center;
   border-radius: 50%;
   background: #ffffff;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .select-ask-floating-icon-logo {
@@ -620,7 +620,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 6px;
   padding: 4px 0 8px 0;
   opacity: 0;
   transform: translateY(-8px);
@@ -760,7 +760,7 @@
 
   .select-ask-floating-icon-logo-wrap {
     background: #1f2937;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   }
 
   .select-ask-floating-icon-close {
