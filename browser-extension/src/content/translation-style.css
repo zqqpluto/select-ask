@@ -550,7 +550,7 @@
 
 .select-ask-floating-icon {
   position: fixed;
-  right: 2px;
+  right: 5px;
   top: 0;
   z-index: 2147483646;
   pointer-events: auto;

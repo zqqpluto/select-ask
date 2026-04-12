@@ -228,7 +228,7 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
 
   function setPos(x: number, y: number, transition?: string) {
     const minX = -(window.innerWidth - 38);
-    const maxX = -2;
+    const maxX = -5;
     const minY = 0;
     const maxY = window.innerHeight - 42;
     const clampedX = Math.max(minX, Math.min(maxX, x));
@@ -280,7 +280,7 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
     savedRatio = ratio;
     saveRatio(savedRatio);
 
-    setPos(-2, currentY, 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)');
+    setPos(-5, currentY, 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)');
 
     requestAnimationFrame(() => {
       isDragging = false;
