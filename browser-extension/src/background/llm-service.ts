@@ -173,10 +173,18 @@ export async function handleLLMStream(
     }
 
     // 流式获取响应
+    let skipReasoning = request.action === 'translate';
+    let inReasoning = false;
     for await (const chunk of provider.streamChat(messages)) {
       // 检查端口是否仍然连接
       if (!port.name) {
         return;
+      }
+      // 翻译模式下过滤 reasoning 内容
+      if (skipReasoning) {
+        if (chunk === '[REASONING]') { inReasoning = true; continue; }
+        if (chunk === '[REASONING_DONE]') { inReasoning = false; continue; }
+        if (inReasoning) continue;
       }
       port.postMessage({ type: 'LLM_STREAM_CHUNK', chunk });
     }

@@ -65,6 +65,7 @@ export interface AppConfig {
   selectedQuestionModelId: string | null;    // 问题生成模型（仅一个）
   models: ModelConfig[];
   displayMode: DisplayMode;                  // 显示模式：悬浮或侧边栏
+  showFloatingIcon: boolean;                 // 是否显示悬浮图标
   preferences: UserPreferences;              // 用户偏好设置
 }
 

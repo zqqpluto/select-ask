@@ -167,28 +167,21 @@ function insertTranslationWrapper(
   paragraph: TranslatableParagraph,
   translationText: string
 ): HTMLElement {
-  const wrapper = document.createElement('font');
-  wrapper.className = 'notranslate';
+  const wrapper = document.createElement('div');
+  wrapper.className = 'notranslate select-ask-translation-block';
   wrapper.setAttribute(TRANSLATION_MARKER_ATTR, '1');
   wrapper.setAttribute(PARAGRAPH_ID_ATTR, paragraph.id);
-  wrapper.style.cssText = 'display:block;margin:4px 0 0 0;';
 
-  // 译文标签
-  const label = document.createElement('span');
-  label.className = 'select-ask-fp-translation-label';
-  label.textContent = '译文';
-
-  const contentSpan = document.createElement('span');
-  contentSpan.className = 'select-ask-fp-translation-content';
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'select-ask-translation-content';
 
   // marked.parse 返回安全的 HTML（用户可控文本经 LLM 翻译）
   // 如果结果只包含单个 <p> 标签，剥离外层 <p> 避免多余间距
   const rawHtml = marked.parse(translationText) as string;
   const singleParaMatch = rawHtml.match(/^<p>([\s\S]*)<\/p>$/i);
-  contentSpan.innerHTML = singleParaMatch ? singleParaMatch[1] : rawHtml;
+  contentDiv.innerHTML = singleParaMatch ? singleParaMatch[1] : rawHtml;
 
-  wrapper.appendChild(label);
-  wrapper.appendChild(contentSpan);
+  wrapper.appendChild(contentDiv);
 
   // 移除 loading
   removeLoadingFromParagraph(paragraph.element);
@@ -360,27 +353,67 @@ export function createFullPageTranslationController(
     updateControlBar();
     showLoadingOnParagraph(paragraph.element);
 
+    // 创建流式占位符（立即显示，提升感知速度）
+    let streamWrapper: HTMLElement | null = null;
+    let streamContent: HTMLElement | null = null;
+
     try {
       let fullTranslation = '';
+      let chunkCount = 0;
+      const STREAM_UPDATE_INTERVAL = 5; // 每 5 个 chunk 更新一次 UI，减少重绘
+
       for await (const chunk of options.streamTranslate(paragraph.text, options.targetLanguage)) {
         if (isStopped || isPaused) break;
         fullTranslation += chunk;
         paragraph.translation = fullTranslation;
+        chunkCount++;
         options.onChunk?.(paragraph.id, chunk);
+
+        // 流式更新：创建或更新译文容器
+        if (chunkCount % STREAM_UPDATE_INTERVAL === 0 && fullTranslation.length > 10) {
+          if (!streamWrapper) {
+            // 首次创建译文容器
+            removeLoadingFromParagraph(paragraph.element);
+            streamWrapper = document.createElement('div');
+            streamWrapper.className = 'notranslate select-ask-translation-block select-ask-translation-streaming';
+            streamWrapper.setAttribute(TRANSLATION_MARKER_ATTR, '1');
+            streamWrapper.setAttribute(PARAGRAPH_ID_ATTR, paragraph.id);
+
+            streamContent = document.createElement('div');
+            streamContent.className = 'select-ask-translation-content';
+            streamWrapper.appendChild(streamContent);
+
+            paragraph.element.insertAdjacentElement('afterend', streamWrapper);
+          }
+
+          // 更新译文内容
+          const rawHtml = marked.parse(fullTranslation) as string;
+          const singleParaMatch = rawHtml.match(/^<p>([\s\S]*)<\/p>$/i);
+          streamContent!.innerHTML = singleParaMatch ? singleParaMatch[1] : rawHtml;
+        }
       }
 
       if (!isStopped && fullTranslation) {
         paragraph.status = 'done';
-        insertTranslationWrapper(paragraph, fullTranslation);
+        // 移除流式标记，完成最终渲染
+        if (streamWrapper) {
+          streamWrapper.classList.remove('select-ask-translation-streaming');
+          translatedParagraphs.set(paragraph.id, streamWrapper);
+          paragraph.wrapperEl = streamWrapper;
+        } else {
+          insertTranslationWrapper(paragraph, fullTranslation);
+        }
       } else if (!isStopped) {
         paragraph.status = 'error';
         paragraph.error = '翻译结果为空';
         removeLoadingFromParagraph(paragraph.element);
+        streamWrapper?.remove();
       }
     } catch (error) {
       paragraph.status = 'error';
       paragraph.error = error instanceof Error ? error.message : String(error);
       removeLoadingFromParagraph(paragraph.element);
+      streamWrapper?.remove();
     }
 
     updateControlBar();

@@ -547,9 +547,15 @@
 .select-ask-floating-icon {
   position: fixed;
   right: 0;
-  top: 50%;
-  transform: translateY(-50%);
+  bottom: 0;
   z-index: 2147483646;
+  /* 垂直位置由 JS 通过 translate3d(0, Y, 0) 控制 */
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: auto;
 }
 
 .select-ask-floating-icon-btn {
@@ -563,7 +569,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
   color: #6b7280;
   padding: 0;
   user-select: none;
@@ -571,6 +576,7 @@
   touch-action: none;
   position: relative;
   overflow: hidden;
+  z-index: 1;
 }
 
 .select-ask-floating-icon-btn:active {
@@ -598,11 +604,11 @@
   -webkit-user-drag: none;
 }
 
-/* 关闭按钮（悬浮在 logo 时出现在右下角） */
+/* 关闭按钮（悬浮在 logo 外侧左下角） */
 .select-ask-floating-icon-close {
   position: absolute;
-  bottom: -4px;
-  right: -4px;
+  bottom: 0;
+  left: -10px;
   width: 20px;
   height: 20px;
   border-radius: 50%;
@@ -634,17 +640,19 @@
   color: #dc2626;
 }
 
-/* 子菜单容器（在按钮下方） */
+/* 子菜单容器（在按钮下方） - 统一背景框 */
 .select-ask-floating-icon-menu {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
+  padding: 4px;
+  min-width: 130px;
   opacity: 0;
-  transform: translateY(-6px) scale(0.9);
+  transform: translateY(-6px) scale(0.95);
   pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
@@ -655,32 +663,43 @@
   pointer-events: auto;
 }
 
-/* 菜单项 - 圆形按钮（参照图片样式） */
+/* 菜单项 - 列表式，图标+文本 */
 .select-ask-floating-icon-menu-item {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
+  gap: 8px;
+  width: 100%;
   border: none;
-  background: #f3f4f6;
+  background: transparent;
   cursor: pointer;
-  border-radius: 50%;
-  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
-  color: #4b5563;
-  padding: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  transition: background 0.15s ease;
+  color: #374151;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.select-ask-floating-icon-menu-item svg {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}
+
+.select-ask-floating-icon-menu-label {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
 }
 
 .select-ask-floating-icon-menu-item:hover {
-  background: #e5e7eb;
+  background: #f3f4f6;
   color: #1f2937;
-  transform: scale(1.1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 .select-ask-floating-icon-menu-item:active {
-  transform: scale(0.95);
+  background: #e5e7eb;
 }
 
 /* 自定义 Tooltip */
@@ -739,7 +758,7 @@
   .select-ask-floating-icon-menu {
     background: #1f2937;
     border-color: #374151;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.2);
   }
 
   .select-ask-floating-icon-menu-item {
@@ -749,6 +768,10 @@
   .select-ask-floating-icon-menu-item:hover {
     background: #374151;
     color: #f3f4f6;
+  }
+
+  .select-ask-floating-icon-menu-item:active {
+    background: #4b5563;
   }
 
   .select-ask-floating-icon-tooltip {
@@ -762,41 +785,225 @@
 }
 
 /* =============================================
-   全文翻译样式
+   页面总结面板
 ============================================= */
 
-/* 译文内容 - 使用 <font> 标签包裹，display:block 不破坏布局 */
-.select-ask-fp-translation-content {
+.select-ask-summarize-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(560px, 90vw);
+  max-height: 80vh;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  z-index: 2147483647;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.select-ask-summarize-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.select-ask-summarize-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.select-ask-summarize-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  transition: background-color 0.15s;
+}
+
+.select-ask-summarize-close:hover {
+  background: #e5e7eb;
+}
+
+.select-ask-summarize-content {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #374151;
+}
+
+.select-ask-summarize-content h1,
+.select-ask-summarize-content h2,
+.select-ask-summarize-content h3 {
+  margin-top: 12px;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.select-ask-summarize-content ul,
+.select-ask-summarize-content ol {
+  padding-left: 20px;
+  margin: 8px 0;
+}
+
+.select-ask-summarize-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 32px 0;
+  color: #6b7280;
+}
+
+.select-ask-summarize-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: summarize-spin 0.8s linear infinite;
+}
+
+@keyframes summarize-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.select-ask-summarize-error {
+  padding: 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #dc2626;
+  text-align: center;
+}
+
+/* 暗色模式 - 总结面板 */
+@media (prefers-color-scheme: dark) {
+  .select-ask-summarize-panel {
+    background: #1f2937;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  }
+
+  .select-ask-summarize-header {
+    background: #111827;
+    border-color: #374151;
+  }
+
+  .select-ask-summarize-title {
+    color: #f3f4f6;
+  }
+
+  .select-ask-summarize-content {
+    color: #d1d5db;
+  }
+
+  .select-ask-summarize-content h1,
+  .select-ask-summarize-content h2,
+  .select-ask-summarize-content h3 {
+    color: #f3f4f6;
+  }
+
+  .select-ask-summarize-loading {
+    color: #9ca3af;
+  }
+
+  .select-ask-summarize-spinner {
+    border-color: #374151;
+    border-top-color: #818cf8;
+  }
+
+  .select-ask-summarize-error {
+    background: #451a1a;
+    border-color: #991b1b;
+    color: #fca5a5;
+  }
+
+  .select-ask-summarize-close {
+    color: #9ca3af;
+  }
+
+  .select-ask-summarize-close:hover {
+    background: #374151;
+  }
+}
+
+/* =============================================
+   全文翻译样式 - 沉浸式对照翻译
+   参照沉浸式翻译 v1.27.2 的设计原则
+============================================= */
+
+/* 译文块容器 - 简洁优雅的设计 */
+.select-ask-translation-block {
   display: block;
+  margin: 4px 0 0 0;
+  padding: 6px 12px;
+  background: transparent;
+  border-left: 3px solid #e5e7eb;
+  border-radius: 0 4px 4px 0;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.select-ask-translation-block:hover {
+  background: #f9fafb;
+  border-left-color: #d1d5db;
+}
+
+/* 流式翻译中的光标效果 */
+.select-ask-translation-block.select-ask-translation-streaming::after {
+  content: '';
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: #6366f1;
+  margin-left: 2px;
+  animation: selectAskTranslationCursor 1s step-end infinite;
+  vertical-align: text-bottom;
+}
+
+@keyframes selectAskTranslationCursor {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* 译文内容 - 柔和的灰色，不抢眼 */
+.select-ask-translation-content {
   color: #6b7280;
   font-size: inherit;
   line-height: inherit;
-  margin: 2px 0;
 }
 
-/* 译文标签 */
-.select-ask-fp-translation-label {
-  display: inline-block;
-  font-size: 11px;
-  font-weight: 600;
-  color: #ffffff;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  padding: 1px 6px;
-  border-radius: 3px;
-  margin: 0 6px 4px 0;
-  line-height: 1.4;
-  vertical-align: middle;
-  user-select: none;
-  -webkit-user-select: none;
+.select-ask-translation-content p {
+  margin: 0 0 4px 0;
 }
 
-/* 段落翻译中 loading（参照沉浸式翻译风格） */
+.select-ask-translation-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* 段落翻译 loading - 参照沉浸式翻译 */
 .select-ask-fp-paragraph-loading {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   padding: 2px 0;
-  opacity: 0.6;
+  opacity: 0.5;
   margin-left: 6px;
   vertical-align: middle;
 }
@@ -815,86 +1022,98 @@
   to { transform: rotate(360deg); }
 }
 
-.select-ask-fp-translation-content p {
-  margin: 0 0 4px 0;
-}
-
-.select-ask-fp-translation-content p:last-child {
-  margin-bottom: 0;
-}
-
-/* 底部控制栏 */
+/* 底部控制栏 - 参照沉浸式翻译的胶囊设计 */
 .select-ask-fp-control-bar {
   position: fixed;
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 2147483646;
-  background: #1f2937;
-  color: #f9fafb;
+  background: #ffffff;
+  color: #374151;
   padding: 8px 16px;
-  border-radius: 24px;
+  border-radius: 28px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   font-size: 13px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
   transition: opacity 0.3s ease;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .select-ask-fp-status-text {
   white-space: nowrap;
-  color: #e5e7eb;
+  color: #6b7280;
+  font-weight: 500;
 }
 
 .select-ask-fp-progress-bar {
-  width: 120px;
+  width: 100px;
   height: 4px;
-  background: #374151;
+  background: #e5e7eb;
   border-radius: 2px;
   overflow: hidden;
 }
 
 .select-ask-fp-progress-fill {
   height: 100%;
-  background: #6366f1;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  border-radius: 2px;
   transition: width 0.3s ease;
 }
 
 .select-ask-fp-btn {
-  padding: 4px 10px;
-  border: 1px solid #4b5563;
+  padding: 4px 12px;
+  border: 1px solid #d1d5db;
   background: transparent;
-  color: #e5e7eb;
-  border-radius: 4px;
+  color: #374151;
+  border-radius: 16px;
   cursor: pointer;
   font-size: 12px;
+  font-weight: 500;
   transition: all 0.12s ease;
   white-space: nowrap;
 }
 
 .select-ask-fp-btn:hover {
-  background: #374151;
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.select-ask-fp-stop-btn {
+  border-color: #fecaca;
+  color: #dc2626;
 }
 
 .select-ask-fp-stop-btn:hover {
-  background: #dc2626;
+  background: #fef2f2;
   border-color: #dc2626;
 }
 
 /* 暗色模式 - 全文翻译 */
 @media (prefers-color-scheme: dark) {
-  .select-ask-fp-translation-content {
+  .select-ask-translation-block {
+    border-left-color: #374151;
+    background: transparent;
+  }
+
+  .select-ask-translation-block:hover {
+    background: #1f2937;
+    border-left-color: #4b5563;
+  }
+
+  .select-ask-translation-content {
     color: #9ca3af;
   }
 
-  .select-ask-fp-translation-label {
-    background: linear-gradient(135deg, #818cf8, #a78bfa);
-    color: #1f2937;
+  .select-ask-translation-block.select-ask-translation-streaming::after {
+    background: #818cf8;
   }
 
   .select-ask-fp-paragraph-loading {
-    opacity: 0.5;
+    opacity: 0.4;
   }
 
   .select-ask-fp-loading-spinner {
@@ -903,11 +1122,41 @@
   }
 
   .select-ask-fp-control-bar {
-    background: #111827;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    background: #1f2937;
+    border-color: #374151;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(0, 0, 0, 0.2);
+    color: #e5e7eb;
+  }
+
+  .select-ask-fp-status-text {
+    color: #9ca3af;
   }
 
   .select-ask-fp-progress-bar {
     background: #374151;
+  }
+
+  .select-ask-fp-progress-fill {
+    background: linear-gradient(90deg, #818cf8, #a78bfa);
+  }
+
+  .select-ask-fp-btn {
+    border-color: #4b5563;
+    color: #d1d5db;
+  }
+
+  .select-ask-fp-btn:hover {
+    background: #374151;
+    border-color: #6b7280;
+  }
+
+  .select-ask-fp-stop-btn {
+    border-color: #7f1d1d;
+    color: #fca5a5;
+  }
+
+  .select-ask-fp-stop-btn:hover {
+    background: #451a1a;
+    border-color: #dc2626;
   }
 }

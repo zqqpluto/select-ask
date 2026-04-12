@@ -351,6 +351,15 @@ export async function* streamSearch(
   yield* streamViaBackground('search', text, undefined, context);
 }
 
+/**
+ * 执行页面总结操作
+ */
+export async function* streamSummarize(
+  text: string
+): AsyncGenerator<string, void, unknown> {
+  yield* streamViaBackground('question', text, undefined, undefined);
+}
+
 
 /**
  * 检查模型是否已配置

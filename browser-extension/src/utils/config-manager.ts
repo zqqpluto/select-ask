@@ -18,6 +18,7 @@ const DEFAULT_CONFIG: AppConfig = {
   selectedQuestionModelId: null,
   models: [],
   displayMode: 'sidebar',
+  showFloatingIcon: true,
   preferences: {
     sendWithEnter: false,
     sidebarWidth: 420,
@@ -34,7 +35,8 @@ export async function getAppConfig(): Promise<AppConfig> {
   if (!config) {
     return { ...DEFAULT_CONFIG };
   }
-  return config;
+  // 与默认值合并，确保新增字段有默认值（兼容旧配置）
+  return { ...DEFAULT_CONFIG, ...config };
 }
 
 /**

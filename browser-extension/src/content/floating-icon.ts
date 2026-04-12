@@ -1,9 +1,13 @@
 /**
  * 右侧悬浮图标 + 菜单
- * 支持拖拽（左右移动后自动回弹）、hover 弹出子菜单、翻译全文切换
- * 设计：
+ * 支持拖拽（上下移动）、hover 弹出子菜单、翻译全文切换
+ *
+ * 设计（参照豆包）：
+ * - 外层：position:fixed + right:0 + bottom:0，始终固定到屏幕右下角
+ * - 垂直位置：用 transform: translate3d(0, Y, 0) 控制，Y 为负值向上移动
+ * - 拖拽只影响 Y 轴，松手后 Y 值持久化（比例值存到 localStorage）
  * - 主按钮：项目 Logo
- * - hover 时：右下角弹出关闭按钮 + 下方圆形子菜单（翻译按钮）
+ * - hover 时：右下角弹出关闭按钮 + 下方子菜单（图标按钮）
  */
 
 const ICON_Z_INDEX = 2147483646;
@@ -14,30 +18,59 @@ let leaveTimer: ReturnType<typeof setTimeout> | null = null;
 // 拖拽状态 - 防止拖拽中触发 hover 菜单
 let isDragging = false;
 
+// 持久化位置：0~1 的比例值，0 = 屏幕顶部，1 = 屏幕底部
+const STORAGE_KEY = 'floatingIconTopRatio';
+let savedRatio: number = 0.5; // 默认居中
+
 export interface FloatingIconOptions {
   onFullPageTranslate: () => void;
   onRestore?: () => void;
   onToggleFullPageTranslate?: () => void; // 切换全文翻译
+  onSummarizePage?: () => void; // 总结页面
   isTranslating?: boolean; // 是否正在翻译
+}
+
+/** 读取持久化比例 */
+function loadRatio(): number {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const v = parseFloat(raw);
+      if (!isNaN(v) && v >= 0 && v <= 1) return v;
+    }
+  } catch { /* ignore */ }
+  return 0.5;
+}
+
+/** 保存比例到 localStorage */
+function saveRatio(ratio: number) {
+  try {
+    localStorage.setItem(STORAGE_KEY, String(ratio));
+  } catch { /* ignore */ }
+}
+
+/** 比例 → 像素 Y 偏移（负值 = 向上） */
+function ratioToPixel(ratio: number): number {
+  return -(ratio * window.innerHeight);
+}
+
+/** 像素 Y 偏移 → 比例 */
+function pixelToRatio(px: number): number {
+  return -px / window.innerHeight;
 }
 
 export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   if (floatingIconEl) return floatingIconEl;
 
+  savedRatio = loadRatio();
+
   const container = document.createElement('div');
   container.className = 'select-ask-floating-icon';
   container.style.zIndex = String(ICON_Z_INDEX);
 
-  // 用 JS 显式设置初始位置，紧贴屏幕右边缘（避开 CSS right:0 与滚动条的 15px 缝隙）
-  function snapToRight(dy?: number) {
-    const y = dy ?? 0;
-    container.style.transition = 'none';
-    container.style.left = `${window.innerWidth - 38}px`;
-    container.style.top = `calc(50% + ${y}px)`;
-    container.style.right = 'auto';
-    container.style.transform = 'none';
-  }
-  snapToRight(0);
+  // 初始垂直位置：从持久化比例计算
+  const initY = ratioToPixel(savedRatio);
+  container.style.transform = `translate3d(0, ${initY}px, 0)`;
 
   // 主按钮 - 使用项目 logo
   const btn = document.createElement('button');
@@ -51,7 +84,25 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   const closeBtn = document.createElement('button');
   closeBtn.className = 'select-ask-floating-icon-close';
   closeBtn.title = '关闭';
-  closeBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  // 用安全的 DOM 方法构建 SVG
+  const closeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  closeSvg.setAttribute('width', '16');
+  closeSvg.setAttribute('height', '16');
+  closeSvg.setAttribute('viewBox', '0 0 24 24');
+  closeSvg.setAttribute('fill', 'none');
+  closeSvg.setAttribute('stroke', 'currentColor');
+  closeSvg.setAttribute('stroke-width', '2');
+  closeSvg.setAttribute('stroke-linecap', 'round');
+  closeSvg.setAttribute('stroke-linejoin', 'round');
+  const line1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line1.setAttribute('x1', '18'); line1.setAttribute('y1', '6');
+  line1.setAttribute('x2', '6'); line1.setAttribute('y2', '18');
+  const line2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line2.setAttribute('x1', '6'); line2.setAttribute('y1', '6');
+  line2.setAttribute('x2', '18'); line2.setAttribute('y2', '18');
+  closeSvg.appendChild(line1);
+  closeSvg.appendChild(line2);
+  closeBtn.appendChild(closeSvg);
   closeBtn.addEventListener('click', () => {
     container.remove();
     floatingIconEl = null;
@@ -64,7 +115,7 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   menu.appendChild(buildTranslateMenuItem(options));
   container.appendChild(menu);
 
-  // ========== 拖拽逻辑 ==========
+  // ========== 拖拽逻辑（参照豆包：只拖 Y 轴） ==========
   setupDrag(container, btn);
 
   // ========== hover 显示/隐藏 ==========
@@ -108,7 +159,6 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   if (translateItem) {
     translateItem.addEventListener('click', () => {
       hideMenu();
-      // 更新 options 中的状态，供 refreshMenuState 读取
       options.isTranslating = !options.isTranslating;
       options.onToggleFullPageTranslate?.();
       setTimeout(() => refreshMenuState(), 50);
@@ -124,10 +174,15 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
     translateItem.setAttribute('data-icon', isTranslating ? 'stop-translate' : 'translate');
     translateItem.title = isTranslating ? '停止翻译' : '翻译全文';
 
+    // 更新图标
     const oldSvg = translateItem.querySelector('svg');
     if (oldSvg) oldSvg.remove();
     const newIcon = buildTranslateIcon(isTranslating ? 'stop-translate' : 'translate');
     if (newIcon) translateItem.insertBefore(newIcon, translateItem.firstChild);
+
+    // 更新文本
+    const label = translateItem.querySelector('.select-ask-floating-icon-menu-label');
+    if (label) label.textContent = isTranslating ? '停止翻译' : '翻译全文';
   }
 
   // 暴露刷新方法
@@ -137,87 +192,117 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   return container;
 }
 
+// ========== 拖拽阈值判断（参照豆包 aB 对象） ==========
+const dragThreshold = {
+  startX: 0,
+  startY: 0,
+  threshold: 6,
+  startT: 0,
+  start(x: number, y: number) {
+    this.startX = x;
+    this.startY = y;
+    this.startT = Date.now();
+  },
+  isValid(x: number, y: number): boolean {
+    const dx = x - this.startX;
+    const dy = y - this.startY;
+    // 移动距离 > 6px 且时间 > 300ms 才算拖拽
+    return Math.sqrt(dx * dx + dy * dy) > this.threshold && Date.now() - this.startT > 300;
+  },
+};
+
 /**
- * 设置拖拽：支持任意方向拖动，松手后弹性回到右侧垂直居中
+ * 设置拖拽：支持任意方向（XY 双向）拖动
  *
  * 核心思路：
- * - container：CSS 固定 position:fixed + right:0 + top:50% + transform:translateY(-50%)
- * - 拖拽时在 container 上叠加 transform: translate(dx, dy) translateY(-50%)
- * - 松开时动画回弹到 transform: translateY(-50%)
- * - 用 transitionend 清理 inline style，让 CSS 完全接管
+ * - container：CSS position:fixed + right:0 + bottom:0
+ * - 拖拽时：用 translate3d(X, Y, 0) 控制偏移
+ * - Y 为负值 = 向上移动，X 为负值 = 向左移动
+ * - 松手后：X 回弹到 0（紧贴右侧），Y 持久化保存
  */
 function setupDrag(container: HTMLElement, btn: HTMLElement) {
-  let startX = 0;
-  let startY = 0;
-  let currentDx = 0;
-  let currentDy = 0;
+  let currentX = 0; // 当前 X 偏移
+  let currentY = ratioToPixel(savedRatio); // 当前 Y 偏移
   let isPointerDown = false;
+  let dragOffsetX = 0; // pointer 与 currentX 的差值
+  let dragOffsetY = 0; // pointer 与 currentY 的差值
 
-  // 用 transform 统一控制偏移，CSS translateY(-50%) 始终保留
-  function setTransform(dx: number, dy: number, transition?: string) {
-    container.style.transition = transition || 'none';
-    container.style.transform = `translate(${dx}px, ${dy}px) translateY(-50%)`;
-    currentDx = dx;
-    currentDy = dy;
-  }
-
-  function clampY(value: number): number {
-    const min = -(window.innerHeight / 2 - 38);
-    const max = window.innerHeight / 2 - 38;
-    return Math.max(min, Math.min(max, value));
-  }
-
-  function clampX(value: number): number {
-    const min = -(window.innerWidth - 38);
-    const max = 0;
-    return Math.max(min, Math.min(max, value));
+  function setPos(x: number, y: number, transition?: string) {
+    // X 轴范围：-(window.innerWidth - 38) ~ 0
+    const minX = -(window.innerWidth - 38);
+    const maxX = 0;
+    // Y 轴范围：-(window.innerHeight) + 42 ~ 0
+    const minY = -window.innerHeight + 42;
+    const maxY = 0;
+    const clampedX = Math.max(minX, Math.min(maxX, x));
+    const clampedY = Math.max(minY, Math.min(maxY, y));
+    container.style.transition = transition ?? 'none';
+    container.style.transform = `translate3d(${clampedX}px, ${clampedY}px, 0)`;
+    currentX = clampedX;
+    currentY = clampedY;
   }
 
   function onPointerDown(e: PointerEvent) {
     if (e.button !== 0) return;
-    isPointerDown = true;
+    if (e.target !== btn) return;
 
-    // 基于当前累积偏移计算起点
-    startX = e.clientX - currentDx;
-    startY = e.clientY - currentDy;
-    setTransform(currentDx, currentDy);
+    isPointerDown = true;
+    dragOffsetX = e.clientX - currentX;
+    dragOffsetY = e.clientY - currentY;
+
+    // 记录拖拽阈值起点
+    dragThreshold.start(e.clientX, e.clientY);
+
     btn.setPointerCapture(e.pointerId);
   }
 
   function onPointerMove(e: PointerEvent) {
     if (!isPointerDown) return;
 
-    let dx = e.clientX - startX;
-    let dy = e.clientY - startY;
-    dx = clampX(dx);
-    dy = clampY(dy);
+    const newX = e.clientX - dragOffsetX;
+    const newY = e.clientY - dragOffsetY;
+    setPos(newX, newY);
 
-    isDragging = true;
-    setTransform(dx, dy);
+    // 判断是否超过拖拽阈值
+    const isValidDrag = dragThreshold.isValid(e.clientX, e.clientY);
+    if (isValidDrag) {
+      isDragging = true;
+    }
   }
 
-  function snapBack() {
-    currentDx = 0;
-    currentDy = 0;
-    container.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
-    container.style.left = `${window.innerWidth - 38}px`;
-    container.style.top = '50%';
-    container.style.right = 'auto';
-    container.style.transform = 'none';
-  }
-
-  function onPointerUp() {
+  function onPointerUp(e: PointerEvent) {
     if (!isPointerDown) return;
     isPointerDown = false;
-    isDragging = false;
-    snapBack();
+
+    // 判断是点击还是拖拽（移动 < 4px = 点击）
+    const moveX = Math.abs(e.clientX - dragThreshold.startX);
+    const moveY = Math.abs(e.clientY - dragThreshold.startY);
+    const isClick = moveX <= 4 && moveY <= 4;
+
+    if (isClick) {
+      isDragging = false;
+      return;
+    }
+
+    // 拖拽结束：保存 Y 比例值
+    const ratio = pixelToRatio(currentY);
+    savedRatio = ratio;
+    saveRatio(savedRatio);
+
+    // X 回弹到 0（紧贴右侧），Y 保持当前位置
+    // 添加平滑回弹动画
+    setPos(0, currentY, 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)');
+
+    requestAnimationFrame(() => {
+      isDragging = false;
+    });
   }
 
   function onPointerCancel() {
     if (!isPointerDown) return;
     isPointerDown = false;
     isDragging = false;
-    snapBack();
+    setPos(currentX, currentY);
   }
 
   btn.addEventListener('pointerdown', onPointerDown);
@@ -239,7 +324,7 @@ function buildLogoImg(): HTMLImageElement {
 }
 
 /**
- * 构建翻译菜单项
+ * 构建翻译菜单项 - 带文本的列表项
  */
 function buildTranslateMenuItem(options: FloatingIconOptions): HTMLButtonElement {
   const isTranslating = options.isTranslating ?? false;
@@ -248,10 +333,19 @@ function buildTranslateMenuItem(options: FloatingIconOptions): HTMLButtonElement
   btn.setAttribute('data-action', 'full-translate');
   btn.setAttribute('data-icon', isTranslating ? 'stop-translate' : 'translate');
   btn.title = isTranslating ? '停止翻译' : '翻译全文';
+
   const icon = buildTranslateIcon(isTranslating ? 'stop-translate' : 'translate');
   if (icon) btn.appendChild(icon);
+
+  const label = document.createElement('span');
+  label.className = 'select-ask-floating-icon-menu-label';
+  label.textContent = isTranslating ? '停止翻译' : '翻译全文';
+  btn.appendChild(label);
+
   return btn;
 }
+
+
 
 /**
  * 构建翻译图标 SVG
