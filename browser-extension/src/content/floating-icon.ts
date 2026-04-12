@@ -2,12 +2,13 @@
  * 右侧悬浮图标 + 菜单
  * 支持拖拽（上下移动）、hover 弹出子菜单、翻译全文切换
  *
- * 设计（参照豆包）：
- * - 外层：position:fixed + right:0 + bottom:0，始终固定到屏幕右下角
- * - 垂直位置：用 transform: translate3d(0, Y, 0) 控制，Y 为负值向上移动
- * - 拖拽只影响 Y 轴，松手后 Y 值持久化（比例值存到 localStorage）
+ * 设计：
+ * - 胶囊容器：btn 即胶囊，overflow:hidden + border-radius:19px
+ * - 收起时：高度38px，overflow 隐藏菜单，只显示圆形 logo
+ * - 展开时：高度自适应，菜单在 logo 下方露出，整体是完整胶囊
+ * - 锚点：top:0 + transform:translateY 实现向下展开
  * - 主按钮：项目 Logo
- * - hover 时：右下角弹出关闭按钮 + 下方子菜单（图标按钮）
+ * - 关闭按钮：胶囊左上角外侧，不受 overflow 裁切
  */
 
 const ICON_Z_INDEX = 2147483646;
@@ -49,14 +50,14 @@ function saveRatio(ratio: number) {
   } catch { /* ignore */ }
 }
 
-/** 比例 → 像素 Y 偏移（负值 = 向上） */
+/** 比例 → 像素 Y 偏移（正数 = 向下，相对于屏幕顶部） */
 function ratioToPixel(ratio: number): number {
-  return -(ratio * window.innerHeight);
+  return ratio * (window.innerHeight - 42);
 }
 
 /** 像素 Y 偏移 → 比例 */
 function pixelToRatio(px: number): number {
-  return -px / window.innerHeight;
+  return px / (window.innerHeight - 42);
 }
 
 export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
@@ -72,17 +73,26 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   const initY = ratioToPixel(savedRatio);
   container.style.transform = `translate3d(0, ${initY}px, 0)`;
 
-  // 主按钮 - 胶囊容器
+  // ========== 胶囊容器 - btn 即胶囊 ==========
   const btn = document.createElement('button');
   btn.className = 'select-ask-floating-icon-btn';
 
-  // 内容包装器（负责 overflow 裁切 + 圆角）
-  const contentWrap = document.createElement('div');
-  contentWrap.className = 'select-ask-floating-icon-content';
-  contentWrap.appendChild(buildLogoImg());
-  btn.appendChild(contentWrap);
+  // Logo 区域（固定 38x38，在胶囊顶部）
+  const logoWrap = document.createElement('div');
+  logoWrap.className = 'select-ask-floating-icon-logo-wrap';
+  logoWrap.appendChild(buildLogoImg());
+  btn.appendChild(logoWrap);
 
-  // 关闭按钮（btn 的子元素但在 contentWrap 外面，不受 overflow 裁切影响定位）
+  // 子菜单 - 放在 btn 内部，收起时被 overflow:hidden 隐藏
+  const menu = document.createElement('div');
+  menu.className = 'select-ask-floating-icon-menu';
+  menu.appendChild(buildTranslateMenuItem(options));
+  menu.appendChild(buildSummarizeMenuItem(options));
+  btn.appendChild(menu);
+
+  container.appendChild(btn);
+
+  // 关闭按钮 - 胶囊外部（与 btn 同级），不受 overflow 裁切
   const closeBtn = document.createElement('button');
   closeBtn.className = 'select-ask-floating-icon-close';
   closeBtn.title = '关闭';
@@ -110,18 +120,9 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
     floatingIconEl = null;
   });
   closeBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
-  btn.appendChild(closeBtn);
+  container.appendChild(closeBtn);
 
-  // 子菜单容器 - 放在 btn 外部（兄弟元素），绝对定位到按钮下方实现向下弹出
-  const menu = document.createElement('div');
-  menu.className = 'select-ask-floating-icon-menu';
-  menu.appendChild(buildTranslateMenuItem(options));
-  menu.appendChild(buildSummarizeMenuItem(options));
-  container.appendChild(menu);
-
-  container.appendChild(btn);
-
-  // ========== 拖拽逻辑（参照豆包：只拖 Y 轴） ==========
+  // ========== 拖拽逻辑 ==========
   setupDrag(container, btn);
 
   // ========== hover 显示/隐藏 ==========
@@ -129,22 +130,20 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
     if (isDragging) return;
     if (leaveTimer) { clearTimeout(leaveTimer); leaveTimer = null; }
     hoverTimer = setTimeout(() => {
-      menu.classList.add('visible');
-      closeBtn.classList.add('visible');
       btn.classList.add('active');
+      closeBtn.classList.add('visible');
     }, 200);
   }
 
   function hideMenu() {
     if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; }
     leaveTimer = setTimeout(() => {
-      menu.classList.remove('visible');
-      closeBtn.classList.remove('visible');
       btn.classList.remove('active');
+      closeBtn.classList.remove('visible');
     }, 300);
   }
 
-  // 主按钮 hover
+  // btn hover
   btn.addEventListener('mouseenter', showMenu);
   btn.addEventListener('mouseleave', hideMenu);
 
@@ -180,7 +179,6 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
     translateItem.setAttribute('data-icon', isTranslating ? 'stop-translate' : 'translate');
     translateItem.setAttribute('data-tooltip', isTranslating ? '停止翻译' : '翻译全文');
 
-    // 更新图标
     const oldSvg = translateItem.querySelector('svg');
     if (oldSvg) oldSvg.remove();
     const newIcon = buildTranslateIcon(isTranslating ? 'stop-translate' : 'translate');
@@ -194,7 +192,7 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   return container;
 }
 
-// ========== 拖拽阈值判断（参照豆包 aB 对象） ==========
+// ========== 拖拽阈值判断 ==========
 const dragThreshold = {
   startX: 0,
   startY: 0,
@@ -208,34 +206,31 @@ const dragThreshold = {
   isValid(x: number, y: number): boolean {
     const dx = x - this.startX;
     const dy = y - this.startY;
-    // 移动距离 > 6px 且时间 > 300ms 才算拖拽
     return Math.sqrt(dx * dx + dy * dy) > this.threshold && Date.now() - this.startT > 300;
   },
 };
 
 /**
- * 设置拖拽：支持任意方向（XY 双向）拖动
+ * 设置拖拽：Y 轴拖动
  *
  * 核心思路：
- * - container：CSS position:fixed + right:0 + bottom:0
- * - 拖拽时：用 translate3d(X, Y, 0) 控制偏移
- * - Y 为负值 = 向上移动，X 为负值 = 向左移动
+ * - container：CSS position:fixed + right:0 + top:0
+ * - 拖拽时：translate3d(X, Y, 0) 控制偏移
+ * - Y 为正数 = 向下移动
  * - 松手后：X 回弹到 0（紧贴右侧），Y 持久化保存
  */
 function setupDrag(container: HTMLElement, btn: HTMLElement) {
-  let currentX = 0; // 当前 X 偏移
-  let currentY = ratioToPixel(savedRatio); // 当前 Y 偏移
+  let currentX = 0;
+  let currentY = ratioToPixel(savedRatio);
   let isPointerDown = false;
-  let dragOffsetX = 0; // pointer 与 currentX 的差值
-  let dragOffsetY = 0; // pointer 与 currentY 的差值
+  let dragOffsetX = 0;
+  let dragOffsetY = 0;
 
   function setPos(x: number, y: number, transition?: string) {
-    // X 轴范围：-(window.innerWidth - 38) ~ 0
     const minX = -(window.innerWidth - 38);
     const maxX = 0;
-    // Y 轴范围：-(window.innerHeight) + 42 ~ 0
-    const minY = -window.innerHeight + 42;
-    const maxY = 0;
+    const minY = 0;
+    const maxY = window.innerHeight - 42;
     const clampedX = Math.max(minX, Math.min(maxX, x));
     const clampedY = Math.max(minY, Math.min(maxY, y));
     container.style.transition = transition ?? 'none';
@@ -246,15 +241,13 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
 
   function onPointerDown(e: PointerEvent) {
     if (e.button !== 0) return;
-    if (e.target !== btn) return;
+    if (e.target !== btn && !btn.contains(e.target as Node)) return;
 
     isPointerDown = true;
     dragOffsetX = e.clientX - currentX;
     dragOffsetY = e.clientY - currentY;
 
-    // 记录拖拽阈值起点
     dragThreshold.start(e.clientX, e.clientY);
-
     btn.setPointerCapture(e.pointerId);
   }
 
@@ -265,9 +258,7 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
     const newY = e.clientY - dragOffsetY;
     setPos(newX, newY);
 
-    // 判断是否超过拖拽阈值
-    const isValidDrag = dragThreshold.isValid(e.clientX, e.clientY);
-    if (isValidDrag) {
+    if (dragThreshold.isValid(e.clientX, e.clientY)) {
       isDragging = true;
     }
   }
@@ -276,7 +267,6 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
     if (!isPointerDown) return;
     isPointerDown = false;
 
-    // 判断是点击还是拖拽（移动 < 4px = 点击）
     const moveX = Math.abs(e.clientX - dragThreshold.startX);
     const moveY = Math.abs(e.clientY - dragThreshold.startY);
     const isClick = moveX <= 4 && moveY <= 4;
@@ -286,13 +276,10 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
       return;
     }
 
-    // 拖拽结束：保存 Y 比例值
     const ratio = pixelToRatio(currentY);
     savedRatio = ratio;
     saveRatio(savedRatio);
 
-    // X 回弹到 0（紧贴右侧），Y 保持当前位置
-    // 添加平滑回弹动画
     setPos(0, currentY, 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)');
 
     requestAnimationFrame(() => {
@@ -361,8 +348,6 @@ function buildSummarizeMenuItem(options: FloatingIconOptions): HTMLButtonElement
 
   return btn;
 }
-
-
 
 /**
  * 构建翻译图标 SVG
