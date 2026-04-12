@@ -586,12 +586,25 @@
   color: #374151;
 }
 
-/* 展开状态：颜色变化，形状保持圆形 */
+/* 展开状态：去除边框，用 box-shadow 维持轮廓 */
 .select-ask-floating-icon-btn.active {
   background: #ffffff;
   border-color: transparent;
+  box-shadow: 0 0 0 1px rgba(229, 231, 235, 0.5), 0 2px 8px rgba(0, 0, 0, 0.06);
   color: #6366f1;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* 用伪元素遮住 logo 底部边框，实现与菜单的无缝连接 */
+.select-ask-floating-icon-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 2px);
+  height: 6px;
+  background: #ffffff;
+  z-index: 3;
 }
 
 /* Logo 图片 */
@@ -604,26 +617,27 @@
   transition: opacity 0.15s ease;
 }
 
-/* 关闭按钮（logo 内部左上角，缩小） */
+/* 关闭按钮（logo 左上角外侧，容器级别） */
 .select-ask-floating-icon-close {
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 14px;
-  height: 14px;
+  top: -5px;
+  left: -5px;
+  width: 18px;
+  height: 18px;
   border: none;
-  background: transparent;
+  background: #ef4444;
+  border-radius: 50%;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9ca3af;
+  color: #ffffff;
   opacity: 0;
-  transform: scale(0.6);
+  transform: scale(0.5);
   pointer-events: none;
-  transition: opacity 0.15s ease, transform 0.15s ease, color 0.15s ease;
+  transition: opacity 0.15s ease, transform 0.15s ease;
   padding: 0;
-  z-index: 1;
+  z-index: 3;
 }
 
 .select-ask-floating-icon-close svg {
@@ -638,19 +652,19 @@
 }
 
 .select-ask-floating-icon-close:hover {
-  color: #ef4444;
+  background: #dc2626;
 }
 
-/* 菜单容器 - 与 logo 等宽，2px 重叠覆盖 logo 底部实现无缝连接 */
+/* 菜单容器 - 与 logo 等宽，5px 重叠实现无缝连接 */
 .select-ask-floating-icon-menu {
   position: absolute;
-  top: calc(100% - 2px);
-  right: 0;
-  width: 36px;
+  top: calc(100% - 5px);
+  right: -1px;
+  width: 38px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-top: none;
-  border-radius: 0 0 18px 18px;
+  border-top: 1px solid transparent;
+  border-radius: 0 0 19px 19px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   padding: 12px 0 6px 0;
   display: flex;
@@ -718,6 +732,10 @@
     background: #1f2937;
     border-color: transparent;
     color: #a5b4fc;
+  }
+
+  .select-ask-floating-icon-btn.active::after {
+    background: #1f2937;
   }
 
   .select-ask-floating-icon-menu {

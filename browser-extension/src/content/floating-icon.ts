@@ -79,7 +79,7 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   btn.appendChild(buildLogoImg());
   container.appendChild(btn);
 
-  // 关闭按钮（logo 按钮内部左上角）
+  // 关闭按钮（容器级别，logo 左上角外侧）
   const closeBtn = document.createElement('button');
   closeBtn.className = 'select-ask-floating-icon-close';
   closeBtn.title = '关闭';
@@ -105,7 +105,7 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
     container.remove();
     floatingIconEl = null;
   });
-  btn.appendChild(closeBtn);
+  container.appendChild(closeBtn);
 
   // 子菜单容器 - 绝对定位在 logo 下方
   const menu = document.createElement('div');
