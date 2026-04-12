@@ -550,7 +550,7 @@
 
 .select-ask-floating-icon {
   position: fixed;
-  right: 0;
+  right: 2px;
   top: 0;
   z-index: 2147483646;
   pointer-events: auto;
@@ -589,7 +589,7 @@
 .select-ask-floating-icon-btn.active {
   height: auto;
   background: #ffffff;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 /* Logo 包装 - 固定 38x38 圆形，在胶囊顶部，始终保持白色阴影 */
