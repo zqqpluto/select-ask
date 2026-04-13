@@ -104,7 +104,13 @@ export default function App() {
                 onClick={() => {
                   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
                     if (tabs[0]?.id) {
-                      chrome.tabs.sendMessage(tabs[0].id, { action: 'toggleFullPageTranslate' });
+                      chrome.tabs.sendMessage(tabs[0].id, { action: 'toggleFullPageTranslate' }, () => {
+                        if (chrome.runtime.lastError) {
+                          console.error('[popup] 发送消息失败:', chrome.runtime.lastError.message);
+                        }
+                        window.close();
+                      });
+                    } else {
                       window.close();
                     }
                   });
@@ -135,7 +141,13 @@ export default function App() {
                 onClick={() => {
                   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
                     if (tabs[0]?.id) {
-                      chrome.tabs.sendMessage(tabs[0].id, { action: 'startPageSummarize' });
+                      chrome.tabs.sendMessage(tabs[0].id, { action: 'startPageSummarize' }, () => {
+                        if (chrome.runtime.lastError) {
+                          console.error('[popup] 发送消息失败:', chrome.runtime.lastError.message);
+                        }
+                        window.close();
+                      });
+                    } else {
                       window.close();
                     }
                   });
