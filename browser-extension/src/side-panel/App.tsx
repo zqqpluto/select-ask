@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { marked } from 'marked';
 import type { HistoryMessage, ModelConfig } from '../types';
+import { generateSessionId, generateTitle } from '../utils/history-manager';
 
 // 工具函数
 function escapeHtml(text: string): string {
@@ -87,6 +88,7 @@ export default function App() {
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [autoGenerateEnabled, setAutoGenerateEnabled] = useState(true); // 默认开启
   const [hasGeneratedQuestions, setHasGeneratedQuestions] = useState(false); // 是否已生成过推荐问题
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null); // 当前会话 ID，用于保存历史
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -296,7 +298,7 @@ export default function App() {
         // 从 storage 读取选中的文本和消息
         const result = await chrome.storage.local.get(['pending_sidebar_init']);
         if (result.pending_sidebar_init) {
-          const { selectedText, context, userMessage, pageUrl, pageTitle } = result.pending_sidebar_init;
+          const { selectedText, context, userMessage, summaryPrompt, pageUrl, pageTitle } = result.pending_sidebar_init;
           setSelectedText(selectedText || '');
           setContext(context || null);
           setPageInfo({
@@ -312,10 +314,15 @@ export default function App() {
               timestamp: Date.now(),
             };
             setMessages([userMsg]);
+            // 创建会话 ID 用于保存历史
+            const sessionId = generateSessionId();
+            setCurrentSessionId(sessionId);
             // 清除 pending 状态
             await chrome.storage.local.remove(['pending_sidebar_init']);
-            // 启动 AI 响应 - 传入当前模型和选中文本、上下文
-            getAIResponse(userMessage, currentModel, selectedText || '', context || null);
+            // 总结模式：使用 summaryPrompt 作为实际请求，而不是 userMessage
+            const actualQuestion = summaryPrompt || userMessage;
+            // 启动 AI 响应
+            getAIResponse(actualQuestion, currentModel, selectedText || '', context || null);
           }
         }
       };
@@ -402,6 +409,66 @@ export default function App() {
         },
       });
     });
+  };
+
+  // 保存对话到历史记录
+  const saveToHistory = async (modelToUse: ModelConfig, textForTitle: string, contextForSession: { before: string; after: string } | null) => {
+    // 如果没有会话 ID，自动创建一个
+    let sessionId = currentSessionId;
+    if (!sessionId) {
+      sessionId = generateSessionId();
+      setCurrentSessionId(sessionId);
+    }
+
+    try {
+      const sessions = await chrome.storage.local.get('select_ask_history');
+      const history = (sessions as any).select_ask_history || { sessions: [] };
+      const messagesToSave: HistoryMessage[] = messages.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp || Date.now(),
+        ...(msg.reasoning ? { reasoning: msg.reasoning } : {}),
+        ...(msg.modelName ? { modelName: msg.modelName } : {}),
+        ...(msg.duration ? { duration: msg.duration } : {}),
+      }));
+
+      const typeMap: Record<string, string> = {
+        '解释': 'explain',
+        '翻译': 'translate',
+        '搜索': 'search',
+      };
+      const firstMsg = messages[0];
+      const sessionType = typeMap[firstMsg?.content] || 'question';
+
+      const session = {
+        id: sessionId,
+        title: generateTitle(textForTitle, sessionType),
+        type: sessionType,
+        selectedText: textForTitle,
+        messages: messagesToSave,
+        modelId: modelToUse.id,
+        modelName: modelToUse.name,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      // 检查是否已存在，存在则更新，否则新增
+      const existingIndex = history.sessions.findIndex((s: any) => s.id === sessionId);
+      if (existingIndex >= 0) {
+        history.sessions[existingIndex] = { ...session, updatedAt: Date.now() };
+      } else {
+        history.sessions.unshift(session);
+      }
+
+      // 限制最多 100 条
+      if (history.sessions.length > 100) {
+        history.sessions = history.sessions.slice(0, 100);
+      }
+
+      await chrome.storage.local.set({ select_ask_history: { sessions: history.sessions, maxSessions: 100 } });
+    } catch (error) {
+      console.error('[saveToHistory] 保存失败:', error);
+    }
   };
 
   // 获取 AI 响应
@@ -539,7 +606,11 @@ export default function App() {
             return prev;
           });
 
-          // 生成推荐问题（仅在第一次 AI 回答后生成）
+          // 立即恢复加载状态（不等待推荐问题生成）
+          setIsLoading(false);
+          currentPortRef.current = null;
+
+          // 生成推荐问题（后台异步，不阻塞按钮状态恢复）
           (async () => {
             if (autoGenerateEnabled && textToUse && !hasGeneratedQuestions) {
               try {
@@ -563,9 +634,10 @@ export default function App() {
               }
             }
 
-            setIsLoading(false);
-            currentPortRef.current = null;
             port.disconnect();
+
+            // 保存到历史记录
+            saveToHistory(modelToUse, textToUse, contextToUse);
           })();
         } else if (message.type === 'LLM_STREAM_ERROR') {
           setIsLoading(false);
@@ -655,6 +727,29 @@ export default function App() {
 
     // 调用 AI 回答
     await getAIResponse(question, currentModel);
+  };
+
+  // 发送指定问题（用于快捷按钮）
+  const handleSendWithQuestion = async (question: string) => {
+    if (isLoading) return;
+
+    const userMsg: ExtendedHistoryMessage = {
+      role: 'user',
+      content: question,
+      timestamp: Date.now(),
+    };
+    setMessages(prev => [...prev, userMsg]);
+
+    if (!currentModel) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: '请先在配置中添加并启用模型',
+        timestamp: Date.now(),
+      }]);
+      return;
+    }
+
+    await getAIResponse(question, currentModel, selectedText, context);
   };
 
   // 发送消息
@@ -797,6 +892,55 @@ export default function App() {
     <div className="side-panel-container">
       {/* 内容区域 */}
       <div className="side-panel-content" ref={messagesContainerRef}>
+        {/* 空状态 — 无对话时显示 */}
+        {messages.length === 0 && (
+          <div className="side-panel-empty-state">
+            <div className="side-panel-empty-icon">
+              <svg viewBox="0 0 64 64" width="64" height="64" fill="none">
+                {/* 对话气泡 */}
+                <circle cx="32" cy="32" r="28" fill="url(#emptyGrad)" opacity="0.12"/>
+                <path d="M22 20c0-5.523 4.477-10 10-10s10 4.477 10 10v8c0 5.523-4.477 10-10 10l-6 6v-6H22c-5.523 0-10-4.477-10-10V20z" stroke="url(#emptyGrad)" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                {/* 内部 AI 标识 */}
+                <text x="32" y="38" textAnchor="middle" fill="url(#emptyGrad)" fontSize="16" fontWeight="700" fontFamily="system-ui">AI</text>
+                <defs>
+                  <linearGradient id="emptyGrad" x1="0" y1="0" x2="64" y2="64">
+                    <stop offset="0%" stopColor="#6366f1"/>
+                    <stop offset="100%" stopColor="#8b5cf6"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+            <h3 className="side-panel-empty-title">欢迎使用 Select Ask</h3>
+            <p className="side-panel-empty-desc">在网页中选中文本即可开始提问、翻译或解释</p>
+            <div className="side-panel-empty-tips">
+              <div className="side-panel-empty-tip">
+                <span className="side-panel-empty-tip-icon">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                  </svg>
+                </span>
+                <span>选中文字，点击弹出菜单提问</span>
+              </div>
+              <div className="side-panel-empty-tip">
+                <span className="side-panel-empty-tip-icon">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/>
+                  </svg>
+                </span>
+                <span>点击右侧悬浮图标翻译全文或总结页面</span>
+              </div>
+              <div className="side-panel-empty-tip">
+                <span className="side-panel-empty-tip-icon">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>
+                  </svg>
+                </span>
+                <span>在下方输入框直接提问</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 消息列表 */}
         {messages.map((msg, index) => (
           <div
@@ -1019,6 +1163,26 @@ export default function App() {
 
       {/* 输入区域 */}
       <div className="side-panel-input">
+        {/* 网页总结按钮 */}
+        {pageInfo?.pageUrl && messages.length > 0 && (
+          <button
+            className="side-panel-summarize-btn"
+            onClick={() => {
+              const summaryMsg = `请总结当前页面内容：${pageInfo.pageTitle || '当前网页'}`;
+              handleSendWithQuestion(summaryMsg);
+            }}
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <path d="M14 2v6h6"/>
+              <path d="M16 13H8"/>
+              <path d="M16 17H8"/>
+              <path d="M10 9H8"/>
+            </svg>
+            <span>总结当前网页</span>
+          </button>
+        )}
+
         <div className="side-panel-input-box">
           {/* 上栏：文本输入 */}
           <div className="side-panel-input-row">
@@ -1097,7 +1261,7 @@ export default function App() {
                 </svg>
               ) : (
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                  <path d="M3 12l18-9-7 18-2-7-9-2z"/>
+                  <path d="M12 4L4 14h5v6h6v-6h5L12 4z"/>
                 </svg>
               )}
             </button>

@@ -28,7 +28,9 @@ export interface FloatingIconOptions {
   onRestore?: () => void;
   onToggleFullPageTranslate?: () => void; // 切换全文翻译
   onSummarizePage?: () => void; // 总结页面
+  onClickIcon?: () => void; // 点击图标（打开侧边栏）
   isTranslating?: boolean; // 是否正在翻译
+  onHideMenu?: () => void; // 隐藏菜单回调
 }
 
 /** 读取持久化比例 */
@@ -86,12 +88,50 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   // 子菜单 - 放在 btn 内部，收起时被 overflow:hidden 隐藏
   const menu = document.createElement('div');
   menu.className = 'select-ask-floating-icon-menu';
+
+  const hideMenu = () => {
+    if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; }
+    leaveTimer = setTimeout(() => {
+      btn.classList.remove('active');
+      btn.style.overflow = '';
+      closeBtn.classList.remove('visible');
+    }, 300);
+  };
+
+  const showMenu = () => {
+    if (isDragging) return;
+    if (leaveTimer) { clearTimeout(leaveTimer); leaveTimer = null; }
+    hoverTimer = setTimeout(() => {
+      btn.classList.add('active');
+      btn.style.overflow = 'visible';
+      closeBtn.classList.add('visible');
+    }, 200);
+  };
+
+  const historyItem = buildHistoryMenuItem(hideMenu);
+  const settingsItem = buildSettingsMenuItem(hideMenu);
   menu.appendChild(buildTranslateMenuItem(options));
-  menu.appendChild(buildHistoryMenuItem());
-  menu.appendChild(buildSettingsMenuItem());
+  menu.appendChild(buildSummarizeMenuItem(options));
+  menu.appendChild(historyItem);
+  menu.appendChild(settingsItem);
   btn.appendChild(menu);
 
   container.appendChild(btn);
+
+  // ========== 点击图标打开侧边栏 ==========
+  // 在 onPointerUp 中判断 isClick，避免与拖拽冲突
+  btn.addEventListener('click', (e) => {
+    if (isDragging) {
+      e.stopPropagation();
+      return;
+    }
+    // 延迟执行，让拖拽的 setPointerCapture 先释放
+    setTimeout(() => {
+      if (!isDragging) {
+        options.onClickIcon?.();
+      }
+    }, 50);
+  });
 
   // 关闭按钮 - 胶囊外部（与 btn 同级），不受 overflow 裁切
   const closeBtn = document.createElement('button');
@@ -125,24 +165,6 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
 
   // ========== 拖拽逻辑 ==========
   setupDrag(container, btn);
-
-  // ========== hover 显示/隐藏 ==========
-  function showMenu() {
-    if (isDragging) return;
-    if (leaveTimer) { clearTimeout(leaveTimer); leaveTimer = null; }
-    hoverTimer = setTimeout(() => {
-      btn.classList.add('active');
-      closeBtn.classList.add('visible');
-    }, 200);
-  }
-
-  function hideMenu() {
-    if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; }
-    leaveTimer = setTimeout(() => {
-      btn.classList.remove('active');
-      closeBtn.classList.remove('visible');
-    }, 300);
-  }
 
   // btn hover
   btn.addEventListener('mouseenter', showMenu);
@@ -247,7 +269,6 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
     dragOffsetY = e.clientY - currentY;
 
     dragThreshold.start(e.clientX, e.clientY);
-    btn.setPointerCapture(e.pointerId);
   }
 
   function onPointerMove(e: PointerEvent) {
@@ -259,6 +280,7 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
 
     if (dragThreshold.isValid(e.clientX, e.clientY)) {
       isDragging = true;
+      btn.setPointerCapture(e.pointerId); // 只在真正拖拽时捕获，避免拦截菜单点击
     }
   }
 
@@ -351,7 +373,7 @@ function buildSummarizeMenuItem(options: FloatingIconOptions): HTMLButtonElement
 /**
  * 构建历史记录菜单项 - 纯图标按钮
  */
-function buildHistoryMenuItem(): HTMLButtonElement {
+function buildHistoryMenuItem(onHideMenu?: () => void): HTMLButtonElement {
   const btn = document.createElement('button');
   btn.className = 'select-ask-floating-icon-menu-item';
   btn.setAttribute('data-action', 'history');
@@ -360,9 +382,11 @@ function buildHistoryMenuItem(): HTMLButtonElement {
   const icon = buildHistoryIcon();
   if (icon) btn.appendChild(icon);
 
-  btn.addEventListener('click', () => {
-    hideMenu();
-    chrome.tabs.create({ url: chrome.runtime.getURL('src/options/index.html') + '?tab=history' });
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onHideMenu?.();
+    chrome.runtime.sendMessage({ type: 'OPEN_OPTIONS_PAGE', tab: 'history' });
   });
 
   return btn;
@@ -371,7 +395,7 @@ function buildHistoryMenuItem(): HTMLButtonElement {
 /**
  * 构建设置菜单项 - 纯图标按钮
  */
-function buildSettingsMenuItem(): HTMLButtonElement {
+function buildSettingsMenuItem(onHideMenu?: () => void): HTMLButtonElement {
   const btn = document.createElement('button');
   btn.className = 'select-ask-floating-icon-menu-item';
   btn.setAttribute('data-action', 'settings');
@@ -380,9 +404,11 @@ function buildSettingsMenuItem(): HTMLButtonElement {
   const icon = buildSettingsIcon();
   if (icon) btn.appendChild(icon);
 
-  btn.addEventListener('click', () => {
-    hideMenu();
-    chrome.runtime.openOptionsPage();
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onHideMenu?.();
+    chrome.runtime.sendMessage({ type: 'OPEN_OPTIONS_PAGE', tab: 'settings' });
   });
 
   return btn;

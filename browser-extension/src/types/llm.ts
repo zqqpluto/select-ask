@@ -2,7 +2,7 @@
  * LLM Provider 类型定义
  */
 
-export type ProviderType = 'openai' | 'anthropic' | 'qwen' | 'deepseek' | 'glm' | 'openai-compat';
+export type ProviderType = 'openai' | 'anthropic' | 'qwen' | 'deepseek' | 'glm' | 'openai-compat' | 'local-ollama' | 'local-lm-studio';
 
 /**
  * LLM 消息

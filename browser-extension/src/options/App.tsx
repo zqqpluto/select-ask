@@ -4,22 +4,27 @@ import {
   saveAppConfig,
   saveModelConfig,
   deleteModelConfig,
-  setSelectedChatModels,
-  setSelectedQuestionModel,
   testModelConnection,
   getModelConfig,
   getModelConfigs,
-  setModelEnableChat,
   getSelectedChatModel,
   setSelectedChatModel,
   getFallbackLanguage,
   setFallbackLanguage,
+  getDisplayMode,
+  setDisplayMode,
+  getSelectedTranslationModel,
+  setSelectedTranslationModel,
+  getTranslationConfig,
+  saveTranslationConfig,
+  getFullPageTranslationConfig,
+  saveFullPageTranslationConfig,
 } from '../utils/config-manager';
-import { TARGET_LANGUAGES } from '../types/config';
+import { TARGET_LANGUAGES, DEFAULT_TRANSLATION_CONFIG, DEFAULT_FULLPAGE_TRANSLATION_CONFIG } from '../types/config';
 import { getHistory, deleteSession, clearHistory, addMessageToSession } from '../utils/history-manager';
 import { MODEL_PRESETS, PROVIDER_NAMES, PROVIDER_DEFAULTS } from '../types/config';
 import { LLM_STREAM_PORT_NAME } from '../types/messages';
-import type { ModelConfig, ProviderType } from '../types';
+import type { ModelConfig, ProviderType, TranslationConfig, FullPageTranslationConfig } from '../types';
 import type { HistorySession, HistoryMessage } from '../types/history';
 import { marked } from 'marked';
 
@@ -30,7 +35,7 @@ interface ModelFormData {
   apiKey: string;
   baseUrl: string;
   modelId: string;
-  enableChat: boolean;
+  enabled: boolean;
 }
 
 const DEFAULT_FORM_DATA: ModelFormData = {
@@ -40,7 +45,7 @@ const DEFAULT_FORM_DATA: ModelFormData = {
   apiKey: '',
   baseUrl: 'https://api.openai.com/v1',
   modelId: 'gpt-4o',
-  enableChat: true,
+  enabled: true,
 };
 
 // 格式化时间 - 包含年月日时分秒
@@ -126,20 +131,26 @@ async function copyToClipboard(text: string): Promise<boolean> {
 
 export default function App() {
   const [models, setModels] = useState<ModelConfig[]>([]);
-  const [selectedChatModelIds, setSelectedChatModelIds] = useState<string[]>([]);
-  const [selectedQuestionModelId, setSelectedQuestionModelId] = useState<string | null>(null);
   const [preferences, setPreferences] = useState({
     sendWithEnter: false,
     sidebarWidth: 420,
     autoGenerateQuestions: true,
+    translation: DEFAULT_TRANSLATION_CONFIG,
   });
   const [fallbackLang, setFallbackLang] = useState<string>('en');
+  const [showFloatingIcon, setShowFloatingIcon] = useState(true);
+  const [displayMode, setDisplayModeState] = useState<'floating' | 'sidebar'>('floating');
+  const [translationConfig, setTranslationConfig] = useState<TranslationConfig>(DEFAULT_TRANSLATION_CONFIG);
+  const [fullPageConfig, setFullPageConfig] = useState<FullPageTranslationConfig>(DEFAULT_FULLPAGE_TRANSLATION_CONFIG);
   const [showModal, setShowModal] = useState(false);
   const [editingModel, setEditingModel] = useState<ModelConfig | null>(null);
   const [formData, setFormData] = useState<ModelFormData>(DEFAULT_FORM_DATA);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; error?: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'models' | 'history' | 'about'>('models');
+  const [draggedModelId, setDraggedModelId] = useState<string | null>(null);
+  const [dragOverModelId, setDragOverModelId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'settings' | 'history' | 'about'>('settings');
+  const [activeSettingSection, setActiveSettingSection] = useState('model');
   const [historySessions, setHistorySessions] = useState<HistorySession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [chatInput, setChatInput] = useState('');
@@ -147,16 +158,17 @@ export default function App() {
   const [streamingContent, setStreamingContent] = useState('');
   const [streamingReasoning, setStreamingReasoning] = useState('');
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const settingsContentRef = useRef<HTMLDivElement>(null);
+  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const [showApiKeyInModal, setShowApiKeyInModal] = useState(false);
   const [visibleApiKeys, setVisibleApiKeys] = useState<Set<string>>(new Set());
-  const [draggedId, setDraggedId] = useState<string | null>(null);
-  const [showQuestionModelDropdown, setShowQuestionModelDropdown] = useState(false);
   // 历史对话相关状态
   const [currentChatModel, setCurrentChatModel] = useState<ModelConfig | null>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<number | null>(null);
   const [recommendedQuestions, setRecommendedQuestions] = useState<string[]>([]);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [historySearchQuery, setHistorySearchQuery] = useState('');
+  const [selectedTranslationModelId, setSelectedTranslationModelIdState] = useState<string | null>(null);
 
   useEffect(() => {
     loadConfig();
@@ -172,17 +184,45 @@ export default function App() {
     }
   }, []);
 
-  // Close dropdown when clicking outside
+  // 设置页面滚动监听 - 自动高亮侧边栏
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target.closest('.question-model-dropdown-container')) {
-        setShowQuestionModelDropdown(false);
+    if (activeTab !== 'settings') return;
+
+    const container = settingsContentRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const scrollTop = container.scrollTop;
+      const sections = [
+        { id: 'model', ref: sectionRefs.current['model'] },
+        { id: 'appearance', ref: sectionRefs.current['appearance'] },
+        { id: 'preference', ref: sectionRefs.current['preference'] },
+        { id: 'translation', ref: sectionRefs.current['translation'] },
+      ];
+
+      let current = sections[0].id;
+      for (const s of sections) {
+        if (s.ref && s.ref.offsetTop - scrollTop <= 120) {
+          current = s.id;
+        }
       }
+      setActiveSettingSection(current);
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [activeTab]);
+
+  const scrollToSection = (sectionId: string) => {
+    const el = sectionRefs.current[sectionId];
+    if (el && settingsContentRef.current) {
+      settingsContentRef.current.scrollTo({
+        top: el.offsetTop - 16,
+        behavior: 'smooth',
+      });
+      setActiveSettingSection(sectionId);
+    }
+  };
 
   const loadHistory = async () => {
     const sessions = await getHistory();
@@ -200,36 +240,36 @@ export default function App() {
 
     // Load preferences
     if (config.preferences) {
-      setPreferences(config.preferences);
+      setPreferences({
+        ...config.preferences,
+        translation: config.preferences.translation || DEFAULT_TRANSLATION_CONFIG,
+      });
     }
 
     // Load fallback language
     const fbLang = await getFallbackLanguage();
     setFallbackLang(fbLang);
 
-    const chatEnabledModels = config.models.filter(m => m.enabled && m.enableChat !== false);
-    const chatModelIds = config.selectedChatModelIds || [];
+    // Load appearance settings
+    setShowFloatingIcon(config.showFloatingIcon ?? true);
+    const dm = await getDisplayMode();
+    setDisplayModeState(dm);
 
-    const validIds = chatModelIds.filter(id =>
-      chatEnabledModels.some(m => m.id === id)
-    );
+    // Load translation config
+    const tc = await getTranslationConfig();
+    setTranslationConfig(tc);
 
-    if (validIds.length === 0 && chatEnabledModels.length > 0) {
-      const defaultIds = chatEnabledModels.map(m => m.id);
-      setSelectedChatModelIds(defaultIds);
-      await setSelectedChatModels(defaultIds);
-    } else if (validIds.length !== chatModelIds.length) {
-      setSelectedChatModelIds(validIds);
-      await setSelectedChatModels(validIds);
-    } else {
-      setSelectedChatModelIds(chatModelIds);
-    }
-
-    setSelectedQuestionModelId(config.selectedQuestionModelId);
+    // Load full page translation config
+    const fc = await getFullPageTranslationConfig();
+    setFullPageConfig(fc);
 
     // 加载当前选择的对话模型
     const currentModel = await getSelectedChatModel();
     setCurrentChatModel(currentModel);
+
+    // 加载翻译模型
+    const translationModel = await getSelectedTranslationModel();
+    setSelectedTranslationModelIdState(translationModel?.id || null);
   };
 
   // 格式化绝对时间
@@ -296,15 +336,12 @@ export default function App() {
     setTimeout(scrollToBottom, 50);
 
     try {
-      const chatModelIds = selectedChatModelIds;
-      if (!chatModelIds || chatModelIds.length === 0) {
-        throw new Error('请先在设置中选择问答模型');
+      const enabledModels = models.filter(m => m.enabled);
+      if (enabledModels.length === 0) {
+        throw new Error('请先在模型管理中启用至少一个模型');
       }
 
-      const model = models.find(m => m.id === chatModelIds[0]);
-      if (!model) {
-        throw new Error('未找到选中的模型');
-      }
+      const model = enabledModels[0];
 
       const port = chrome.runtime.connect({ name: LLM_STREAM_PORT_NAME });
 
@@ -443,8 +480,8 @@ export default function App() {
       apiKey: formData.apiKey,
       baseUrl: formData.baseUrl,
       modelId: formData.modelId,
-      enabled: editingModel?.enabled ?? true,
-      enableChat: formData.enableChat,
+      enabled: formData.enabled,
+      enableChat: formData.enabled,
       createdAt: editingModel?.createdAt || Date.now(),
       updatedAt: Date.now(),
     };
@@ -466,7 +503,7 @@ export default function App() {
       apiKey: model.apiKey || '',
       baseUrl: model.baseUrl,
       modelId: model.modelId,
-      enableChat: model.enableChat !== false,
+      enabled: model.enabled,
     });
     setShowApiKeyInModal(false);
     setTestResult(null);
@@ -496,8 +533,8 @@ export default function App() {
       apiKey: formData.apiKey,
       baseUrl: formData.baseUrl,
       modelId: formData.modelId,
-      enabled: true,
-      enableChat: formData.enableChat,
+      enabled: formData.enabled,
+      enableChat: formData.enabled,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
@@ -506,41 +543,12 @@ export default function App() {
     setTesting(false);
   };
 
-  const handleToggleEnableChat = async (modelId: string, enableChat: boolean) => {
-    await setModelEnableChat(modelId, enableChat);
+  const handleToggleEnabled = async (modelId: string, enabled: boolean) => {
+    const model = models.find(m => m.id === modelId);
+    if (!model) return;
+    const updated = { ...model, enabled, updatedAt: Date.now() };
+    await saveModelConfig(updated);
     loadConfig();
-  };
-
-  const handleSelectQuestionModel = async (modelId: string) => {
-    await setSelectedQuestionModel(modelId);
-    setSelectedQuestionModelId(modelId);
-    setShowQuestionModelDropdown(false);
-  };
-
-  const handleDragStart = (modelId: string) => {
-    setDraggedId(modelId);
-  };
-
-  const handleDragOver = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    if (!draggedId || draggedId === targetId) return;
-
-    const currentIds = [...selectedChatModelIds];
-    const draggedIndex = currentIds.indexOf(draggedId);
-    const targetIndex = currentIds.indexOf(targetId);
-
-    if (draggedIndex !== -1 && targetIndex !== -1) {
-      currentIds.splice(draggedIndex, 1);
-      currentIds.splice(targetIndex, 0, draggedId);
-      setSelectedChatModelIds(currentIds);
-    }
-  };
-
-  const handleDragEnd = async () => {
-    if (draggedId) {
-      await setSelectedChatModels(selectedChatModelIds);
-    }
-    setDraggedId(null);
   };
 
   const getProviderIcon = (provider: ProviderType, size: 'sm' | 'md' = 'sm') => {
@@ -568,6 +576,53 @@ export default function App() {
     );
   };
 
+  // 模型拖拽排序
+  const handleModelDragStart = (modelId: string) => {
+    setDraggedModelId(modelId);
+  };
+
+  const handleModelDragOver = (e: React.DragEvent, modelId: string) => {
+    e.preventDefault();
+    if (draggedModelId && draggedModelId !== modelId) {
+      setDragOverModelId(modelId);
+    }
+  };
+
+  const handleModelDrop = async (targetModelId: string) => {
+    if (!draggedModelId || draggedModelId === targetModelId) {
+      setDraggedModelId(null);
+      setDragOverModelId(null);
+      return;
+    }
+
+    const fromIndex = models.findIndex(m => m.id === draggedModelId);
+    const toIndex = models.findIndex(m => m.id === targetModelId);
+    if (fromIndex < 0 || toIndex < 0) {
+      setDraggedModelId(null);
+      setDragOverModelId(null);
+      return;
+    }
+
+    // 重新排序
+    const newModels = [...models];
+    const [movedModel] = newModels.splice(fromIndex, 1);
+    newModels.splice(toIndex, 0, movedModel);
+
+    // 更新配置中 models 的顺序
+    const config = await getAppConfig();
+    config.models = newModels;
+    await saveAppConfig(config);
+    setModels(newModels);
+
+    setDraggedModelId(null);
+    setDragOverModelId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedModelId(null);
+    setDragOverModelId(null);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -589,9 +644,22 @@ export default function App() {
             {/* Tabs */}
             <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
               {[
-                { id: 'models', label: '模型配置', icon: '⚡' },
-                { id: 'history', label: '历史记录', icon: '📋' },
-                { id: 'about', label: '关于', icon: 'ℹ️' },
+                { id: 'settings', label: '设置', icon: (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                )},
+                { id: 'history', label: '历史记录', icon: (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )},
+                { id: 'about', label: '关于', icon: (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )},
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -613,14 +681,60 @@ export default function App() {
 
       {/* Content */}
       <main className="max-w-6xl mx-auto px-6 py-8">
-        {activeTab === 'models' && (
-          <div className="space-y-8">
-            {/* Model List */}
-            <section className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        {activeTab === 'settings' && (
+          <div className="flex gap-8">
+            {/* 左侧边栏导航 */}
+            <aside className="w-48 flex-shrink-0">
+              <div className="sticky top-28 space-y-1">
+                {[
+                  { id: 'model', label: '模型管理', icon: (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  )},
+                  { id: 'appearance', label: '外观设置', icon: (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                    </svg>
+                  )},
+                  { id: 'preference', label: '偏好设置', icon: (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  )},
+                  { id: 'translation', label: '翻译设置', icon: (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                    </svg>
+                  )},
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => scrollToSection(item.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left ${
+                      activeSettingSection === item.id
+                        ? 'bg-blue-50 text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    }`}
+                  >
+                    <span className="flex-shrink-0">{item.icon}</span>
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </aside>
+
+            {/* 右侧滚动内容 */}
+            <div ref={settingsContentRef} className="flex-1 min-w-0 max-h-[calc(100vh-140px)] overflow-y-auto pr-2">
+              <div className="space-y-8">
+
+            {/* 1. 模型管理 */}
+            <section ref={(el) => { sectionRefs.current['model'] = el; }} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">模型列表</h2>
-                  <p className="text-sm text-gray-500 mt-1">配置您的 AI 模型，支持多个模型同时启用</p>
+                  <h2 className="text-lg font-semibold text-gray-900">模型管理</h2>
+                  <p className="text-sm text-gray-500 mt-1">配置您的 AI 模型，启用的模型将参与问答和翻译</p>
                 </div>
                 <button
                   onClick={() => {
@@ -647,56 +761,61 @@ export default function App() {
                 </div>
               ) : (
                 <div className="grid gap-3">
-                  {models.map((model) => {
-                    const isQuestionModel = selectedQuestionModelId === model.id;
-                    const enableChat = model.enableChat !== false;
-
+                  {models.map((model, index) => {
                     return (
                       <div
                         key={model.id}
-                        className={`group p-4 rounded-xl border transition-all duration-200 ${
-                          enableChat || isQuestionModel
+                        draggable
+                        onDragStart={() => handleModelDragStart(model.id)}
+                        onDragOver={(e) => handleModelDragOver(e, model.id)}
+                        onDrop={() => handleModelDrop(model.id)}
+                        onDragEnd={handleDragEnd}
+                        className={`group p-4 rounded-xl border transition-all duration-200 cursor-grab active:cursor-grabbing ${
+                          model.enabled
                             ? 'border-blue-200 bg-blue-50'
                             : 'border-gray-200 bg-gray-50 hover:bg-white hover:border-gray-300'
-                        }`}
+                        } ${dragOverModelId === model.id ? 'border-indigo-400 ring-2 ring-indigo-100' : ''}`}
                       >
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-3">
+                            {/* 拖拽手柄 */}
+                            <div className="flex-shrink-0 cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 transition-colors" title="拖拽排序">
+                              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                <circle cx="5" cy="3" r="1.5"/>
+                                <circle cx="11" cy="3" r="1.5"/>
+                                <circle cx="5" cy="8" r="1.5"/>
+                                <circle cx="11" cy="8" r="1.5"/>
+                                <circle cx="5" cy="13" r="1.5"/>
+                                <circle cx="11" cy="13" r="1.5"/>
+                              </svg>
+                            </div>
+                            {/* 序号 */}
+                            <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-xs text-gray-400 font-medium">{index + 1}</span>
                             {getProviderIcon(model.provider, 'md')}
                             <div className="min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-medium text-gray-900">{model.name}</span>
-                                {isQuestionModel && (
-                                  <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full border border-green-200">问题生成</span>
-                                )}
-                                {enableChat && (
-                                  <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full border border-blue-200">问答</span>
-                                )}
+                                <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-500 font-mono">{model.modelId}</code>
                               </div>
-                              <div className="text-sm text-gray-500 mt-0.5 flex items-center gap-2">
+                              <div className="text-xs text-gray-400 mt-0.5">
                                 <span>{PROVIDER_NAMES[model.provider]}</span>
-                                <span className="text-gray-300">·</span>
-                                <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">{model.modelId}</code>
                               </div>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            {/* 参与问答开关 */}
-                            <label className="flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-                              <span className="text-xs text-gray-500">问答</span>
-                              <button
-                                onClick={() => handleToggleEnableChat(model.id, !enableChat)}
-                                className={`relative w-9 h-5 rounded-full transition-colors ${
-                                  enableChat ? 'bg-blue-500' : 'bg-gray-300'
-                                }`}
-                              >
-                                <span
-                                  className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform shadow-sm ${
-                                    enableChat ? 'translate-x-4' : 'translate-x-0'
-                                  }`}
+                            {/* 启用/禁用开关 */}
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-500">{model.enabled ? '已启用' : '已禁用'}</span>
+                              <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={model.enabled}
+                                  onChange={() => handleToggleEnabled(model.id, !model.enabled)}
+                                  className="sr-only peer"
                                 />
-                              </button>
-                            </label>
+                                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500"></div>
+                              </label>
+                            </div>
                             <button
                               onClick={() => handleEditModel(model)}
                               className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
@@ -724,207 +843,241 @@ export default function App() {
               )}
             </section>
 
-            {/* Model Selection */}
-            <section className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-gray-900 mb-6">模型用途配置</h2>
+            {/* 2. 外观设置 */}
+            <section ref={(el) => { sectionRefs.current['appearance'] = el; }} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+              <div className="mb-6">
+                <h2 className="text-lg font-semibold text-gray-900">外观设置</h2>
+                <p className="text-sm text-gray-500 mt-1">控制页面中选中文本后的浮动菜单入口</p>
+              </div>
 
-              {models.filter(m => m.enabled).length === 0 ? (
-                <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-xl">
-                  <div className="text-4xl mb-3">📭</div>
-                  <p className="text-gray-500">请先添加模型配置</p>
-                </div>
-              ) : (
-                <div className="grid gap-6 lg:grid-cols-2">
-                  {/* Chat Models */}
-                  <div className="p-5 bg-gray-50 rounded-xl border border-gray-200">
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
-                      问答模型优先级
-                      <span className="ml-2 text-xs text-gray-400">拖拽调整顺序</span>
-                    </label>
-                    <div className="space-y-2 min-h-[100px]">
-                      {selectedChatModelIds.length === 0 ? (
-                        <div className="text-sm text-gray-400 py-8 text-center border border-dashed border-gray-200 rounded-xl">
-                          请在上方开启模型的「问答」开关
-                        </div>
-                      ) : (
-                        selectedChatModelIds.map((modelId) => {
-                          const model = models.find(m => m.id === modelId);
-                          if (!model) return null;
-                          return (
-                            <div
-                              key={modelId}
-                              draggable
-                              onDragStart={() => handleDragStart(modelId)}
-                              onDragOver={(e) => handleDragOver(e, modelId)}
-                              onDragEnd={handleDragEnd}
-                              className={`group flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 cursor-move ${
-                                draggedId === modelId
-                                  ? 'border-blue-300 bg-blue-50 scale-[0.98]'
-                                  : 'border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300'
-                              }`}
-                            >
-                              {getProviderIcon(model.provider)}
-                              <div className="flex-1 min-w-0">
-                                <div className="font-medium text-gray-900 truncate text-sm">{model.name}</div>
-                                <div className="text-xs text-gray-500">{PROVIDER_NAMES[model.provider]}</div>
-                              </div>
-                              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-                              </svg>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                    {selectedChatModelIds.length > 0 && (
-                      <div className="mt-3 text-xs text-gray-400">
-                        对话框将默认使用第一个模型
-                      </div>
-                    )}
+              <div className="space-y-4">
+                {/* 悬浮图标开关 */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                  <div className="flex-1">
+                    <h3 className="text-sm font-medium text-gray-900">悬浮图标</h3>
+                    <p className="text-xs text-gray-500 mt-1">选中文本后显示操作菜单的快捷入口</p>
                   </div>
-
-                  {/* Question Model */}
-                  <div className="p-5 bg-gray-50 rounded-xl border border-gray-200 question-model-dropdown-container">
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
-                      问题生成模型
-                      <span className="ml-2 text-xs text-gray-400">用于生成相关问题</span>
-                    </label>
-                    <div className="relative">
-                      <button
-                        onClick={() => setShowQuestionModelDropdown(!showQuestionModelDropdown)}
-                        className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-all text-left"
-                      >
-                        {selectedQuestionModelId ? (
-                          (() => {
-                            const model = models.find(m => m.id === selectedQuestionModelId);
-                            if (!model) return <span className="text-gray-400">选择模型</span>;
-                            return (
-                              <>
-                                {getProviderIcon(model.provider)}
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-medium text-gray-900 truncate text-sm">{model.name}</div>
-                                  <div className="text-xs text-gray-500">{PROVIDER_NAMES[model.provider]}</div>
-                                </div>
-                              </>
-                            );
-                          })()
-                        ) : (
-                          <span className="text-gray-400">选择模型</span>
-                        )}
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
-
-                      {showQuestionModelDropdown && (
-                        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-10 max-h-60 overflow-y-auto">
-                          {models.filter(m => m.enabled).map((model) => (
-                            <button
-                              key={model.id}
-                              onClick={() => handleSelectQuestionModel(model.id)}
-                              className={`w-full flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors text-left ${
-                                selectedQuestionModelId === model.id ? 'bg-blue-50' : ''
-                              }`}
-                            >
-                              {getProviderIcon(model.provider)}
-                              <div className="flex-1 min-w-0">
-                                <div className="font-medium text-gray-900 truncate text-sm">{model.name}</div>
-                                <div className="text-xs text-gray-500">{PROVIDER_NAMES[model.provider]}</div>
-                              </div>
-                              {selectedQuestionModelId === model.id && (
-                                <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer ml-4">
+                    <input
+                      type="checkbox"
+                      checked={showFloatingIcon}
+                      onChange={() => {
+                        const newVal = !showFloatingIcon;
+                        setShowFloatingIcon(newVal);
+                        const config = getAppConfig().then(c => {
+                          c.showFloatingIcon = newVal;
+                          saveAppConfig(c);
+                        });
+                      }}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
                 </div>
-              )}
+              </div>
             </section>
 
-            {/* Preferences Settings */}
-            <section className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+            {/* 3. 偏好设置 */}
+            <section ref={(el) => { sectionRefs.current['preference'] = el; }} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
               <div className="mb-6">
                 <h2 className="text-lg font-semibold text-gray-900">偏好设置</h2>
                 <p className="text-sm text-gray-500 mt-1">自定义您的使用体验</p>
               </div>
 
               <div className="space-y-4">
-                {/* Send with Enter toggle */}
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                {/* 消息发送方式 */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                   <div className="flex-1">
                     <h3 className="text-sm font-medium text-gray-900">消息发送方式</h3>
                     <p className="text-xs text-gray-500 mt-1">
-                      当前：{preferences.sendWithEnter ? 'Enter 发送消息' : 'Ctrl+Enter 发送消息'}
+                      当前：{preferences.sendWithEnter ? 'Enter 发送' : 'Ctrl+Enter 发送'}
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`text-xs ${!preferences.sendWithEnter ? 'text-blue-600 font-medium' : 'text-gray-600'}`}>
-                      Ctrl+Enter
-                    </span>
-                    <button
-                      onClick={async () => {
-                        const newValue = !preferences.sendWithEnter;
-                        setPreferences(prev => ({ ...prev, sendWithEnter: newValue }));
-
-                        const config = await getAppConfig();
-                        const updatedConfig = {
-                          ...config,
-                          preferences: {
+                  <div className="flex items-center gap-3 ml-4">
+                    <span className={`text-xs ${!preferences.sendWithEnter ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>Ctrl+Enter</span>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={preferences.sendWithEnter}
+                        onChange={async () => {
+                          const newValue = !preferences.sendWithEnter;
+                          setPreferences(prev => ({ ...prev, sendWithEnter: newValue }));
+                          const config = await getAppConfig();
+                          config.preferences = {
                             ...config.preferences,
                             sendWithEnter: newValue,
                             sidebarWidth: config.preferences?.sidebarWidth ?? 420,
                             autoGenerateQuestions: config.preferences?.autoGenerateQuestions ?? true,
-                          }
-                        };
-                        await saveAppConfig(updatedConfig);
-                      }}
-                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
-                        preferences.sendWithEnter ? 'bg-blue-600' : 'bg-gray-200'
-                      }`}
-                      role="switch"
-                      aria-checked={preferences.sendWithEnter}
-                    >
-                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                        preferences.sendWithEnter ? 'translate-x-5' : 'translate-x-0'
-                      }`}>
-                      </span>
-                    </button>
-                    <span className={`text-xs ${preferences.sendWithEnter ? 'text-blue-600 font-medium' : 'text-gray-600'}`}>
-                      Enter
-                    </span>
+                            translation: config.preferences?.translation ?? DEFAULT_TRANSLATION_CONFIG,
+                          };
+                          await saveAppConfig(config);
+                        }}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                    <span className={`text-xs ${preferences.sendWithEnter ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>Enter</span>
                   </div>
                 </div>
 
-                {/* 翻译策略 */}
-                <div className="p-4 bg-gray-50 rounded-xl">
-                  <h3 className="text-sm font-medium text-gray-900">翻译策略</h3>
-                  <p className="text-xs text-gray-500 mt-1">
-                    智能翻译：非系统语言 → 系统语言；系统语言 → 下方设置的语言
-                  </p>
-                  <div className="flex items-center gap-3 mt-3">
-                    <span className="text-xs text-gray-600">系统语言翻译成：</span>
-                    <select
-                      value={fallbackLang}
-                      onChange={async (e) => {
-                        const newLang = e.target.value;
-                        setFallbackLang(newLang);
-                        await setFallbackLanguage(newLang);
+                {/* 自动生成推荐问题 */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                  <div className="flex-1">
+                    <h3 className="text-sm font-medium text-gray-900">自动生成推荐问题</h3>
+                    <p className="text-xs text-gray-500 mt-1">回答后自动生成相关问题推荐</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer ml-4">
+                    <input
+                      type="checkbox"
+                      checked={preferences.autoGenerateQuestions}
+                      onChange={async () => {
+                        const newVal = !preferences.autoGenerateQuestions;
+                        setPreferences(prev => ({ ...prev, autoGenerateQuestions: newVal }));
+                        const config = await getAppConfig();
+                        config.preferences = {
+                          ...config.preferences,
+                          sendWithEnter: config.preferences?.sendWithEnter ?? false,
+                          sidebarWidth: config.preferences?.sidebarWidth ?? 420,
+                          autoGenerateQuestions: newVal,
+                          translation: config.preferences?.translation ?? DEFAULT_TRANSLATION_CONFIG,
+                        };
+                        await saveAppConfig(config);
                       }}
-                      className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                    >
-                      {TARGET_LANGUAGES.map(lang => (
-                        <option key={lang.code} value={lang.code}>{lang.label}</option>
-                      ))}
-                    </select>
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+              </div>
+            </section>
+
+            {/* 4. 翻译设置 */}
+            <section ref={(el) => { sectionRefs.current['translation'] = el; }} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+              <div className="mb-6">
+                <h2 className="text-lg font-semibold text-gray-900">翻译设置</h2>
+                <p className="text-sm text-gray-500 mt-1">划词翻译和全文翻译的配置</p>
+              </div>
+
+              <div className="space-y-4">
+                {/* 翻译模式 */}
+                <div className="p-4 bg-gray-50 rounded-xl">
+                  <h3 className="text-sm font-medium text-gray-900 mb-3">翻译模式</h3>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { value: 'inline' as const, label: '行内翻译', desc: '译文直接替换原文位置' },
+                      { value: 'floating' as const, label: '悬浮窗', desc: '译文在选中文本附近悬浮' },
+                      { value: 'sidebar' as const, label: '侧边栏', desc: '译文在侧边栏显示' },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={async () => {
+                          const newConfig = { ...translationConfig, mode: option.value };
+                          setTranslationConfig(newConfig);
+                          await saveTranslationConfig(newConfig);
+                        }}
+                        className={`p-3 rounded-xl border-2 text-left transition-all ${
+                          translationConfig.mode === option.value
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                      >
+                        <div className={`text-sm font-medium ${translationConfig.mode === option.value ? 'text-blue-700' : 'text-gray-900'}`}>
+                          {option.label}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-0.5">{option.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <h3 className="text-sm font-medium text-gray-900">翻译策略</h3>
+                    <p className="text-xs text-gray-500 mt-1">
+                      系统语言翻译成：<span className="text-gray-700 font-medium">{TARGET_LANGUAGES.find(l => l.code === fallbackLang)?.label || fallbackLang}</span>
+                    </p>
+                  </div>
+                  <select
+                    value={fallbackLang}
+                    onChange={async (e) => {
+                      const newLang = e.target.value;
+                      setFallbackLang(newLang);
+                      await setFallbackLanguage(newLang);
+                    }}
+                    className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700 cursor-pointer"
+                  >
+                    {TARGET_LANGUAGES.map(lang => (
+                      <option key={lang.code} value={lang.code}>{lang.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 翻译模型选择 */}
+                <div className="p-4 bg-gray-50 rounded-xl">
+                  <h3 className="text-sm font-medium text-gray-900 mb-1">翻译模型</h3>
+                  <p className="text-xs text-gray-500 mb-3">选择用于划词翻译的 AI 模型，可与问答模型分开设置</p>
+                  <select
+                    value={selectedTranslationModelId || '__default__'}
+                    onChange={async (e) => {
+                      const value = e.target.value;
+                      const modelId = value === '__default__' ? null : value;
+                      setSelectedTranslationModelIdState(modelId);
+                      await setSelectedTranslationModel(modelId);
+                    }}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700 cursor-pointer"
+                  >
+                    <option value="__default__">使用默认问答模型</option>
+                    {models.filter(m => m.enabled).map(model => (
+                      <option key={model.id} value={model.id}>{model.name}（{PROVIDER_NAMES[model.provider]}）</option>
+                    ))}
+                  </select>
+                  {selectedTranslationModelId && (
+                    <p className="text-xs text-green-600 mt-2">当前使用独立翻译模型：{models.find(m => m.id === selectedTranslationModelId)?.name || ''}</p>
+                  )}
+                  {!selectedTranslationModelId && (
+                    <p className="text-xs text-gray-400 mt-2">当前使用默认问答模型进行翻译</p>
+                  )}
+                </div>
+
+                {/* 分隔线 */}
+                <div className="border-t border-gray-200 my-2"></div>
+
+                {/* 全文翻译设置 */}
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 mb-3">全文翻译</h3>
+
+                  <div className="space-y-3">
+                    {/* 全文翻译目标语言 */}
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                      <div className="flex-1">
+                        <h3 className="text-sm font-medium text-gray-900">目标语言</h3>
+                        <p className="text-xs text-gray-500 mt-1">
+                          全文翻译的目标语言：<span className="text-gray-700 font-medium">{fullPageConfig.targetLanguage === 'auto' ? '跟随浏览器语言' : TARGET_LANGUAGES.find(l => l.code === fullPageConfig.targetLanguage)?.label || fullPageConfig.targetLanguage}</span>
+                        </p>
+                      </div>
+                      <select
+                        value={fullPageConfig.targetLanguage}
+                        onChange={async (e) => {
+                          const newConfig = { ...fullPageConfig, targetLanguage: e.target.value };
+                          setFullPageConfig(newConfig);
+                          await saveFullPageTranslationConfig(newConfig);
+                        }}
+                        className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700 cursor-pointer"
+                      >
+                        <option value="auto">跟随浏览器语言</option>
+                        {TARGET_LANGUAGES.map(lang => (
+                          <option key={lang.code} value={lang.code}>{lang.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
                   </div>
                 </div>
               </div>
             </section>
+
+              </div>
+            </div>
           </div>
         )}
 
@@ -1013,7 +1166,7 @@ export default function App() {
                   if (!session) return null;
 
                   // 获取可用于对话的模型
-                  const chatEnabledModels = models.filter(m => m.enabled && m.enableChat !== false);
+                  const chatEnabledModels = models.filter(m => m.enabled);
 
                   return (
                     <>
@@ -1281,9 +1434,56 @@ export default function App() {
               </div>
 
               <div className="mt-6 p-5 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-gray-200">
+                <h3 className="font-medium text-gray-900 mb-3">项目地址</h3>
+                <div className="flex items-center gap-3">
+                  <a
+                    href="https://github.com/zqqpluto/select-ask"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    GitHub 仓库
+                  </a>
+                  <a
+                    href="https://github.com/zqqpluto/select-ask"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white text-sm font-medium rounded-lg hover:bg-yellow-600 transition-colors"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                    Star 支持
+                  </a>
+                </div>
+              </div>
+
+              <div className="mt-6 p-5 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-gray-200">
                 <h3 className="font-medium text-gray-900 mb-3">支持的模型</h3>
                 <div className="flex flex-wrap gap-2">
-                  {['OpenAI GPT-4', 'Claude', 'DeepSeek', '通义千问', '智谱 GLM', '自定义模型'].map((name) => (
+                  {[
+                    // OpenAI
+                    'GPT-4o', 'GPT-4o mini', 'o3 / o3 mini', 'o1',
+                    // Anthropic
+                    'Claude 4 Opus', 'Claude 4 Sonnet', 'Claude 3.5 Sonnet',
+                    // Google
+                    'Gemini 2.5 Pro', 'Gemini 2.0 Flash',
+                    // DeepSeek
+                    'DeepSeek-V3', 'DeepSeek-R1',
+                    // 国内 - 阿里
+                    '通义千问 Qwen-Max', 'Qwen-Plus', 'Qwen-Turbo',
+                    // 国内 - 智谱
+                    '智谱 GLM-4', 'GLM-4-Plus', 'GLM-4-Flash',
+                    // 国内 - 月之暗面
+                    'Moonshot Kimi',
+                    // 国内 - 其他
+                    'MiniMax', '字节豆包', '百度文心 ERNIE',
+                    // 自定义
+                    '自定义 OpenAI 兼容模型'
+                  ].map((name) => (
                     <span key={name} className="px-3 py-1.5 text-sm bg-white text-gray-600 rounded-lg border border-gray-200 shadow-sm">
                       {name}
                     </span>
@@ -1352,7 +1552,7 @@ export default function App() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="如：我的 GPT-4"
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
                 />
               </div>
 
@@ -1363,7 +1563,7 @@ export default function App() {
                 <select
                   value={formData.provider}
                   onChange={(e) => handleProviderChange(e.target.value as ProviderType)}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 appearance-none cursor-pointer"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 appearance-none cursor-pointer"
                 >
                   <option value="openai">OpenAI</option>
                   <option value="anthropic">Anthropic (Claude)</option>
@@ -1384,7 +1584,7 @@ export default function App() {
                     value={formData.apiKey}
                     onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
                     placeholder="sk-..."
-                    className="w-full px-4 py-3 pr-12 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 font-mono text-sm"
+                    className="w-full px-4 py-3 pr-12 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 font-mono text-sm"
                   />
                   <button
                     type="button"
@@ -1405,6 +1605,29 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Model Status Toggle */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  模型状态
+                </label>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                  <button
+                    onClick={() => setFormData({ ...formData, enabled: !formData.enabled })}
+                    className={`relative w-11 h-6 rounded-full transition-colors ${
+                      formData.enabled ? 'bg-blue-500' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform shadow-sm ${
+                        formData.enabled ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                  <span className="text-sm text-gray-600">{formData.enabled ? '启用' : '禁用'}</span>
+                  <span className="text-xs text-gray-400">禁用后模型不参与问答和翻译</span>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   API 地址
@@ -1414,7 +1637,7 @@ export default function App() {
                   value={formData.baseUrl}
                   onChange={(e) => setFormData({ ...formData, baseUrl: e.target.value })}
                   placeholder="https://api.openai.com/v1"
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
                 />
               </div>
 
@@ -1427,7 +1650,7 @@ export default function App() {
                   value={formData.modelId}
                   onChange={(e) => setFormData({ ...formData, modelId: e.target.value })}
                   placeholder="gpt-4o"
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
                 />
               </div>
 

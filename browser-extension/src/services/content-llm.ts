@@ -4,7 +4,8 @@
  * 通过 Background Service Worker 代理 API 请求以避免 CORS 问题
  */
 
-import { getSelectedChatModel, getSelectedQuestionModel } from '../utils/config-manager';
+import { getSelectedChatModel, getSelectedQuestionModel, getSelectedTranslationModel } from '../utils/config-manager';
+import type { ModelConfig } from '../types/config';
 import { LLM_STREAM_PORT_NAME } from '../types/messages';
 import type { LLMMessage, LLMContext } from '../types/llm';
 
@@ -20,8 +21,18 @@ async function* streamViaBackground(
 ): AsyncGenerator<string, void, unknown> {
   console.log('[content-llm] 开始 - action:', action, 'textLength:', text.length);
 
-  // 获取当前模型
-  const model = await getSelectedChatModel();
+  // 根据 action 选择对应的模型
+  let model: ModelConfig | null;
+  switch (action) {
+    case 'translate':
+      model = await getSelectedTranslationModel();
+      break;
+    case 'question':
+      model = await getSelectedQuestionModel() || await getSelectedChatModel();
+      break;
+    default:
+      model = await getSelectedChatModel();
+  }
 
   if (!model) {
     console.error('[content-llm] 模型未配置');
@@ -320,10 +331,16 @@ export async function* streamExplain(
  */
 export async function* streamTranslate(
   text: string,
-  targetLanguage?: string
+  targetLanguage?: string,
+  context?: { prefix?: string; suffix?: string }
 ): AsyncGenerator<string, void, unknown> {
   try {
-    yield* streamViaBackground('translate', text, undefined, undefined, targetLanguage);
+    // 将 prefix/suffix 适配到 LLMContext 格式
+    const llmContext: LLMContext | undefined = context ? {
+      before: context.prefix || '',
+      after: context.suffix || '',
+    } : undefined;
+    yield* streamViaBackground('translate', text, undefined, llmContext, targetLanguage);
   } catch (error) {
     console.error('[streamTranslate] 失败:', error instanceof Error ? error.message : error);
     throw error;

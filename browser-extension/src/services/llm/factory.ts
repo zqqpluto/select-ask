@@ -21,6 +21,14 @@ const providerClasses: Record<ProviderType, new (config: ProviderConfig) => LLMP
   'deepseek': DeepSeekProvider,
   'glm': GLMProvider,
   'openai-compat': OpenAICompatProvider,
+  'local-ollama': OpenAICompatProvider,
+  'local-lm-studio': OpenAICompatProvider,
+};
+
+/** 本地模型默认地址 */
+const localBaseUrls: Record<string, string> = {
+  'local-ollama': 'http://localhost:11434/v1',
+  'local-lm-studio': 'http://localhost:1234/v1',
 };
 
 /**
@@ -34,7 +42,12 @@ export function getLLMProvider(
   if (!ProviderClass) {
     throw new Error(`Unknown provider type: ${providerType}`);
   }
-  return new ProviderClass(config);
+  // 本地模型：如果未配置 baseUrl，使用默认地址
+  const finalConfig: ProviderConfig = { ...config };
+  if ((providerType === 'local-ollama' || providerType === 'local-lm-studio') && !finalConfig.baseUrl) {
+    finalConfig.baseUrl = localBaseUrls[providerType];
+  }
+  return new ProviderClass(finalConfig);
 }
 
 /**

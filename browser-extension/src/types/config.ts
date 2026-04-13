@@ -63,6 +63,7 @@ export interface UserPreferences {
 export interface AppConfig {
   selectedChatModelIds: string[];            // 问答模型（支持多个）
   selectedQuestionModelId: string | null;    // 问题生成模型（仅一个）
+  selectedTranslationModelId: string | null; // 翻译模型（仅一个，null 表示使用问答模型）
   models: ModelConfig[];
   displayMode: DisplayMode;                  // 显示模式：悬浮或侧边栏
   showFloatingIcon: boolean;                 // 是否显示悬浮图标
@@ -138,6 +139,20 @@ export const MODEL_PRESETS: Array<{
     baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
     modelId: 'glm-4',
   },
+  {
+    id: 'ollama-local',
+    name: 'Ollama 本地',
+    provider: 'local-ollama',
+    baseUrl: 'http://localhost:11434/v1',
+    modelId: 'llama3',
+  },
+  {
+    id: 'lm-studio-local',
+    name: 'LM Studio',
+    provider: 'local-lm-studio',
+    baseUrl: 'http://localhost:1234/v1',
+    modelId: '',
+  },
 ];
 
 /**
@@ -150,6 +165,8 @@ export const PROVIDER_NAMES: Record<ProviderType, string> = {
   'deepseek': 'DeepSeek',
   'glm': '智谱 AI',
   'openai-compat': 'OpenAI 兼容',
+  'local-ollama': 'Ollama 本地',
+  'local-lm-studio': 'LM Studio',
 };
 
 /**
@@ -178,6 +195,14 @@ export const PROVIDER_DEFAULTS: Record<ProviderType, { baseUrl: string; modelId:
   },
   'openai-compat': {
     baseUrl: '',
+    modelId: '',
+  },
+  'local-ollama': {
+    baseUrl: 'http://localhost:11434/v1',
+    modelId: '',
+  },
+  'local-lm-studio': {
+    baseUrl: 'http://localhost:1234/v1',
     modelId: '',
   },
 };

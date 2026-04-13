@@ -16,6 +16,7 @@ const CONFIG_KEY = 'app_config';
 const DEFAULT_CONFIG: AppConfig = {
   selectedChatModelIds: [],
   selectedQuestionModelId: null,
+  selectedTranslationModelId: null,
   models: [],
   displayMode: 'sidebar',
   showFloatingIcon: true,
@@ -267,6 +268,29 @@ export async function getSelectedQuestionModel(): Promise<ModelConfig | null> {
   const config = await getAppConfig();
   if (!config.selectedQuestionModelId) return null;
   return getModelConfig(config.selectedQuestionModelId);
+}
+
+/**
+ * 设置翻译模型
+ */
+export async function setSelectedTranslationModel(modelId: string | null): Promise<void> {
+  const config = await getAppConfig();
+  config.selectedTranslationModelId = modelId;
+  await saveAppConfig(config);
+}
+
+/**
+ * 获取翻译模型配置（解密后）
+ * 如果未单独设置，返回问答模型（向后兼容）
+ */
+export async function getSelectedTranslationModel(): Promise<ModelConfig | null> {
+  const config = await getAppConfig();
+  const modelId = config.selectedTranslationModelId;
+  if (modelId) {
+    return getModelConfig(modelId);
+  }
+  // 未单独设置时，使用问答模型
+  return getSelectedChatModel();
 }
 
 /**

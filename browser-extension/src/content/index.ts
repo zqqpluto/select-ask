@@ -1438,7 +1438,7 @@ function createIconMenu(x: number, y: number): HTMLElement {
 }
 
 /**
- * 显示二级菜单（AI 搜索、解释、翻译、总结页面、提问）
+ * 显示二级菜单（AI 搜索、解释、翻译、提问）
  */
 function showDropdownMenu(x: number, y: number): HTMLElement {
   const dropdown = document.createElement('div');
@@ -1447,11 +1447,10 @@ function showDropdownMenu(x: number, y: number): HTMLElement {
   dropdown.style.top = `${y}px`;
 
   const menuItems = [
-    { key: 'search', label: 'AI 搜索', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>' },
-    { key: 'explain', label: '解释', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></svg>' },
-    { key: 'translate', label: '翻译', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 8 6 6"></path><path d="m4 14 6-6 2-3"></path><path d="M2 5h12"></path><path d="M7 2h1"></path><path d="m22 22-5-10-5 10"></path><path d="M14 18h6"></path></svg>' },
-    { key: 'summarize', label: '总结页面', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>' },
-    { key: 'question', label: '提问', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></svg>' },
+    { key: 'search', label: 'AI 搜索', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>' },
+    { key: 'summarize', label: '段落总结', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M16 13H8"></path><path d="M16 17H8"></path><path d="M10 9H8"></path></svg>' },
+    { key: 'explain', label: '解释', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"></path></svg>' },
+    { key: 'translate', label: '翻译', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"></path><path d="m4 14 6-6 2-3"></path><path d="M2 5h12"></path><path d="M7 2h1"></path><path d="m22 22-5-10-5 10"></path><path d="M14 18h6"></path></svg>' },
   ];
 
   menuItems.forEach((item) => {
@@ -2799,8 +2798,9 @@ async function handleMenuAction(action: string): Promise<void> {
   if (action === 'question') {
     // 提问功能已删除
   } else if (action === 'summarize') {
-    // 显示页面总结（仅支持侧边栏模式）
-    await showPageSummary(dropdownRect);
+    // 段落总结：对选中的文本进行总结
+    const summaryPrompt = `请对以下选中的内容进行简明总结，提取核心要点和关键信息：\n\n${text}`;
+    await showResponseInSidebar('段落总结', summaryPrompt, context);
   } else if (action === 'translate') {
     // 检查翻译模式配置
     const translationMode = await getTranslationMode();
@@ -2828,143 +2828,36 @@ async function handleMenuAction(action: string): Promise<void> {
 }
 
 /**
- * 显示页面总结
+ * 显示页面总结 — 通过 Side Panel 展示
  */
-async function showPageSummary(dropdownRect: { left: number; top: number; right: number; bottom: number } | null = null): Promise<void> {
+async function showPageSummary(_dropdownRect: { left: number; top: number; right: number; bottom: number } | null = null): Promise<void> {
   try {
-    // 提取页面内容
+    const { extractMainContent, truncateContent, generateSummaryPrompt } = await import('../utils/content-extractor');
     const extractedContent = extractMainContent();
+    if (!extractedContent.content || extractedContent.content.trim().length < 10) {
+      console.warn('[页面总结] 页面内容太少');
+      return;
+    }
 
-    // 截断内容（限制在6000 tokens）
     const truncatedContent = truncateContent(extractedContent.content, 6000);
-
-    // 生成总结提示词
     const summaryPrompt = generateSummaryPrompt({
       ...extractedContent,
       content: truncatedContent,
     });
 
-    // 仅在侧边栏中显示
-    await showSummaryInSidebar(extractedContent.title, summaryPrompt);
+    // 通过 Side Panel 展示总结
+    chrome.runtime.sendMessage({
+      type: 'OPEN_SIDE_PANEL',
+      selectedText: '',
+      context: null,
+      userMessage: '总结页面',
+      summaryPrompt: summaryPrompt,
+      pageUrl: window.location.href,
+      pageTitle: extractedContent.title || document.title,
+    });
   } catch (error) {
     console.error('Failed to generate page summary:', error);
-    // 显示错误提示
     alert('生成页面总结失败: ' + (error instanceof Error ? error.message : String(error)));
-  }
-}
-
-/**
- * 在侧边栏中显示页面总结
- */
-async function showSummaryInSidebar(title: string, prompt: string): Promise<void> {
-  // 显示侧边栏
-  await showSidebar();
-
-  // 等待侧边栏创建完成
-  await new Promise(resolve => setTimeout(resolve, 100));
-
-  if (!currentHistorySidebar) {
-    console.error('Sidebar not created');
-    return;
-  }
-
-  // 初始化历史会话
-  currentSessionId = generateSessionId();
-  currentSelectedText = title;
-  currentSessionType = 'custom';
-  currentSessionMessages = [];
-
-  // 创建消息容器
-  const messagesContainer = currentHistorySidebar.querySelector('.select-ask-sidebar-messages');
-  if (!messagesContainer) {
-    console.error('Messages container not found');
-    return;
-  }
-
-  // 清空现有消息
-  messagesContainer.innerHTML = '';
-
-  // 添加用户消息（页面标题）
-  const userMessage: HistoryMessage = {
-    role: 'user',
-    content: `总结页面: ${title}`,
-    timestamp: Date.now(),
-  };
-  currentSessionMessages.push(userMessage);
-
-  const userMessageElement = document.createElement('div');
-  userMessageElement.className = 'select-ask-sidebar-message user';
-  userMessageElement.innerHTML = `
-    <div class="select-ask-sidebar-message-content">
-      <div class="select-ask-sidebar-message-text">总结页面: ${title}</div>
-    </div>
-  `;
-  messagesContainer.appendChild(userMessageElement);
-
-  // 创建AI消息元素
-  const aiMessageElement = document.createElement('div');
-  aiMessageElement.className = 'select-ask-sidebar-message ai';
-  aiMessageElement.innerHTML = `
-    <div class="select-ask-sidebar-message-avatar">
-      <img src="${chrome.runtime.getURL('icons/icon48.png')}" alt="AI">
-    </div>
-    <div class="select-ask-sidebar-message-content">
-      <div class="select-ask-sidebar-message-text"></div>
-    </div>
-  `;
-  messagesContainer.appendChild(aiMessageElement);
-
-  const textElement = aiMessageElement.querySelector('.select-ask-sidebar-message-text');
-  if (!textElement) {
-    console.error('Text element not found');
-    return;
-  }
-
-  // 显示加载状态
-  textElement.innerHTML = '<div class="select-ask-loading">正在生成总结...</div>';
-
-  // 调用LLM API
-  try {
-    const selectedModel = await getSelectedChatModel();
-    if (!selectedModel) {
-      throw new Error('未配置模型，请先在设置中配置模型');
-    }
-
-    // 使用问答接口获取总结
-    const messages = [{ role: 'user' as const, content: prompt }];
-    let fullResponse = '';
-
-    // 流式调用
-    for await (const chunk of streamQuestion(messages, selectedModel)) {
-      fullResponse += chunk;
-      // 渲染Markdown
-      textElement.innerHTML = await marked(fullResponse) as string;
-      // 滚动到底部
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-
-    // 保存AI消息到历史
-    const aiMessage: HistoryMessage = {
-      role: 'assistant',
-      content: fullResponse,
-      timestamp: Date.now(),
-    };
-    currentSessionMessages.push(aiMessage);
-
-    // 保存会话
-    const sessionTitle = await generateTitle(`总结: ${title}`);
-    await addSession({
-      id: currentSessionId,
-      title: sessionTitle,
-      type: currentSessionType,
-      messages: currentSessionMessages,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-
-  } catch (error) {
-    console.error('Failed to get summary:', error);
-    textElement.innerHTML = `<div class="select-ask-error">生成总结失败: ${error instanceof Error ? error.message : String(error)}</div>`;
   }
 }
 
@@ -3647,8 +3540,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     startFullPageTranslation();
     sendResponse({ success: true });
   } else if (message.action === 'startPageSummarize') {
-    // 来自 popup 的总结页面请求
-    startPageSummarize();
+    // 来自 popup 的总结页面请求 — 统一使用侧边栏
+    showPageSummary();
     sendResponse({ success: true });
   } else if (message.action === 'floatingIconToggle') {
     // 来自 popup 的悬浮图标开关请求
@@ -3807,7 +3700,12 @@ function initFloatingIcon(): void {
           }
         },
         onSummarizePage: () => {
-          startPageSummarize();
+          // 统一使用侧边栏展示页面总结
+          showPageSummary();
+        },
+        onClickIcon: () => {
+          // 点击图标打开侧边栏
+          chrome.runtime.sendMessage({ type: 'OPEN_SIDE_PANEL', selectedText: '', context: null, userMessage: '', pageUrl: window.location.href, pageTitle: document.title });
         },
         isTranslating: false,
       });
@@ -3831,8 +3729,8 @@ async function startFullPageTranslation(): Promise<void> {
     const targetLang = await getTargetLanguage();
 
     // 如果已有翻译在进行，先恢复
-    const existingControlBar = document.querySelector('.select-ask-fp-control-bar');
-    if (existingControlBar) {
+    const existingTranslation = document.querySelector('[data-sa-translation]');
+    if (existingTranslation) {
       restoreAllTranslations();
       return;
     }
@@ -3854,141 +3752,6 @@ async function startFullPageTranslation(): Promise<void> {
     await controller.start();
   } catch (error) {
     console.error('[全文翻译] 启动失败:', error);
-  }
-}
-
-/**
- * 启动页面总结
- */
-async function startPageSummarize(): Promise<void> {
-  try {
-    const { extractMainContent, truncateContent, generateSummaryPrompt } = await import('../utils/content-extractor');
-    const { streamViaBackground } = await import('../services/content-llm');
-    const { getSelectedChatModel } = await import('../utils/config-manager');
-    const { getFloatingIcon } = await import('./floating-icon');
-    const { marked } = await import('marked');
-
-    // 提取页面主要内容
-    const extractedContent = extractMainContent();
-    if (!extractedContent.content || extractedContent.content.trim().length < 10) {
-      console.warn('[页面总结] 页面内容太少');
-      return;
-    }
-
-    // 创建总结面板
-    const panel = document.createElement('div');
-    panel.className = 'select-ask-summarize-panel';
-
-    const header = document.createElement('div');
-    header.className = 'select-ask-summarize-header';
-
-    const title = document.createElement('span');
-    title.className = 'select-ask-summarize-title';
-    title.textContent = '页面总结';
-
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'select-ask-summarize-close';
-    closeBtn.title = '关闭';
-    const closeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    closeSvg.setAttribute('width', '16'); closeSvg.setAttribute('height', '16');
-    closeSvg.setAttribute('viewBox', '0 0 24 24');
-    closeSvg.setAttribute('fill', 'none'); closeSvg.setAttribute('stroke', 'currentColor');
-    closeSvg.setAttribute('stroke-width', '2');
-    closeSvg.setAttribute('stroke-linecap', 'round'); closeSvg.setAttribute('stroke-linejoin', 'round');
-    const l1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    l1.setAttribute('x1', '18'); l1.setAttribute('y1', '6'); l1.setAttribute('x2', '6'); l1.setAttribute('y2', '18');
-    const l2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    l2.setAttribute('x1', '6'); l2.setAttribute('y1', '6'); l2.setAttribute('x2', '18'); l2.setAttribute('y2', '18');
-    closeSvg.appendChild(l1); closeSvg.appendChild(l2);
-    closeBtn.appendChild(closeSvg);
-    closeBtn.addEventListener('click', () => panel.remove());
-
-    header.appendChild(title);
-    header.appendChild(closeBtn);
-
-    const summaryContent = document.createElement('div');
-    summaryContent.className = 'select-ask-summarize-content';
-
-    const loading = document.createElement('div');
-    loading.className = 'select-ask-summarize-loading';
-    const spinner = document.createElement('span');
-    spinner.className = 'select-ask-summarize-spinner';
-    const loadingText = document.createElement('span');
-    loadingText.textContent = '正在总结页面...';
-    loading.appendChild(spinner);
-    loading.appendChild(loadingText);
-    summaryContent.appendChild(loading);
-
-    panel.appendChild(header);
-    panel.appendChild(summaryContent);
-    document.body.appendChild(panel);
-
-    // 截断内容并生成 prompt
-    const truncatedContent = truncateContent(extractedContent.content, 6000);
-    const summaryPrompt = generateSummaryPrompt({
-      ...extractedContent,
-      content: truncatedContent,
-    });
-
-    // 流式获取总结
-    let fullSummary = '';
-    try {
-      const model = await getSelectedChatModel();
-      if (!model) {
-        summaryContent.textContent = '请先配置模型';
-        return;
-      }
-
-      // 通过 background 端口发起 LLM 请求
-      const port = chrome.runtime.connect({ name: 'llm-stream' });
-      const messageQueue: string[] = [];
-      let resolveNext: ((v: string) => void) | null = null;
-      let done = false;
-
-      port.onMessage.addListener((msg) => {
-        if (msg.type === 'LLM_STREAM_CHUNK') {
-          if (resolveNext) { resolveNext(msg.chunk || ''); resolveNext = null; }
-          else messageQueue.push(msg.chunk || '');
-        } else if (msg.type === 'LLM_STREAM_END' || msg.type === 'LLM_STREAM_ERROR') {
-          done = true;
-          if (resolveNext) { resolveNext(''); resolveNext = null; }
-        }
-      });
-      port.onDisconnect.addListener(() => { done = true; if (resolveNext) { resolveNext(''); resolveNext = null; } });
-
-      port.postMessage({
-        type: 'LLM_STREAM_START',
-        payload: {
-          action: 'question',
-          text: summaryPrompt,
-          modelId: model.id,
-        },
-      });
-
-      while (!done) {
-        if (messageQueue.length > 0) {
-          const chunk = messageQueue.shift()!;
-          fullSummary += chunk;
-          summaryContent.innerHTML = marked.parse(fullSummary) as string;
-        } else {
-          const chunk = await new Promise<string>((resolve) => {
-            resolveNext = resolve;
-          });
-          if (done) break;
-          fullSummary += chunk;
-          summaryContent.innerHTML = marked.parse(fullSummary) as string;
-        }
-      }
-      port.disconnect();
-    } catch (error) {
-      const errorDiv = document.createElement('div');
-      errorDiv.className = 'select-ask-summarize-error';
-      errorDiv.textContent = `总结失败: ${error instanceof Error ? error.message : '未知错误'}`;
-      summaryContent.innerHTML = '';
-      summaryContent.appendChild(errorDiv);
-    }
-  } catch (error) {
-    console.error('[页面总结] 启动失败:', error);
   }
 }
 

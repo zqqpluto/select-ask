@@ -104,7 +104,14 @@
       "Bash(awk 'NR>=7100 && NR<=7200' \"/Users/zhaoqiqiang/Library/Application Support/Google/Chrome/Default/Extensions/bpoadfkcbjbfhfodiogcnhhhpibjhbnh/1.27.2_0/content_script.js\")",
       "Bash(awk NR>=7100 && NR<=7300:*)",
       "Bash(awk NR>=1 && NR<=500:*)",
-      "Bash(npx playwright:*)"
+      "Bash(npx playwright:*)",
+      "Bash(xargs -I {} sh -c 'echo \"=== {} ===\"; grep -c \"pointerdown\\\\|pointermove\\\\|pointerup\\\\|mousedown\\\\|mousemove\\\\|mouseup\" \"{}\" 2>/dev/null')",
+      "Bash(xxd)",
+      "mcp__plugin_serena_serena__get_symbols_overview",
+      "Bash(sed \"s/wrapper.appendChild\\(contentSpan\\);/wrapper.appendChild\\(contentDiv\\);/\")",
+      "Read(//tmp/**)",
+      "Bash(npx tsc:*)",
+      "Bash(xxd /Users/zhaoqiqiang/code/select-ask/select-ask/browser-extension/src/options/App.tsx)"
     ]
   }
 }

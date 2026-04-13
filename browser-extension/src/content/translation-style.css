@@ -351,74 +351,172 @@
 }
 
 /* =============================================
-   悬浮翻译窗口样式
+   悬浮翻译窗口样式 - 重新设计
+   设计语言：简洁、现代、轻量
 ============================================= */
 
 .select-ask-float-window {
   position: fixed;
   z-index: 2147483646;
-  min-width: 300px;
-  max-width: 560px;
-  max-height: 420px;
+  min-width: 320px;
+  max-width: 520px;
+  max-height: 480px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 10px 24px -4px rgba(0, 0, 0, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.02);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 14px;
   line-height: 1.6;
   color: #1f2937;
   overflow: hidden;
+  display: none;
 }
 
 @keyframes selectAskFloatIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+/* ---------- Header ---------- */
 
 .select-ask-float-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 8px 12px;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 10px 14px;
+  background: #fafbfc;
+  border-bottom: 1px solid #f0f1f3;
   cursor: move;
   user-select: none;
+  -webkit-user-select: none;
+}
+
+.select-ask-float-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.select-ask-float-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #ffffff;
+  flex-shrink: 0;
 }
 
 .select-ask-float-title {
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
+  color: #1f2937;
   white-space: nowrap;
 }
 
-.select-ask-float-lang-select {
-  flex: 1;
-  min-width: 0;
-  max-width: 120px;
-  padding: 2px 6px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  background: #fff;
+.select-ask-float-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---------- Language Button ---------- */
+
+.select-ask-float-lang-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #4b5563;
   font-size: 12px;
-  color: #374151;
   cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
   outline: none;
+}
+
+.select-ask-float-lang-btn:hover {
+  border-color: #d1d5db;
+  background: #f9fafb;
+}
+
+.select-ask-float-lang-label {
+  max-width: 80px;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.select-ask-float-lang-select:hover {
-  border-color: #9ca3af;
+/* ---------- Language Dropdown ---------- */
+
+.select-ask-float-lang-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 14px;
+  z-index: 2147483647;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 6px;
+  min-width: 160px;
+  max-height: 280px;
+  overflow-y: auto;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: all 0.15s ease;
 }
+
+.select-ask-float-lang-dropdown.open {
+  opacity: 1;
+  transform: translateY(4px);
+  pointer-events: auto;
+}
+
+.select-ask-float-lang-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s ease;
+}
+
+.select-ask-float-lang-option:hover {
+  background: #f3f4f6;
+}
+
+.select-ask-float-lang-option.active {
+  background: #eef2ff;
+  color: #4f46e5;
+  font-weight: 500;
+}
+
+.select-ask-float-lang-option svg {
+  flex-shrink: 0;
+}
+
+/* ---------- Close Button ---------- */
 
 .select-ask-float-close {
-  width: 20px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -426,24 +524,26 @@
   background: transparent;
   cursor: pointer;
   color: #9ca3af;
-  font-size: 16px;
-  line-height: 1;
-  border-radius: 4px;
+  border-radius: 6px;
   transition: all 0.12s ease;
   flex-shrink: 0;
+  padding: 0;
 }
 
 .select-ask-float-close:hover {
-  background: rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.06);
   color: #374151;
 }
 
+/* ---------- Content Area ---------- */
+
 .select-ask-float-content {
-  padding: 12px 14px;
-  max-height: 340px;
+  padding: 14px 16px;
+  max-height: 320px;
   overflow-y: auto;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  scroll-behavior: smooth;
 }
 
 .select-ask-float-body {
@@ -453,6 +553,8 @@
 .select-ask-float-body p {
   margin: 0 0 6px 0;
   display: block;
+  font-size: 14px;
+  line-height: 1.65;
 }
 
 .select-ask-float-body p:last-child {
@@ -461,18 +563,18 @@
 
 .select-ask-float-body code {
   background: #f3f4f6;
-  padding: 1px 4px;
-  border-radius: 3px;
+  padding: 2px 5px;
+  border-radius: 4px;
   font-size: 13px;
   font-family: ui-monospace, 'SF Mono', 'Monaco', Consolas, monospace;
 }
 
 .select-ask-float-body pre {
   background: #f9fafb;
-  padding: 8px 10px;
-  border-radius: 4px;
+  padding: 10px 12px;
+  border-radius: 8px;
   overflow-x: auto;
-  margin: 6px 0;
+  margin: 8px 0;
   border: 1px solid #e5e7eb;
 }
 
@@ -481,62 +583,182 @@
   padding: 0;
 }
 
+/* ---------- Streaming Cursor ---------- */
+
 .select-ask-float-streaming-cursor::after {
   content: '|';
   animation: selectAskBlink 1s step-end infinite;
-  color: #9ca3af;
+  color: #6366f1;
   margin-left: 2px;
+  font-weight: 400;
 }
+
+@keyframes selectAskBlink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* ---------- Action Bar ---------- */
+
+.select-ask-float-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 12px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.select-ask-float-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #6b7280;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  outline: none;
+}
+
+.select-ask-float-action-btn:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+.select-ask-float-action-btn.success {
+  border-color: #22c55e;
+  color: #16a34a;
+  background: #f0fdf4;
+}
+
+/* ---------- Error ---------- */
 
 .select-ask-float-error {
   color: #dc2626;
   font-size: 13px;
 }
 
-/* 暗色模式 - 悬浮窗口 */
+/* ---------- Scrollbar ---------- */
+
+.select-ask-float-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.select-ask-float-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.select-ask-float-content::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 2px;
+}
+
+.select-ask-float-content::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* ---------- Dark Mode ---------- */
+
 @media (prefers-color-scheme: dark) {
   .select-ask-float-window {
-    background: #1f2937;
-    border-color: #374151;
+    background: #1a1b1e;
+    border-color: #2c2d31;
     color: #e5e7eb;
+    box-shadow:
+      0 4px 6px -1px rgba(0, 0, 0, 0.3),
+      0 10px 24px -4px rgba(0, 0, 0, 0.5);
   }
 
   .select-ask-float-header {
-    background: #111827;
-    border-color: #374151;
+    background: #151618;
+    border-color: #2c2d31;
+  }
+
+  .select-ask-float-icon-wrap {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
   }
 
   .select-ask-float-title {
     color: #e5e7eb;
   }
 
-  .select-ask-float-lang-select {
-    background: #374151;
+  .select-ask-float-lang-btn {
+    background: #2c2d31;
+    border-color: #3c3d41;
+    color: #d1d5db;
+  }
+
+  .select-ask-float-lang-btn:hover {
+    background: #333438;
     border-color: #4b5563;
-    color: #e5e7eb;
+  }
+
+  .select-ask-float-lang-dropdown {
+    background: #1a1b1e;
+    border-color: #2c2d31;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  .select-ask-float-lang-option:hover {
+    background: #2c2d31;
+  }
+
+  .select-ask-float-lang-option.active {
+    background: rgba(99, 102, 241, 0.15);
+    color: #818cf8;
   }
 
   .select-ask-float-close:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.08);
     color: #e5e7eb;
   }
 
   .select-ask-float-body code {
-    background: #374151;
+    background: #2c2d31;
     color: #e5e7eb;
   }
 
   .select-ask-float-body pre {
-    background: #111827;
-    border-color: #4b5563;
+    background: #151618;
+    border-color: #3c3d41;
   }
 
   .select-ask-float-streaming-cursor::after {
-    color: #6b7280;
+    color: #818cf8;
+  }
+
+  .select-ask-float-actions {
+    border-color: #2c2d31;
+  }
+
+  .select-ask-float-action-btn {
+    background: #2c2d31;
+    border-color: #3c3d41;
+    color: #9ca3af;
+  }
+
+  .select-ask-float-action-btn:hover {
+    background: #333438;
+    color: #e5e7eb;
+  }
+
+  .select-ask-float-action-btn.success {
+    border-color: #22c55e;
+    color: #4ade80;
+    background: rgba(34, 197, 94, 0.1);
   }
 
   .select-ask-float-error {
     color: #f87171;
+  }
+
+  .select-ask-float-content::-webkit-scrollbar-thumb {
+    background: #4b5563;
   }
 }
 
@@ -588,6 +810,7 @@
 /* 展开状态：高度自适应，菜单露出 */
 .select-ask-floating-icon-btn.active {
   height: auto;
+  overflow: visible;
   background: #ffffff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
@@ -955,37 +1178,58 @@
 }
 
 /* =============================================
-   全文翻译样式 - 沉浸式对照翻译
-   参照沉浸式翻译 v1.27.2 的设计原则
+   全文翻译样式 - 参照沉浸式翻译
+   DOM 结构：
+   原文元素 (e.g., <p>)
+     .select-ask-fp-para-wrapper
+       .select-ask-fp-para-original        ← 原文内容
+       .select-ask-fp-para-translation     ← 译文内容（灰色文字，在原文下方）
+
+   设计原则：
+   1. 原文和译文在同一 wrapper 内，视觉上连贯
+   2. 译文在原文下方，文字颜色更浅（参照沉浸式翻译）
+   3. loading 使用沉浸式风格的旋转 spinner
 ============================================= */
 
-/* 译文块容器 - 简洁优雅的设计 */
-.select-ask-translation-block {
-  display: block;
-  margin: 4px 0 0 0;
-  padding: 6px 12px;
-  background: transparent;
-  border-left: 3px solid #e5e7eb;
-  border-radius: 0 4px 4px 0;
-  transition: all 0.2s ease;
-  position: relative;
+/* 段落包裹层 - 原文+译文的共同容器，用 replaceWith 替换原文元素 */
+.select-ask-fp-para-wrapper {
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  position: relative !important;
 }
 
-.select-ask-translation-block:hover {
-  background: #f9fafb;
-  border-left-color: #d1d5db;
+/* 原文容器 - 原文内容保留在其中，不强制清零间距 */
+.select-ask-fp-para-original {
+  display: block !important;
+}
+
+/* 译文容器 - 在原文下方 */
+/* 字体、颜色、padding 等通过 JS 从原文显式复制（copyComputedStyles），此处不覆盖 */
+.select-ask-fp-para-translation {
+  display: block !important;
+  margin: 1px 0 0 0 !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  position: relative !important;
+  opacity: 1 !important;
+}
+
+.select-ask-fp-para-translation:hover {
+  opacity: 1 !important;
 }
 
 /* 流式翻译中的光标效果 */
-.select-ask-translation-block.select-ask-translation-streaming::after {
-  content: '';
-  display: inline-block;
-  width: 2px;
-  height: 1em;
-  background: #6366f1;
-  margin-left: 2px;
-  animation: selectAskTranslationCursor 1s step-end infinite;
-  vertical-align: text-bottom;
+.select-ask-fp-para-translation.select-ask-translation-streaming::after {
+  content: '' !important;
+  display: inline-block !important;
+  width: 1px !important;
+  height: 1em !important;
+  background: #9ca3af !important;
+  margin-left: 2px !important;
+  animation: selectAskTranslationCursor 1s step-end infinite !important;
+  vertical-align: text-bottom !important;
 }
 
 @keyframes selectAskTranslationCursor {
@@ -993,181 +1237,111 @@
   51%, 100% { opacity: 0; }
 }
 
-/* 译文内容 - 柔和的灰色，不抢眼 */
-.select-ask-translation-content {
-  color: #6b7280;
-  font-size: inherit;
-  line-height: inherit;
+/* 译文内容中的 Markdown 元素 - 简洁风格 */
+.select-ask-fp-para-translation p {
+  margin: 0 0 2px 0 !important;
 }
 
-.select-ask-translation-content p {
-  margin: 0 0 4px 0;
+.select-ask-fp-para-translation p:last-child {
+  margin-bottom: 0 !important;
 }
 
-.select-ask-translation-content p:last-child {
-  margin-bottom: 0;
+.select-ask-fp-para-translation code {
+  background: rgba(0, 0, 0, 0.06) !important;
+  padding: 1px 4px !important;
+  border-radius: 3px !important;
+  font-size: 0.9em !important;
+  font-family: ui-monospace, 'SF Mono', 'Monaco', Consolas, monospace !important;
+  color: inherit !important;
 }
 
-/* 段落翻译 loading - 参照沉浸式翻译 */
-.select-ask-fp-paragraph-loading {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 0;
-  opacity: 0.5;
-  margin-left: 6px;
-  vertical-align: middle;
+.select-ask-fp-para-translation pre {
+  background: rgba(0, 0, 0, 0.04) !important;
+  padding: 8px 10px !important;
+  border-radius: 4px !important;
+  overflow-x: auto !important;
+  margin: 4px 0 !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
 }
+
+.select-ask-fp-para-translation pre code {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+.select-ask-fp-para-translation ul,
+.select-ask-fp-para-translation ol {
+  padding-left: 18px !important;
+  margin: 4px 0 !important;
+}
+
+.select-ask-fp-para-translation li {
+  margin: 2px 0 !important;
+  line-height: inherit !important;
+}
+
+.select-ask-fp-para-translation strong {
+  color: inherit !important;
+  font-weight: 600 !important;
+}
+
+/* =============================================
+   Loading 状态 - 沉浸式翻译风格
+   小尺寸旋转 spinner（10px），与 Immersive Translate 一致
+============================================= */
 
 .select-ask-fp-loading-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid #e5e7eb;
-  border-top-color: #6366f1;
-  border-radius: 50%;
-  animation: selectAskFpSpin 0.8s linear infinite;
-  flex-shrink: 0;
+  display: inline-block !important;
+  width: 10px !important;
+  height: 10px !important;
+  border: 2px rgba(221, 244, 255, 0.6) solid !important;
+  border-top: 2px rgba(0, 0, 0, 0.375) solid !important;
+  border-radius: 50% !important;
+  animation: selectAskFpSpin 0.6s infinite linear !important;
+  vertical-align: middle !important;
+  margin: 0 4px !important;
+  flex-shrink: 0 !important;
 }
 
 @keyframes selectAskFpSpin {
-  to { transform: rotate(360deg); }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(359deg); }
 }
 
-/* 底部控制栏 - 参照沉浸式翻译的胶囊设计 */
-.select-ask-fp-control-bar {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2147483646;
-  background: #ffffff;
-  color: #374151;
-  padding: 8px 16px;
-  border-radius: 28px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  font-size: 13px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.08);
-  border: 1px solid #e5e7eb;
-  transition: opacity 0.3s ease;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
+/* =============================================
+   暗色模式 - 全文翻译
+============================================= */
 
-.select-ask-fp-status-text {
-  white-space: nowrap;
-  color: #6b7280;
-  font-weight: 500;
-}
-
-.select-ask-fp-progress-bar {
-  width: 100px;
-  height: 4px;
-  background: #e5e7eb;
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.select-ask-fp-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #6366f1, #8b5cf6);
-  border-radius: 2px;
-  transition: width 0.3s ease;
-}
-
-.select-ask-fp-btn {
-  padding: 4px 12px;
-  border: 1px solid #d1d5db;
-  background: transparent;
-  color: #374151;
-  border-radius: 16px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  transition: all 0.12s ease;
-  white-space: nowrap;
-}
-
-.select-ask-fp-btn:hover {
-  background: #f3f4f6;
-  border-color: #9ca3af;
-}
-
-.select-ask-fp-stop-btn {
-  border-color: #fecaca;
-  color: #dc2626;
-}
-
-.select-ask-fp-stop-btn:hover {
-  background: #fef2f2;
-  border-color: #dc2626;
-}
-
-/* 暗色模式 - 全文翻译 */
 @media (prefers-color-scheme: dark) {
-  .select-ask-translation-block {
-    border-left-color: #374151;
-    background: transparent;
-  }
-
-  .select-ask-translation-block:hover {
-    background: #1f2937;
-    border-left-color: #4b5563;
-  }
-
-  .select-ask-translation-content {
-    color: #9ca3af;
-  }
-
-  .select-ask-translation-block.select-ask-translation-streaming::after {
-    background: #818cf8;
-  }
-
-  .select-ask-fp-paragraph-loading {
-    opacity: 0.4;
-  }
-
   .select-ask-fp-loading-spinner {
-    border-color: #374151;
-    border-top-color: #818cf8;
+    border: 2px rgba(255, 255, 255, 0.25) solid !important;
+    border-top: 2px rgba(255, 255, 255, 1) solid !important;
   }
 
-  .select-ask-fp-control-bar {
-    background: #1f2937;
-    border-color: #374151;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(0, 0, 0, 0.2);
-    color: #e5e7eb;
+  .select-ask-fp-para-translation {
+    color: #9ca3af !important;
   }
 
-  .select-ask-fp-status-text {
-    color: #9ca3af;
+  .select-ask-fp-para-translation:hover {
+    opacity: 1 !important;
   }
 
-  .select-ask-fp-progress-bar {
-    background: #374151;
+  .select-ask-fp-para-translation code {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: inherit !important;
   }
 
-  .select-ask-fp-progress-fill {
-    background: linear-gradient(90deg, #818cf8, #a78bfa);
+  .select-ask-fp-para-translation pre {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
   }
 
-  .select-ask-fp-btn {
-    border-color: #4b5563;
-    color: #d1d5db;
+  .select-ask-fp-para-translation strong {
+    color: inherit !important;
   }
 
-  .select-ask-fp-btn:hover {
-    background: #374151;
-    border-color: #6b7280;
+  .select-ask-fp-para-translation.select-ask-translation-streaming::after {
+    background: #6b7280 !important;
   }
 
-  .select-ask-fp-stop-btn {
-    border-color: #7f1d1d;
-    color: #fca5a5;
-  }
-
-  .select-ask-fp-stop-btn:hover {
-    background: #451a1a;
-    border-color: #dc2626;
-  }
 }

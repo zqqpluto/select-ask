@@ -62,7 +62,8 @@ chrome.runtime.onConnect.addListener((port) => {
 
 // 监听来自content script的消息
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  switch (message.type) {
+  const msgType = message.type || message.action;
+  switch (msgType) {
     case 'GET_STATE':
       // 返回当前状态
       sendResponse({
@@ -102,6 +103,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                   selectedText: message.selectedText,
                   context: message.context,
                   userMessage: message.userMessage,
+                  summaryPrompt: message.summaryPrompt,
                   pageUrl: message.pageUrl,
                   pageTitle: message.pageTitle,
                 },
@@ -132,8 +134,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true; // 异步响应
 
     case 'OPEN_OPTIONS_PAGE':
-      // 打开配置页面
-      chrome.runtime.openOptionsPage();
+      // 打开配置页面（支持指定 tab）
+      if (message.tab === 'history') {
+        chrome.tabs.create({ url: chrome.runtime.getURL('src/options/index.html') + '?tab=history' });
+      } else if (message.tab === 'settings') {
+        chrome.tabs.create({ url: chrome.runtime.getURL('src/options/index.html') + '?tab=settings' });
+      } else {
+        chrome.runtime.openOptionsPage();
+      }
       sendResponse({ success: true });
       break;
 
