@@ -157,9 +157,10 @@ export function createFloatingTranslationWindow(
   });
 
   // 点击外部关闭下拉菜单
-  document.addEventListener('click', () => {
+  const closeDropdownHandler = () => {
     langDropdown.classList.remove('open');
-  });
+  };
+  document.addEventListener('click', closeDropdownHandler);
 
   // 复制按钮
   const copyBtn = windowEl.querySelector('[data-action="copy"]') as HTMLButtonElement;
@@ -314,6 +315,7 @@ export function createFloatingTranslationWindow(
     document.removeEventListener('mousedown', onClickOutside);
     document.removeEventListener('mousemove', onDragMove);
     document.removeEventListener('mouseup', onDragEnd);
+    document.removeEventListener('click', closeDropdownHandler);
     headerEl.removeEventListener('mousedown', onDragStart);
     windowEl.remove();
   }

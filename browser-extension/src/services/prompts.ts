@@ -136,7 +136,6 @@ ${selectedText}
 export function createTranslatePrompt(
   selectedText: string,
   targetLanguage: string = '中文',
-  sourceLanguage: string = 'auto',
   context?: { prefix?: string; suffix?: string }
 ): string {
   // 检查是否包含批量翻译分隔符
@@ -223,7 +222,7 @@ export type Action = 'explain' | 'translate' | 'question' | 'generateQuestions' 
 
 interface UserPromptMap {
   explain: (text: string, context?: ContextData) => string;
-  translate: (text: string, targetLang?: string, sourceLang?: string, context?: { prefix?: string; suffix?: string }) => string;
+  translate: (text: string, targetLang?: string, context?: { prefix?: string; suffix?: string }) => string;
   question: (question: string, text: string, context?: ContextData) => string;
   generateQuestions: (text: string, context?: ContextData) => string;
   search: (text: string, context?: ContextData) => string;

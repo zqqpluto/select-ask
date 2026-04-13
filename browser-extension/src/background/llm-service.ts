@@ -65,7 +65,7 @@ function buildMessages(
         suffix: context.after || '',
       } : undefined;
 
-      userContent = USER_PROMPTS.translate(text, targetLang, undefined, translateContext);
+      userContent = USER_PROMPTS.translate(text, targetLang, translateContext);
       messages.push({ role: 'user', content: userContent });
       return messages;
     }
