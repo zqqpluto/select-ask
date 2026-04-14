@@ -176,8 +176,10 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   });
   menu.addEventListener('mouseleave', hideMenu);
 
-  // 阻止菜单区域的 pointerdown 冒泡到 btn，避免触发拖拽逻辑
-  menu.addEventListener('pointerdown', (e) => e.stopPropagation());
+  // 阻止菜单展开时 pointerdown 冒泡到 btn，避免触发拖拽逻辑
+  menu.addEventListener('pointerdown', (e) => {
+    if (btn.classList.contains('active')) e.stopPropagation();
+  });
 
   // 关闭按钮 hover
   closeBtn.addEventListener('mouseenter', () => {
