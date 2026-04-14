@@ -111,7 +111,7 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   const historyItem = buildHistoryMenuItem(hideMenu);
   const settingsItem = buildSettingsMenuItem(hideMenu);
   menu.appendChild(buildTranslateMenuItem(options));
-  menu.appendChild(buildSummarizeMenuItem(options));
+  menu.appendChild(buildSummarizeMenuItem(options, hideMenu));
   menu.appendChild(historyItem);
   menu.appendChild(settingsItem);
   btn.appendChild(menu);
@@ -185,7 +185,8 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   // ========== 翻译菜单点击 ==========
   const translateItem = menu.querySelector('.select-ask-floating-icon-menu-item');
   if (translateItem) {
-    translateItem.addEventListener('click', () => {
+    translateItem.addEventListener('click', (e) => {
+      e.stopPropagation();
       hideMenu();
       options.onToggleFullPageTranslate?.();
     });
@@ -353,7 +354,7 @@ function buildTranslateMenuItem(options: FloatingIconOptions): HTMLButtonElement
 /**
  * 构建总结页面菜单项 - 纯图标按钮
  */
-function buildSummarizeMenuItem(options: FloatingIconOptions): HTMLButtonElement {
+function buildSummarizeMenuItem(options: FloatingIconOptions, onHideMenu?: () => void): HTMLButtonElement {
   const btn = document.createElement('button');
   btn.className = 'select-ask-floating-icon-menu-item';
   btn.setAttribute('data-action', 'summarize-page');
@@ -362,8 +363,10 @@ function buildSummarizeMenuItem(options: FloatingIconOptions): HTMLButtonElement
   const icon = buildSummarizeIcon();
   if (icon) btn.appendChild(icon);
 
-  btn.addEventListener('click', () => {
-    hideMenu();
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onHideMenu?.();
     options.onSummarizePage?.();
   });
 
