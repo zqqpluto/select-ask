@@ -329,10 +329,13 @@ export default function App() {
             setCurrentSessionId(sessionId);
             // 清除 pending 状态
             await chrome.storage.local.remove(['pending_sidebar_init']);
-            // 总结模式：使用 summaryPrompt 作为实际请求，而不是 userMessage
-            const actualQuestion = summaryPrompt || userMessage;
-            // 启动 AI 响应
-            getAIResponse(actualQuestion, currentModel, selectedText || '', context || null);
+
+            // 如果有 summaryPrompt（页面总结场景），使用 messages 数组格式绕过 text 校验
+            if (summaryPrompt) {
+              getAIResponseWithMessages(summaryPrompt, currentModel);
+            } else {
+              getAIResponse(userMessage, currentModel, selectedText || '', context || null);
+            }
           }
         }
       };
@@ -478,6 +481,72 @@ export default function App() {
       await chrome.storage.local.set({ select_ask_history: { sessions: history.sessions, maxSessions: 100 } });
     } catch (error) {
       console.error('[saveToHistory] 保存失败:', error);
+    }
+  };
+
+  // 获取 AI 响应（使用 messages 数组格式，适用于页面总结等无选中文本的场景）
+  const getAIResponseWithMessages = async (prompt: string, model?: ModelConfig) => {
+    const modelToUse = model || currentModel;
+    if (!modelToUse) {
+      setMessages(prev => [...prev, { role: 'assistant', content: '请先在配置页面添加并启用模型', timestamp: Date.now() }]);
+      return;
+    }
+
+    setIsLoading(true);
+    const startTime = Date.now();
+    let answerContent = '';
+
+    try {
+      const port = chrome.runtime.connect({ name: 'llm-stream' });
+      currentPortRef.current = port;
+
+      port.onMessage.addListener((message) => {
+        if (message.type === 'LLM_STREAM_CHUNK') {
+          answerContent += message.chunk || '';
+          setMessages(prev => {
+            const lastMsg = prev[prev.length - 1];
+            if (lastMsg && lastMsg.role === 'assistant') {
+              return [...prev.slice(0, -1), { ...lastMsg, content: answerContent, modelName: modelToUse.name, startTime }];
+            }
+            return [...prev, { role: 'assistant', content: answerContent, timestamp: Date.now(), modelName: modelToUse.name, startTime }];
+          });
+        } else if (message.type === 'LLM_STREAM_END') {
+          setMessages(prev => {
+            const aiMsgIndex = prev.findIndex(m => m.role === 'assistant' && m.startTime && m.duration === undefined);
+            if (aiMsgIndex !== -1) {
+              const newPrev = [...prev];
+              newPrev[aiMsgIndex] = { ...newPrev[aiMsgIndex], duration: Date.now() - startTime };
+              return newPrev;
+            }
+            return prev;
+          });
+          setIsLoading(false);
+          currentPortRef.current = null;
+          port.disconnect();
+        } else if (message.type === 'LLM_STREAM_ERROR') {
+          setIsLoading(false);
+          currentPortRef.current = null;
+          setMessages(prev => [...prev, { role: 'assistant', content: `错误：${message.error}`, timestamp: Date.now(), modelName: modelToUse.name }]);
+          port.disconnect();
+        }
+      });
+
+      port.onDisconnect.addListener(() => {
+        setIsLoading(false);
+        currentPortRef.current = null;
+      });
+
+      // 使用 messages 数组格式发送请求
+      port.postMessage({
+        type: 'LLM_STREAM_START',
+        payload: {
+          messages: [{ role: 'user', content: prompt }],
+          modelId: modelToUse.id,
+        },
+      });
+    } catch (error) {
+      setIsLoading(false);
+      setMessages(prev => [...prev, { role: 'assistant', content: `错误：${error instanceof Error ? error.message : String(error)}`, timestamp: Date.now() }]);
     }
   };
 
