@@ -2836,6 +2836,7 @@ async function showPageSummary(_dropdownRect: { left: number; top: number; right
     const extractedContent = extractMainContent();
     if (!extractedContent.content || extractedContent.content.trim().length < 10) {
       console.warn('[页面总结] 页面内容太少');
+      showToast('当前页面内容太少，无法总结');
       return;
     }
 
