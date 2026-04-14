@@ -48,7 +48,12 @@
       "Bash(lsof -ti:9222)",
       "Bash(xargs kill:*)",
       "Bash(curl -s http://localhost:9222/json/version)",
-      "Bash(lsof -ti:9223)"
+      "Bash(lsof -ti:9223)",
+      "Bash(git clone:*)",
+      "Bash(mkdir -p ~/.claude/plugins/cache/eze-is/web-access)",
+      "Bash(ln -sf ~/.claude/plugins/marketplaces/eze-is ~/.claude/plugins/cache/eze-is/web-access/2.4.2)",
+      "Bash(rm -rf __TRACKED_VAR__/1.8.0)",
+      "Bash(ln -sf __TRACKED_VAR__/.claude/plugins/marketplaces/everything-claude-code __TRACKED_VAR__/1.10.0)"
     ]
   }
 }

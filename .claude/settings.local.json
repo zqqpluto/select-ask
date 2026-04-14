@@ -111,7 +111,20 @@
       "Bash(sed \"s/wrapper.appendChild\\(contentSpan\\);/wrapper.appendChild\\(contentDiv\\);/\")",
       "Read(//tmp/**)",
       "Bash(npx tsc:*)",
-      "Bash(xxd /Users/zhaoqiqiang/code/select-ask/select-ask/browser-extension/src/options/App.tsx)"
+      "Bash(xxd /Users/zhaoqiqiang/code/select-ask/select-ask/browser-extension/src/options/App.tsx)",
+      "WebFetch(domain:openrouter.ai)",
+      "WebFetch(domain:docs.litellm.ai)",
+      "WebFetch(domain:dannyshmueli.com)",
+      "mcp__plugin_everything-claude-code_github__get_file_contents",
+      "Bash(curl -sL -o /Users/zhaoqiqiang/code/select-ask/select-ask/browser-extension/public/logos/openai.svg \"https://cdn.simpleicons.org/openai/000\")",
+      "Bash(curl -sL -o /Users/zhaoqiqiang/code/select-ask/select-ask/browser-extension/public/logos/anthropic.svg \"https://cdn.simpleicons.org/anthropic\")",
+      "Bash(curl -sL -o /Users/zhaoqiqiang/code/select-ask/select-ask/browser-extension/public/logos/deepseek.svg \"https://cdn.simpleicons.org/deepseek\")",
+      "Bash(curl -sL -o /Users/zhaoqiqiang/code/select-ask/select-ask/browser-extension/public/logos/qwen.svg \"https://cdn.simpleicons.org/alibabacloud\")",
+      "Bash(curl -sL -o /Users/zhaoqiqiang/code/select-ask/select-ask/browser-extension/public/logos/glm.svg \"https://cdn.simpleicons.org/zhipu\")",
+      "Bash(curl -sL -o /Users/zhaoqiqiang/code/select-ask/select-ask/browser-extension/public/logos/openai.svg \"https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/openai.svg\")",
+      "Bash(curl -sL -o /Users/zhaoqiqiang/code/select-ask/select-ask/browser-extension/public/logos/deepseek.svg \"https://chat.deepseek.com/favicon.svg\")",
+      "Bash(curl -sL -o /Users/zhaoqiqiang/code/select-ask/select-ask/browser-extension/public/logos/glm.svg \"https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/zhipu.svg\")",
+      "Bash(curl -sL -o /Users/zhaoqiqiang/code/select-ask/select-ask/browser-extension/public/logos/lmstudio.svg \"https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/lmstudio.svg\")"
     ]
   }
 }

@@ -62,7 +62,35 @@ function formatTime(timestamp: number): string {
 
 // 渲染 Markdown
 function renderMarkdown(text: string): string {
-  return marked.parse(text, { breaks: true }) as string;
+  try {
+    let processed = marked(text);
+
+    // 表格
+    processed = processed.replace(/<table>/g, '<table class="select-ask-table">');
+
+    // 代码块
+    processed = processed.replace(/<pre>/g, '<pre class="select-ask-pre">');
+    processed = processed.replace(/<code>/g, '<code class="select-ask-code">');
+
+    // 引用
+    processed = processed.replace(/<blockquote>/g, '<blockquote class="select-ask-blockquote">');
+
+    // 列表
+    processed = processed.replace(/<ul>/g, '<ul class="select-ask-ul">');
+    processed = processed.replace(/<ol>/g, '<ol class="select-ask-ol">');
+    processed = processed.replace(/<li>/g, '<li class="select-ask-li">');
+
+    // 分割线
+    processed = processed.replace(/<hr\s*\/?>/g, '<hr class="select-ask-hr">');
+
+    // 链接 - 添加安全属性
+    processed = processed.replace(/<a href="([^"]*)"/g, '<a href="$1" target="_blank" rel="noopener noreferrer"');
+
+    return processed;
+  } catch (error) {
+    console.error('Markdown render error:', error);
+    return text;
+  }
 }
 
 // 生成推荐问题
@@ -119,6 +147,22 @@ async function generateRecommendedQuestions(
   }
 }
 
+// 转义 HTML 防止 XSS
+function escapeHtml(text: string): string {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// 格式化耗时
+function formatDuration(ms: number): string {
+  const seconds = Math.round(ms / 1000);
+  if (seconds < 60) return `${seconds}秒`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}分${remainingSeconds}秒`;
+}
+
 // 复制到剪贴板
 async function copyToClipboard(text: string): Promise<boolean> {
   try {
@@ -169,6 +213,54 @@ export default function App() {
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [historySearchQuery, setHistorySearchQuery] = useState('');
   const [selectedTranslationModelId, setSelectedTranslationModelIdState] = useState<string | null>(null);
+  // 模型列表获取相关状态
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
+  const [modelSearchQuery, setModelSearchQuery] = useState('');
+  const [presetFilter, setPresetFilter] = useState('all');
+  const [formError, setFormError] = useState<string>('');
+  const autoFetchedApiKeyRef = useRef<string>('');
+  // 历史记录页面思考过程展开/折叠状态
+  const [expandedHistoryReasoning, setExpandedHistoryReasoning] = useState<Record<number, boolean>>({});
+
+  // 自动获取模型：用户输入 API Key 后延迟触发
+  useEffect(() => {
+    if (!showModal || editingModel) return;
+    const apiKey = formData.apiKey.trim();
+    if (!apiKey || apiKey.length < 5) return;
+    if (apiKey === autoFetchedApiKeyRef.current) return; // 已获取过
+
+    const timer = setTimeout(async () => {
+      autoFetchedApiKeyRef.current = apiKey;
+      try {
+        const { provider, baseUrl } = formData;
+        let url: string;
+        const headers: Record<string, string> = {};
+        if (provider === 'anthropic') {
+          url = baseUrl.includes('/v1') ? `${baseUrl}/v1/models` : `${baseUrl}/v1/models`;
+          headers['x-api-key'] = apiKey;
+          headers['anthropic-version'] = '2023-06-01';
+        } else {
+          url = baseUrl.includes('/v1') ? `${baseUrl}/models` : `${baseUrl}/v1/models`;
+          headers['Authorization'] = `Bearer ${apiKey}`;
+        }
+        const resp = await fetch(url, { headers });
+        if (resp.ok) {
+          const data = await resp.json();
+          const modelIds = (data.data || []).map((m: any) => m.id).sort();
+          if (modelIds.length > 0) {
+            setAvailableModels(modelIds);
+            setShowModelDropdown(true);
+          }
+        }
+      } catch {
+        // 静默失败，用户可手动点击"获取模型"
+      }
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [showModal, editingModel, formData.apiKey, formData.provider, formData.baseUrl]);
 
   useEffect(() => {
     loadConfig();
@@ -437,6 +529,7 @@ export default function App() {
   const handlePresetSelect = (presetId: string) => {
     const preset = MODEL_PRESETS.find(p => p.id === presetId);
     if (preset) {
+      setAvailableModels([]);
       setFormData({
         ...DEFAULT_FORM_DATA,
         id: `custom-${Date.now()}`,
@@ -450,6 +543,7 @@ export default function App() {
 
   const handleProviderChange = (provider: ProviderType) => {
     const defaults = PROVIDER_DEFAULTS[provider];
+    setAvailableModels([]);
     setFormData({
       ...formData,
       provider,
@@ -458,24 +552,57 @@ export default function App() {
     });
   };
 
-  const handleSaveModel = async () => {
-    if (!formData.name.trim()) {
-      alert('请输入模型名称');
-      return;
-    }
+  // 从 API 获取可用模型列表
+  const fetchAvailableModels = async () => {
     if (!formData.apiKey.trim()) {
-      alert('请输入 API Key');
+      setFormError('请先输入 API Key');
       return;
     }
+    setLoadingModels(true);
+    setFormError('');
+    try {
+      const { provider, baseUrl, apiKey } = formData;
+      let url: string;
+      const headers: Record<string, string> = {};
 
+      if (provider === 'anthropic') {
+        url = baseUrl.includes('/v1') ? `${baseUrl}/v1/models` : `${baseUrl}/v1/models`;
+        headers['x-api-key'] = apiKey;
+        headers['anthropic-version'] = '2023-06-01';
+      } else {
+        url = baseUrl.includes('/v1') ? `${baseUrl}/models` : `${baseUrl}/v1/models`;
+        headers['Authorization'] = `Bearer ${apiKey}`;
+      }
+
+      const resp = await fetch(url, { headers });
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+      }
+      const data = await resp.json();
+      const modelIds = (data.data || []).map((m: any) => m.id).sort();
+      setAvailableModels(modelIds);
+      setShowModelDropdown(true);
+    } catch (error) {
+      setFormError(`获取模型失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setLoadingModels(false);
+    }
+  };
+
+  const handleSaveModel = async () => {
+    setFormError('');
+    if (!formData.modelId.trim()) {
+      setFormError('请输入或选择模型 ID');
+      return;
+    }
     if (!formData.apiKey.trim()) {
-      alert('请输入 API Key');
+      setFormError('请输入 API Key');
       return;
     }
 
     const config: ModelConfig = {
       id: editingModel?.id || formData.id || `model-${Date.now()}`,
-      name: formData.name,
+      name: formData.modelId,
       provider: formData.provider,
       apiKey: formData.apiKey,
       baseUrl: formData.baseUrl,
@@ -560,14 +687,18 @@ export default function App() {
       'qwen': 'bg-purple-500',
       'glm': 'bg-cyan-500',
       'openai-compat': 'bg-slate-500',
+      'local-ollama': 'bg-amber-500',
+      'local-lm-studio': 'bg-rose-500',
     };
     const labels: Record<ProviderType, string> = {
       'openai': 'O',
-      'anthropic': 'C',
+      'anthropic': 'A',
       'deepseek': 'D',
       'qwen': 'Q',
       'glm': 'G',
-      'openai-compat': 'U',
+      'openai-compat': '⚙',
+      'local-ollama': '🖥',
+      'local-lm-studio': '📦',
     };
     return (
       <div className={`${sizeClass} ${colors[provider] || 'bg-slate-500'} rounded-md flex items-center justify-center text-white font-semibold`}>
@@ -1178,47 +1309,95 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* 消息列表 - 简化风格，参考DeepSeek */}
-                      <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-[20px]">
+                      {/* 消息列表 - 与侧边栏一致的样式 */}
+                      <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-[16px]">
                         {session.messages.map((msg, idx) => (
                           <div
                             key={idx}
-                            className={msg.role === 'user' ? 'flex justify-end' : 'flex'}
+                            className={`history-message history-message-${msg.role}`}
                           >
-                            {msg.role === 'assistant' ? (
-                              /* AI消息 - 简洁风格 */
-                              <div className="flex gap-[10px] max-w-full">
-                                {/* AI头像 */}
-                                <div className="w-8 h-8 rounded-full bg-[#f2f3f5] flex items-center justify-center flex-shrink-0 overflow-hidden">
-                                  <img src={chrome.runtime.getURL('public/icons/icon48.png')} alt="AI" className="w-7 h-7 rounded-full object-cover" />
+                            {msg.role === 'user' ? (
+                              <div className="history-message-wrapper history-message-user-wrapper">
+                                <div className="history-message-content">
+                                  {escapeHtml(msg.content)}
                                 </div>
-
-                                {/* AI内容 */}
-                                <div className="flex-1 min-w-0">
-                                  {/* 思考过程 */}
-                                  {msg.reasoning && (
-                                    <details className="mb-3 group open" open>
-                                      <summary className="flex items-center gap-2 cursor-pointer text-[12px] font-medium text-[#86909c] hover:text-[#165dff] list-none py-2 px-[10px] bg-transparent border border-[#e5e6eb] rounded-lg transition-all group-open:rounded-b-none group-open:border-b-0">
-                                        <span>💭</span>
-                                        <span>思考过程</span>
-                                        <svg className="w-3 h-3 ml-auto transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                      </summary>
-                                      <div className="text-[12px] text-[#4e5969] leading-[1.6] prose prose-xs max-w-none py-2 px-[10px] bg-transparent border border-[#e5e6eb] rounded-b-lg border-t-0">
-                                        <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.reasoning) }} />
-                                      </div>
-                                    </details>
-                                  )}
-
-                                  {/* 回答内容 - 无边框无背景 */}
-                                  <div className="text-[14px] text-[#1d2129] leading-relaxed prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                                <div className="history-message-actions">
+                                  <button
+                                    className="history-action-btn"
+                                    onClick={() => copyToClipboard(msg.content)}
+                                    title="复制"
+                                  >
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                    </svg>
+                                  </button>
                                 </div>
                               </div>
                             ) : (
-                              /* 用户消息 - 简洁无气泡 */
-                              <div className="max-w-[80%] text-[14px] text-[#1d2129] leading-relaxed">
-                                {msg.content}
+                              <div className="history-message-wrapper history-message-ai-wrapper">
+                                <div className="history-ai-content-flat">
+                                  {/* 思考过程 */}
+                                  {msg.reasoning && (
+                                    <div className="history-reasoning-quote">
+                                      <div
+                                        className="history-reasoning-header"
+                                        onClick={() => {
+                                          setExpandedHistoryReasoning(prev => ({
+                                            ...prev,
+                                            [idx]: prev[idx] === false ? true : false,
+                                          }));
+                                        }}
+                                      >
+                                        <div className="history-reasoning-status">
+                                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <polyline points="20 6 9 17 4 12"/>
+                                          </svg>
+                                          <span className="history-reasoning-model">{msg.modelName || 'AI'}</span>
+                                          {msg.duration ? (
+                                            <span>已思考（用时{formatDuration(msg.duration)}）</span>
+                                          ) : (
+                                            <span>思考过程</span>
+                                          )}
+                                        </div>
+                                        <svg
+                                          className={`history-reasoning-chevron ${expandedHistoryReasoning[idx] === false ? 'collapsed' : ''}`}
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                        >
+                                          <path d="M6 9l6 6 6-6"/>
+                                        </svg>
+                                      </div>
+                                      <div
+                                        className={`history-reasoning-content ${expandedHistoryReasoning[idx] === false ? 'collapsed' : ''}`}
+                                        style={expandedHistoryReasoning[idx] !== false ? { maxHeight: '2000px', opacity: 1 } : {}}
+                                      >
+                                        <div
+                                          className="history-reasoning-quote-text"
+                                          dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.reasoning) }}
+                                        />
+                                      </div>
+                                    </div>
+                                  )}
+                                  {/* 回答正文 */}
+                                  <div
+                                    dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
+                                  />
+                                </div>
+                                <div className="history-message-actions">
+                                  <button
+                                    className="history-action-btn"
+                                    onClick={() => copyToClipboard(msg.content)}
+                                    title="复制正文"
+                                  >
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                    </svg>
+                                  </button>
+                                </div>
                               </div>
                             )}
                           </div>
@@ -1226,26 +1405,29 @@ export default function App() {
 
                         {/* 流式输出 */}
                         {isStreaming && (
-                          <div className="flex gap-[10px] flex-row">
-                            <div className="w-8 h-8 rounded-full bg-[#f2f3f5] flex items-center justify-center flex-shrink-0 overflow-hidden">
-                              <img src={chrome.runtime.getURL('public/icons/icon48.png')} alt="AI" className="w-7 h-7 rounded-full object-cover" />
-                            </div>
-                            <div className="max-w-[85%] min-w-0 rounded-xl px-[14px] py-[12px] bg-[rgba(59,130,246,0.02)] border border-[rgba(59,130,246,0.06)]">
-                              {streamingReasoning && (
-                                <details className="mb-2 group open" open>
-                                  <summary className="flex items-center gap-2 cursor-pointer text-[12px] font-medium text-[#86909c] hover:text-[#165dff] list-none py-2 px-[10px] bg-transparent border border-[#e5e6eb] rounded-lg transition-all group-open:rounded-b-none group-open:border-b-0">
-                                    <span>💭</span>
-                                    <span>思考中...</span>
-                                    <svg className="w-3 h-3 ml-auto transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                  </summary>
-                                  <div className="text-[12px] text-[#4e5969] leading-[1.6] prose prose-xs max-w-none py-2 px-[10px] bg-transparent border border-[#e5e6eb] rounded-b-lg border-t-0">
-                                    <div dangerouslySetInnerHTML={{ __html: renderMarkdown(streamingReasoning) }} />
+                          <div className="history-message history-message-assistant">
+                            <div className="history-message-wrapper history-message-ai-wrapper">
+                              <div className="history-ai-content-flat">
+                                {streamingReasoning && (
+                                  <div className="history-reasoning-quote">
+                                    <div className="history-reasoning-header">
+                                      <div className="history-reasoning-status">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                          <circle cx="12" cy="12" r="10"/>
+                                          <path d="M12 6v6l4 2"/>
+                                        </svg>
+                                        <span className="history-reasoning-model">{currentModel?.name || 'AI'}</span>
+                                        <span>思考中...</span>
+                                      </div>
+                                    </div>
+                                    <div className="history-reasoning-content" style={{ maxHeight: '2000px', opacity: 1 }}>
+                                      <div
+                                        className="history-reasoning-quote-text"
+                                        dangerouslySetInnerHTML={{ __html: renderMarkdown(streamingReasoning) }}
+                                      />
+                                    </div>
                                   </div>
-                                </details>
-                              )}
-                              <div className="text-[14px] text-[#1d2129] leading-relaxed prose prose-sm max-w-none">
+                                )}
                                 <div dangerouslySetInnerHTML={{ __html: renderMarkdown(streamingContent) }} />
                                 <span className="inline-block w-1.5 h-4 bg-[#165dff] animate-pulse ml-0.5"></span>
                               </div>
@@ -1385,110 +1567,159 @@ export default function App() {
         )}
 
         {activeTab === 'about' && (
-          <section className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
-            <div className="max-w-2xl mx-auto">
-              <div className="text-center mb-8">
+          <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            {/* Hero 区域 */}
+            <div className="relative bg-gradient-to-br from-slate-900 via-gray-900 to-black px-8 py-12">
+              <div className="absolute inset-0 opacity-20">
+                <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
+                <div className="absolute bottom-0 right-0 w-80 h-80 bg-indigo-500 rounded-full blur-3xl translate-x-1/3 translate-y-1/3" />
+              </div>
+              <div className="relative flex items-center gap-6">
                 <img
                   src={chrome.runtime.getURL('public/icons/icon64.png')}
                   alt="Select Ask"
-                  className="w-16 h-16 rounded-2xl shadow-lg shadow-blue-500/20 mx-auto mb-4"
+                  className="w-20 h-20 rounded-2xl shadow-2xl ring-2 ring-white/10"
                 />
-                <h2 className="text-2xl font-bold text-gray-900">Select Ask</h2>
-                <p className="text-gray-500 mt-2">选中即问，知识自来</p>
+                <div>
+                  <h2 className="text-3xl font-bold text-white">Select Ask</h2>
+                  <p className="text-gray-300 mt-1 text-lg">选中即问，知识自来</p>
+                  <p className="text-gray-500 mt-2 text-sm">一款现代浏览器扩展，让 AI 触手可及</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-8">
+              {/* 功能特性 - 3 列网格 */}
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.852L21 12l-5.714 2.148L13 21l-2.286-6.852L5 12l5.714-2.148L13 3z"/>
+                  </svg>
+                  核心功能
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {[
+                    { icon: '🔍', title: '选中文本即问', desc: '在任意网页选中文本，快速调用 AI 解释、翻译、总结' },
+                    { icon: '💬', title: '多轮对话', desc: '与 AI 进行连续对话，深入探讨复杂问题' },
+                    { icon: '🌐', title: '全文翻译', desc: '将整个网页内容翻译为目标语言，保持原文结构' },
+                    { icon: '📝', title: '页面总结', desc: '智能提取网页核心内容，一键生成摘要' },
+                    { icon: '🤖', title: '多模型支持', desc: '支持 OpenAI、Anthropic、通义千问、DeepSeek 等 10+ 主流模型' },
+                    { icon: '📋', title: '历史记录', desc: '自动保存对话历史，随时回顾之前的交流' },
+                  ].map((feature) => (
+                    <div key={feature.title} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100 hover:border-blue-200 hover:bg-blue-50/50 transition-colors">
+                      <div className="text-xl flex-shrink-0">{feature.icon}</div>
+                      <div className="min-w-0">
+                        <h4 className="font-medium text-gray-900 text-sm">{feature.title}</h4>
+                        <p className="text-xs text-gray-500 leading-relaxed mt-0.5">{feature.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="p-5 bg-gray-50 rounded-xl border border-gray-200">
-                  <h3 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
-                    <span>✨</span> 功能特性
-                  </h3>
+              {/* 支持的供应商 */}
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-purple-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                    <path d="M8 21h8m-4-4v4"/>
+                  </svg>
+                  支持的供应商
+                </h3>
+                <div className="flex flex-wrap gap-3">
+                  {[
+                    { name: 'OpenAI', desc: 'GPT 系列' },
+                    { name: 'Anthropic', desc: 'Claude 系列' },
+                    { name: 'Google', desc: 'Gemini 系列' },
+                    { name: 'DeepSeek', desc: 'V3 / R1' },
+                    { name: '阿里通义', desc: 'Qwen 系列' },
+                    { name: '智谱 AI', desc: 'GLM 系列' },
+                    { name: 'Moonshot', desc: 'Kimi' },
+                    { name: 'MiniMax', desc: '' },
+                    { name: '字节豆包', desc: '' },
+                    { name: '百度文心', desc: 'ERNIE' },
+                    { name: 'Ollama', desc: '本地部署' },
+                    { name: 'LM Studio', desc: '本地部署' },
+                    { name: 'OpenAI 兼容', desc: '自定义' },
+                  ].map((provider) => (
+                    <div key={provider.name} className="px-4 py-3 bg-gray-50 rounded-xl border border-gray-100 hover:border-purple-200 hover:bg-purple-50/50 transition-colors min-w-[100px]">
+                      <div className="font-medium text-gray-900 text-sm">{provider.name}</div>
+                      {provider.desc && <div className="text-xs text-gray-400 mt-0.5">{provider.desc}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 隐私说明 + 项目地址 - 并排 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-5 bg-gray-50 rounded-xl border border-gray-100">
+                  <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    隐私与安全
+                  </h4>
                   <ul className="space-y-2 text-sm text-gray-600">
-                    <li className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                      选中文本后一键解释、翻译
+                    <li className="flex items-start gap-2">
+                      <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                      API Key 使用 AES-256-GCM 加密存储
                     </li>
-                    <li className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                      AI 生成相关问题推荐
+                    <li className="flex items-start gap-2">
+                      <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                      数据仅发送到您配置的 AI 提供商
                     </li>
-                    <li className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                      支持追问功能
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                      支持多种大模型
+                    <li className="flex items-start gap-2">
+                      <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                      不收集、不上传任何用户数据
                     </li>
                   </ul>
                 </div>
 
-                <div className="p-5 bg-gray-50 rounded-xl border border-gray-200">
-                  <h3 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
-                    <span>🔒</span> 隐私说明
-                  </h3>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    所有 API Key 均使用 AES-256 加密存储在本地浏览器中，不会上传到任何服务器。
-                    您的聊天内容仅发送到您配置的 AI 服务提供商。
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-6 p-5 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-gray-200">
-                <h3 className="font-medium text-gray-900 mb-3">项目地址</h3>
-                <div className="flex items-center gap-3">
-                  <a
-                    href="https://github.com/zqqpluto/select-ask"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
-                  >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                <div className="p-5 bg-gray-50 rounded-xl border border-gray-100">
+                  <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-gray-700" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
                     </svg>
-                    GitHub 仓库
-                  </a>
-                  <a
-                    href="https://github.com/zqqpluto/select-ask"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white text-sm font-medium rounded-lg hover:bg-yellow-600 transition-colors"
-                  >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                    </svg>
-                    Star 支持
-                  </a>
+                    开源项目
+                  </h4>
+                  <p className="text-sm text-gray-500 mb-4">本项目完全开源，欢迎贡献与使用</p>
+                  <div className="flex flex-wrap gap-3">
+                    <a
+                      href="https://github.com/zqqpluto/select-ask"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
+                    >
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                      </svg>
+                      访问 GitHub 仓库
+                    </a>
+                    <a
+                      href="https://github.com/zqqpluto/select-ask/stargazers"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2.5 bg-yellow-500 text-white text-sm font-medium rounded-lg hover:bg-yellow-600 transition-colors"
+                    >
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                      </svg>
+                      Star 支持项目
+                    </a>
+                  </div>
                 </div>
               </div>
 
-              <div className="mt-6 p-5 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-gray-200">
-                <h3 className="font-medium text-gray-900 mb-3">支持的模型</h3>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    // OpenAI
-                    'GPT-4o', 'GPT-4o mini', 'o3 / o3 mini', 'o1',
-                    // Anthropic
-                    'Claude 4 Opus', 'Claude 4 Sonnet', 'Claude 3.5 Sonnet',
-                    // Google
-                    'Gemini 2.5 Pro', 'Gemini 2.0 Flash',
-                    // DeepSeek
-                    'DeepSeek-V3', 'DeepSeek-R1',
-                    // 国内 - 阿里
-                    '通义千问 Qwen-Max', 'Qwen-Plus', 'Qwen-Turbo',
-                    // 国内 - 智谱
-                    '智谱 GLM-4', 'GLM-4-Plus', 'GLM-4-Flash',
-                    // 国内 - 月之暗面
-                    'Moonshot Kimi',
-                    // 国内 - 其他
-                    'MiniMax', '字节豆包', '百度文心 ERNIE',
-                    // 自定义
-                    '自定义 OpenAI 兼容模型'
-                  ].map((name) => (
-                    <span key={name} className="px-3 py-1.5 text-sm bg-white text-gray-600 rounded-lg border border-gray-200 shadow-sm">
-                      {name}
-                    </span>
-                  ))}
-                </div>
+              {/* 版本信息 */}
+              <div className="mt-8 pt-6 border-t border-gray-100 text-center text-sm text-gray-400">
+                <p> Select Ask · Built with React + TypeScript + Vite · Manifest V3</p>
               </div>
             </div>
           </section>
@@ -1498,7 +1729,7 @@ export default function App() {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg border border-gray-200 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl border border-gray-200 max-h-[90vh] overflow-y-auto scroll-smooth overscroll-contain">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-900">
@@ -1520,60 +1751,49 @@ export default function App() {
               </div>
             </div>
 
-            {/* Quick Select Preset */}
+            {/* 选择供应商 */}
             {!editingModel && (
-              <div className="p-6 border-b border-gray-100">
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  快速选择预设
+              <div className="px-6 py-5 border-b border-gray-100">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  选择供应商
+                  <span className="ml-1 text-xs text-gray-400 font-normal">（自动填充地址和默认模型）</span>
                 </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {MODEL_PRESETS.slice(0, 6).map((preset) => (
-                    <button
-                      key={preset.id}
-                      onClick={() => handlePresetSelect(preset.id)}
-                      className="flex items-center gap-2 px-3 py-2.5 text-sm border border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-all text-left text-gray-600 hover:text-gray-900"
-                    >
-                      {getProviderIcon(preset.provider)}
-                      {preset.name}
-                    </button>
-                  ))}
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(PROVIDER_NAMES).map(([key, label]) => {
+                    const providerKey = key as ProviderType;
+                    const isSelected = formData.provider === providerKey;
+                    const defaults = PROVIDER_DEFAULTS[providerKey];
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => {
+                          setAvailableModels([]);
+                          setFormData({
+                            ...DEFAULT_FORM_DATA,
+                            id: `custom-${Date.now()}`,
+                            provider: providerKey,
+                            baseUrl: defaults.baseUrl,
+                            modelId: defaults.modelId,
+                          });
+                        }}
+                        className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm transition-all whitespace-nowrap ${
+                          isSelected
+                            ? 'border-blue-400 bg-blue-50 text-blue-700 shadow-sm'
+                            : 'border-gray-200 text-gray-600 hover:border-blue-300 hover:bg-blue-50/50'
+                        }`}
+                      >
+                        {getProviderIcon(providerKey)}
+                        <span>{label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
             {/* Form */}
             <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  模型名称 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="如：我的 GPT-4"
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  提供商
-                </label>
-                <select
-                  value={formData.provider}
-                  onChange={(e) => handleProviderChange(e.target.value as ProviderType)}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 appearance-none cursor-pointer"
-                >
-                  <option value="openai">OpenAI</option>
-                  <option value="anthropic">Anthropic (Claude)</option>
-                  <option value="deepseek">DeepSeek</option>
-                  <option value="qwen">通义千问</option>
-                  <option value="glm">智谱AI</option>
-                  <option value="openai-compat">OpenAI 兼容</option>
-                </select>
-              </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   API Key <span className="text-red-500">*</span>
@@ -1645,14 +1865,72 @@ export default function App() {
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   模型 ID
                 </label>
-                <input
-                  type="text"
-                  value={formData.modelId}
-                  onChange={(e) => setFormData({ ...formData, modelId: e.target.value })}
-                  placeholder="gpt-4o"
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
-                />
+                <div className="relative">
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        value={formData.modelId}
+                        onChange={(e) => {
+                          setFormData({ ...formData, modelId: e.target.value });
+                          setModelSearchQuery(e.target.value);
+                        }}
+                        onFocus={() => {
+                          if (availableModels.length > 0) setShowModelDropdown(true);
+                        }}
+                        placeholder="gpt-4o"
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                      />
+                      {/* 模型下拉列表 */}
+                      {showModelDropdown && availableModels.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                          {availableModels
+                            .filter(m => !modelSearchQuery || m.toLowerCase().includes(modelSearchQuery.toLowerCase()))
+                            .slice(0, 50)
+                            .map((model) => (
+                              <button
+                                key={model}
+                                type="button"
+                                onClick={() => {
+                                  setFormData({ ...formData, modelId: model });
+                                  setModelSearchQuery(model);
+                                  setShowModelDropdown(false);
+                                }}
+                                className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${
+                                  formData.modelId === model ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                                }`}
+                              >
+                                {model}
+                              </button>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                    {loadingModels && (
+                      <div className="px-3 py-2.5 text-sm text-gray-400 border border-gray-200 rounded-lg flex items-center gap-2">
+                        <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                        获取中
+                      </div>
+                    )}
+                  </div>
+                  {availableModels.length > 0 && (
+                    <p className="text-xs text-green-600 mt-1">✓ 已获取 {availableModels.length} 个可用模型，可从上方列表中选择</p>
+                  )}
+                  {availableModels.length === 0 && !loadingModels && formData.apiKey.length > 5 && (
+                    <p className="text-xs text-gray-400 mt-1">正在自动获取模型列表...</p>
+                  )}
+                </div>
               </div>
+
+              {/* Form Error */}
+              {formError && (
+                <div className="p-3 rounded-xl text-sm bg-red-50 text-red-700 border border-red-200">
+                  {formError}
+                </div>
+              )}
 
               {/* Test Result */}
               {testResult && (

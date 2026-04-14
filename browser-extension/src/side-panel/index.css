@@ -98,19 +98,39 @@ body {
 }
 
 .side-panel-page-url {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #86909c;
-  padding: 6px 8px;
-  background: rgba(99, 102, 241, 0.04);
+  color: #6366f1;
+  padding: 4px 8px;
+  background: rgba(99, 102, 241, 0.06);
   border-radius: 6px;
+  min-width: 0;
+  max-width: 100%;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s ease-out;
 }
 
-.side-panel-page-url svg {
+.side-panel-page-url:hover {
+  background: rgba(99, 102, 241, 0.12);
+  color: #4338ca;
+}
+
+.side-panel-page-url-favicon {
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
   opacity: 0.7;
+  border-radius: 2px;
+}
+
+.side-panel-page-url span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .side-panel-page-url a {

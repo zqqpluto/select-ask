@@ -110,8 +110,9 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
 
   const historyItem = buildHistoryMenuItem(hideMenu);
   const settingsItem = buildSettingsMenuItem(hideMenu);
-  menu.appendChild(buildTranslateMenuItem(options));
-  menu.appendChild(buildSummarizeMenuItem(options, hideMenu));
+  // 翻译全文和总结页面功能已从插件栏菜单移除
+  // menu.appendChild(buildTranslateMenuItem(options));
+  // menu.appendChild(buildSummarizeMenuItem(options, hideMenu));
   menu.appendChild(historyItem);
   menu.appendChild(settingsItem);
   btn.appendChild(menu);

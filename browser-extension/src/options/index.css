@@ -14,3 +14,284 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* ===== 历史记录消息样式（匹配侧边栏） ===== */
+
+/* 消息基础布局 */
+.history-message {
+  display: flex;
+  gap: 0;
+  max-width: 100%;
+}
+
+.history-message-user {
+  justify-content: flex-end;
+}
+
+.history-message-assistant {
+  align-items: flex-start;
+}
+
+/* 消息包装器 */
+.history-message-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.history-message-user-wrapper {
+  align-items: flex-end;
+  max-width: 90%;
+}
+
+.history-message-ai-wrapper {
+  align-items: flex-start;
+}
+
+/* 用户消息气泡 */
+.history-message-user-wrapper .history-message-content {
+  background: #edf3fe;
+  color: #000000;
+  border-radius: 16px 16px 4px 16px;
+  padding: 10px 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: 100%;
+}
+
+/* AI 消息内容 - 平铺无气泡 */
+.history-ai-content-flat {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  max-width: 100%;
+}
+
+/* 思考过程 - 可展开 */
+.history-reasoning-quote {
+  margin-bottom: 12px;
+  border: none;
+  border-radius: 0;
+}
+
+.history-reasoning-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  cursor: pointer;
+  user-select: none;
+  font-size: 14px;
+  color: #1d2129;
+}
+
+.history-reasoning-header:hover {
+  opacity: 0.8;
+}
+
+.history-reasoning-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #1d2129;
+}
+
+.history-reasoning-model {
+  color: #6366f1;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.history-reasoning-status svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.history-reasoning-chevron {
+  width: 18px;
+  height: 18px;
+  color: #86909c;
+  transition: transform 0.2s ease-out;
+  margin-left: auto;
+}
+
+.history-reasoning-chevron.collapsed {
+  transform: rotate(-90deg);
+}
+
+.history-reasoning-content {
+  overflow: hidden;
+  transition: max-height 0.3s ease-out, opacity 0.2s ease-out;
+}
+
+.history-reasoning-content.collapsed {
+  max-height: 0;
+  opacity: 0;
+}
+
+.history-reasoning-quote-text {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #86909c;
+  padding: 0 0 0 12px;
+  border-left: 3px solid #e5e6eb;
+}
+
+.history-reasoning-quote-text p {
+  margin: 0 0 6px 0;
+}
+
+.history-reasoning-quote-text p:last-child {
+  margin-bottom: 0;
+}
+
+/* 操作按钮 */
+.history-message-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 1;
+  margin-top: 8px;
+}
+
+.history-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #86909c;
+  cursor: pointer;
+  transition: all 0.15s ease-out;
+}
+
+.history-action-btn:hover {
+  background: transparent;
+  color: #165dff;
+}
+
+/* Markdown 内容样式 */
+.history-message-content p,
+.history-ai-content-flat p {
+  margin: 0 0 8px 0;
+}
+
+.history-message-content p:last-child,
+.history-ai-content-flat p:last-child {
+  margin-bottom: 0;
+}
+
+.history-message-content code,
+.history-ai-content-flat code {
+  background: #f2f3f5;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: ui-monospace, 'SF Mono', 'Monaco', Consolas, monospace;
+  color: #d4380d;
+}
+
+.history-message-content pre,
+.history-ai-content-flat pre {
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+
+.history-message-content pre code,
+.history-ai-content-flat pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.history-message-content ul,
+.history-ai-content-flat ul,
+.history-message-content ol,
+.history-ai-content-flat ol {
+  padding-left: 20px;
+  margin: 8px 0;
+}
+
+.history-message-content li,
+.history-ai-content-flat li {
+  margin: 4px 0;
+  line-height: 1.6;
+}
+
+.history-message-content table,
+.history-ai-content-flat table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 13px;
+}
+
+.history-message-content table th,
+.history-ai-content-flat table th,
+.history-message-content table td,
+.history-ai-content-flat table td {
+  border: 1px solid #e5e7eb;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.history-message-content table th,
+.history-ai-content-flat table th {
+  background: #f9fafb;
+  font-weight: 600;
+  color: #1d2129;
+}
+
+.history-message-content blockquote,
+.history-ai-content-flat blockquote {
+  border-left: 3px solid #e5e6eb;
+  padding-left: 12px;
+  color: #86909c;
+  margin: 8px 0;
+}
+
+.history-message-content hr,
+.history-ai-content-flat hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 12px 0;
+}
+
+.history-message-content a,
+.history-ai-content-flat a {
+  color: #6366f1;
+  text-decoration: none;
+}
+
+.history-message-content a:hover,
+.history-ai-content-flat a:hover {
+  text-decoration: underline;
+}

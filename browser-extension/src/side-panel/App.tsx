@@ -55,6 +55,21 @@ function renderMarkdown(text: string): string {
   }
 }
 
+// 格式化 URL 显示：域名 + 精简路径
+function formatUrlForDisplay(url: string): { displayText: string; faviconUrl: string } {
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname.replace(/^www\./, '');
+    const path = parsed.pathname;
+    const pathShort = path.length > 30 ? path.slice(0, 27) + '...' : path;
+    const displayText = pathShort ? `${hostname}${pathShort}` : hostname;
+    const faviconUrl = `${parsed.origin}/favicon.ico`;
+    return { displayText, faviconUrl };
+  } catch {
+    return { displayText: url, faviconUrl: '' };
+  }
+}
+
 interface ExtendedHistoryMessage extends HistoryMessage {
   modelName?: string;
   duration?: number;
@@ -494,6 +509,7 @@ export default function App() {
 
     setIsLoading(true);
     const startTime = Date.now();
+    let reasoningContent = '';
     let answerContent = '';
 
     try {
@@ -502,24 +518,49 @@ export default function App() {
 
       port.onMessage.addListener((message) => {
         if (message.type === 'LLM_STREAM_CHUNK') {
-          answerContent += message.chunk || '';
+          const chunk = message.chunk || '';
+
+          // 处理思考过程标签（与 getAIResponse 保持一致）
+          if (chunk === '[REASONING]' || chunk === '[REASONING_DONE]') {
+            return;
+          }
+          if (chunk.startsWith('[REASONING]')) {
+            reasoningContent += chunk.slice(11);
+            setMessages(prev => {
+              const lastMsg = prev[prev.length - 1];
+              if (lastMsg && lastMsg.role === 'assistant') {
+                return [...prev.slice(0, -1), { ...lastMsg, content: answerContent, reasoning: reasoningContent, modelName: modelToUse.name, startTime }];
+              }
+              return [...prev, { role: 'assistant', content: answerContent, reasoning: reasoningContent, timestamp: Date.now(), modelName: modelToUse.name, startTime }];
+            });
+            return;
+          }
+          if (chunk === '[ANSWER]' || chunk === '[ANSWER_DONE]') {
+            return;
+          }
+
+          answerContent += chunk;
           setMessages(prev => {
             const lastMsg = prev[prev.length - 1];
             if (lastMsg && lastMsg.role === 'assistant') {
-              return [...prev.slice(0, -1), { ...lastMsg, content: answerContent, modelName: modelToUse.name, startTime }];
+              return [...prev.slice(0, -1), { ...lastMsg, content: answerContent, reasoning: reasoningContent || undefined, modelName: modelToUse.name, startTime }];
             }
-            return [...prev, { role: 'assistant', content: answerContent, timestamp: Date.now(), modelName: modelToUse.name, startTime }];
+            return [...prev, { role: 'assistant', content: answerContent, reasoning: reasoningContent || undefined, timestamp: Date.now(), modelName: modelToUse.name, startTime }];
           });
         } else if (message.type === 'LLM_STREAM_END') {
+          // AI 回答完成，立即设置耗时
+          const answerStartTime = startTime;
           setMessages(prev => {
             const aiMsgIndex = prev.findIndex(m => m.role === 'assistant' && m.startTime && m.duration === undefined);
             if (aiMsgIndex !== -1) {
+              const aiMsg = prev[aiMsgIndex];
               const newPrev = [...prev];
-              newPrev[aiMsgIndex] = { ...newPrev[aiMsgIndex], duration: Date.now() - startTime };
+              newPrev[aiMsgIndex] = { ...aiMsg, duration: Date.now() - answerStartTime };
               return newPrev;
             }
             return prev;
           });
+
           setIsLoading(false);
           currentPortRef.current = null;
           port.disconnect();
@@ -1066,8 +1107,35 @@ export default function App() {
                       </blockquote>
                     </>
                   ) : (
-                    // 非第一条消息或没有选中文本时，正常显示消息内容
-                    escapeHtml(msg.content)
+                    <>
+                      {/* 非第一条消息或没有选中文本时，正常显示消息内容 */}
+                      {escapeHtml(msg.content)}
+                      {/* 第一条消息有页面 URL 时显示 */}
+                      {index === 0 && pageInfo?.pageUrl && (() => {
+                        const { displayText, faviconUrl } = formatUrlForDisplay(pageInfo.pageUrl);
+                        return (
+                          <a
+                            href={pageInfo.pageUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="side-panel-page-url"
+                            title={pageInfo.pageUrl}
+                          >
+                            {faviconUrl && (
+                              <img
+                                src={faviconUrl}
+                                alt=""
+                                className="side-panel-page-url-favicon"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                }}
+                              />
+                            )}
+                            <span>{displayText}</span>
+                          </a>
+                        );
+                      })()}
+                    </>
                   )}
                 </div>
                 {/* 操作按钮 - 始终显示 */}
@@ -1258,7 +1326,7 @@ export default function App() {
               <path d="M16 17H8"/>
               <path d="M10 9H8"/>
             </svg>
-            <span>总结当前网页</span>
+            <span>总结网页</span>
           </button>
         )}
 
