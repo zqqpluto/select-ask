@@ -6,6 +6,9 @@ import { cleanExpiredSessions } from '../utils/history-manager';
 
 let sidePanelInitialized = false;
 
+// 跟踪哪些 tab 已打开 Side Panel（用于实现点击切换关闭）
+const sidePanelOpenTabs = new Set<number>();
+
 // 初始化 Side Panel
 async function initializeSidePanel() {
   if (sidePanelInitialized) return;
@@ -58,6 +61,19 @@ chrome.runtime.onConnect.addListener((port) => {
       }
     });
   }
+
+  // 跟踪 Side Panel 连接状态（用于 toggle 功能）
+  if (port.name === 'sidepanel') {
+    const tabId = port.sender?.tab?.id;
+    if (tabId) {
+      sidePanelOpenTabs.add(tabId);
+    }
+    port.onDisconnect.addListener(() => {
+      if (tabId) {
+        sidePanelOpenTabs.delete(tabId);
+      }
+    });
+  }
 });
 
 // 监听来自content script的消息
@@ -89,15 +105,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ success: true });
       break;
 
-    case 'OPEN_SIDE_PANEL':
-      // 打开 Side Panel
+    case 'TOGGLE_SIDE_PANEL': {
+      // 切换 Side Panel（已打开则关闭，未打开则打开）
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         const tab = tabs[0];
-        if (tab?.windowId) {
+        if (!tab?.windowId || !tab.id) {
+          sendResponse({ success: false, error: 'No active tab found' });
+          return;
+        }
+
+        if (sidePanelOpenTabs.has(tab.id)) {
+          // 已打开 → 通知 side-panel 自己关闭
+          chrome.runtime.sendMessage({ type: 'CLOSE_SIDE_PANEL' }).catch(() => {});
+          sendResponse({ success: true, action: 'closing' });
+        } else {
           chrome.sidePanel.open({ windowId: tab.windowId })
             .then(() => {
-              sendResponse({ success: true });
-              // 将初始化数据存储到 storage，让 Side Panel 自己读取
+              sidePanelOpenTabs.add(tab.id);
+              sendResponse({ success: true, action: 'opened' });
               chrome.storage.local.set({
                 pending_sidebar_init: {
                   selectedText: message.selectedText,
@@ -113,11 +138,42 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               console.error('Failed to open Side Panel:', error);
               sendResponse({ success: false, error: error.message });
             });
-        } else {
-          sendResponse({ success: false, error: 'No active tab found' });
         }
       });
       return true; // 异步响应
+    }
+
+    case 'OPEN_SIDE_PANEL': {
+      // 打开 Side Panel（仅打开，不切换）
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const tab = tabs[0];
+        if (!tab?.windowId || !tab.id) {
+          sendResponse({ success: false, error: 'No active tab found' });
+          return;
+        }
+
+        chrome.sidePanel.open({ windowId: tab.windowId })
+          .then(() => {
+            sidePanelOpenTabs.add(tab.id);
+            sendResponse({ success: true });
+            chrome.storage.local.set({
+              pending_sidebar_init: {
+                selectedText: message.selectedText,
+                context: message.context,
+                userMessage: message.userMessage,
+                summaryPrompt: message.summaryPrompt,
+                pageUrl: message.pageUrl,
+                pageTitle: message.pageTitle,
+              },
+            }).catch(console.error);
+          })
+          .catch((error) => {
+            console.error('Failed to open Side Panel:', error);
+            sendResponse({ success: false, error: error.message });
+          });
+      });
+      return true; // 异步响应
+    }
 
     case 'SET_SELECTED_CHAT_MODEL':
       // 设置选中的聊天模型

@@ -267,13 +267,23 @@ export default function App() {
   useEffect(() => {
     let initMessage: any = null;
 
+    // 建立长连接，让 background 跟踪 side panel 是否打开
+    const port = chrome.runtime.connect({ name: 'sidepanel' });
+    port.onDisconnect.addListener(() => {
+      // 连接断开，side panel 即将关闭
+      // 清理 pending 数据
+      chrome.storage.local.remove('pending_sidebar_init').catch(() => {});
+    });
+
     const messageListener = (message: any, sender: chrome.runtime.MessageSender, sendResponse: (response: any) => void) => {
       if (message.type === 'SIDEBAR_INIT') {
-        // 初始化侧边栏
         setSelectedText(message.selectedText || '');
         setContext(message.context || null);
         initMessage = message;
-
+        sendResponse({ success: true });
+      } else if (message.type === 'CLOSE_SIDE_PANEL') {
+        // 收到关闭指令，调用 window.close() 关闭自身
+        window.close();
         sendResponse({ success: true });
       }
 
@@ -282,11 +292,11 @@ export default function App() {
 
     chrome.runtime.onMessage.addListener(messageListener);
 
-    // 通知 background 侧边栏已准备好
     chrome.runtime.sendMessage({ type: 'SIDEBAR_READY' });
 
     return () => {
       chrome.runtime.onMessage.removeListener(messageListener);
+      port.disconnect();
     };
   }, []);
 

@@ -164,7 +164,7 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   container.appendChild(closeBtn);
 
   // ========== 拖拽逻辑 ==========
-  setupDrag(container, btn);
+  setupDrag(container, btn, logoWrap);
 
   // btn hover
   btn.addEventListener('mouseenter', showMenu);
@@ -233,7 +233,7 @@ const dragThreshold = {
   isValid(x: number, y: number): boolean {
     const dx = x - this.startX;
     const dy = y - this.startY;
-    return Math.sqrt(dx * dx + dy * dy) > this.threshold && Date.now() - this.startT > 300;
+    return Math.sqrt(dx * dx + dy * dy) > this.threshold;
   },
 };
 
@@ -246,7 +246,7 @@ const dragThreshold = {
  * - Y 为正数 = 向下移动
  * - 松手后：X 回弹到 0（紧贴右侧），Y 持久化保存
  */
-function setupDrag(container: HTMLElement, btn: HTMLElement) {
+function setupDrag(container: HTMLElement, btn: HTMLElement, logoWrap: HTMLElement) {
   let currentX = 0;
   let currentY = ratioToPixel(savedRatio);
   let isPointerDown = false;
@@ -268,9 +268,9 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
 
   function onPointerDown(e: PointerEvent) {
     if (e.button !== 0) return;
-    if (e.target !== btn && !btn.contains(e.target as Node)) return;
-    // 菜单展开时禁止拖拽，避免与菜单点击冲突
-    if (btn.classList.contains('active')) return;
+    // 只允许从 logo 区域触发拖拽，菜单区域不参与拖拽
+    const target = e.target as Node;
+    if (target !== btn && target !== logoWrap && !logoWrap.contains(target)) return;
 
     isPointerDown = true;
     dragOffsetX = e.clientX - currentX;
@@ -281,8 +281,6 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
 
   function onPointerMove(e: PointerEvent) {
     if (!isPointerDown) return;
-    // 菜单展开时停止拖拽
-    if (btn.classList.contains('active')) { isPointerDown = false; return; }
 
     const newX = e.clientX - dragOffsetX;
     const newY = e.clientY - dragOffsetY;
@@ -290,7 +288,7 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
 
     if (dragThreshold.isValid(e.clientX, e.clientY)) {
       isDragging = true;
-      btn.setPointerCapture(e.pointerId); // 只在真正拖拽时捕获，避免拦截菜单点击
+      btn.setPointerCapture(e.pointerId);
     }
   }
 

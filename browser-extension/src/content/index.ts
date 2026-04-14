@@ -3705,8 +3705,8 @@ function initFloatingIcon(): void {
           showPageSummary();
         },
         onClickIcon: () => {
-          // 点击图标打开侧边栏
-          chrome.runtime.sendMessage({ type: 'OPEN_SIDE_PANEL', selectedText: '', context: null, userMessage: '', pageUrl: window.location.href, pageTitle: document.title });
+          // 点击图标：切换侧边栏（未打开则打开，已打开则关闭）
+          chrome.runtime.sendMessage({ type: 'TOGGLE_SIDE_PANEL', selectedText: '', context: null, userMessage: '', pageUrl: window.location.href, pageTitle: document.title });
         },
         isTranslating: false,
       });
