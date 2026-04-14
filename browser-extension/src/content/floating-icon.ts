@@ -264,6 +264,8 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
   function onPointerDown(e: PointerEvent) {
     if (e.button !== 0) return;
     if (e.target !== btn && !btn.contains(e.target as Node)) return;
+    // 菜单展开时禁止拖拽，避免与菜单点击冲突
+    if (btn.classList.contains('active')) return;
 
     isPointerDown = true;
     dragOffsetX = e.clientX - currentX;
@@ -274,6 +276,8 @@ function setupDrag(container: HTMLElement, btn: HTMLElement) {
 
   function onPointerMove(e: PointerEvent) {
     if (!isPointerDown) return;
+    // 菜单展开时停止拖拽
+    if (btn.classList.contains('active')) { isPointerDown = false; return; }
 
     const newX = e.clientX - dragOffsetX;
     const newY = e.clientY - dragOffsetY;
