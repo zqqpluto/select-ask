@@ -108,11 +108,12 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
     }, 200);
   };
 
+  const translateItem = buildTranslateMenuItem(options);
+  const summarizeItem = buildSummarizeMenuItem(options, hideMenu);
   const historyItem = buildHistoryMenuItem(hideMenu);
   const settingsItem = buildSettingsMenuItem(hideMenu);
-  // 翻译全文和总结页面功能已从插件栏菜单移除
-  // menu.appendChild(buildTranslateMenuItem(options));
-  // menu.appendChild(buildSummarizeMenuItem(options, hideMenu));
+  menu.appendChild(translateItem);
+  menu.appendChild(summarizeItem);
   menu.appendChild(historyItem);
   menu.appendChild(settingsItem);
   btn.appendChild(menu);
@@ -189,7 +190,6 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   closeBtn.addEventListener('mouseleave', hideMenu);
 
   // ========== 翻译菜单点击 ==========
-  const translateItem = menu.querySelector('.select-ask-floating-icon-menu-item');
   if (translateItem) {
     translateItem.addEventListener('click', (e) => {
       e.stopPropagation();

@@ -77,7 +77,7 @@ export default function App() {
           </div>
           <button
             onClick={openOptions}
-            className="p-2 hover:bg-white/15 rounded-lg transition-colors"
+            className="p-2 hover:bg-white/15 rounded-lg transition-all cursor-pointer active:scale-95"
             title="设置"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -89,7 +89,7 @@ export default function App() {
       </div>
 
       {/* Content */}
-      <div className="p-4">
+      <div className="p-4 space-y-3">
         {loading ? (
           <div className="text-center py-8 text-gray-500">
             <div className="animate-spin w-6 h-6 border-2 border-slate-500 border-t-transparent rounded-full mx-auto mb-2"></div>
@@ -97,112 +97,36 @@ export default function App() {
           </div>
         ) : (
           <>
-            {/* 快捷操作 */}
-            <div className="space-y-2 mb-4">
-              {/* 翻译全文 */}
-              <button
-                onClick={() => {
-                  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                    if (tabs[0]?.id) {
-                      chrome.tabs.sendMessage(tabs[0].id, { action: 'toggleFullPageTranslate' }, () => {
-                        if (chrome.runtime.lastError) {
-                          console.error('[popup] 发送消息失败:', chrome.runtime.lastError.message);
-                        }
-                        window.close();
-                      });
-                    } else {
-                      window.close();
-                    }
-                  });
-                }}
-                className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors group"
-              >
-                <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="m5 8 6 6"></path>
-                    <path d="m4 14 6-6 2-3"></path>
-                    <path d="M2 5h12"></path>
-                    <path d="M7 2h1"></path>
-                    <path d="m22 22-5-10-5 10"></path>
-                    <path d="M14 18h6"></path>
-                  </svg>
-                </div>
-                <div className="text-left flex-1">
-                  <div className="text-sm font-medium text-gray-800">翻译全文</div>
-                  <div className="text-xs text-gray-500">将当前页面翻译成目标语言</div>
-                </div>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400 group-hover:text-gray-600 transition-colors">
-                  <polyline points="9 18 15 12 9 6"></polyline>
+            {/* 历史记录 */}
+            <button
+              onClick={openHistory}
+              className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-xl transition-all group active:scale-[0.99]"
+            >
+              <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-200 transition-colors flex-shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 8v4l3 3"/>
+                  <path d="M3.05 11a9 9 0 1 1 .6 3"/>
+                  <path d="M3 7v4h4"/>
                 </svg>
-              </button>
-
-              {/* 总结页面 */}
-              <button
-                onClick={() => {
-                  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                    if (tabs[0]?.id) {
-                      chrome.tabs.sendMessage(tabs[0].id, { action: 'startPageSummarize' }, () => {
-                        if (chrome.runtime.lastError) {
-                          console.error('[popup] 发送消息失败:', chrome.runtime.lastError.message);
-                        }
-                        window.close();
-                      });
-                    } else {
-                      window.close();
-                    }
-                  });
-                }}
-                className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors group"
-              >
-                <div className="w-9 h-9 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center group-hover:bg-amber-200 transition-colors">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <path d="M14 2v6h6"></path>
-                    <path d="M16 13H8"></path>
-                    <path d="M16 17H8"></path>
-                    <path d="M10 9H8"></path>
-                  </svg>
-                </div>
-                <div className="text-left flex-1">
-                  <div className="text-sm font-medium text-gray-800">总结页面</div>
-                  <div className="text-xs text-gray-500">AI 智能总结当前页面内容</div>
-                </div>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400 group-hover:text-gray-600 transition-colors">
-                  <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
-              </button>
-
-              {/* 历史记录 */}
-              <button
-                onClick={openHistory}
-                className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors group"
-              >
-                <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 8v4l3 3"/>
-                    <path d="M3.05 11a9 9 0 1 1 .6 3"/>
-                    <path d="M3 7v4h4"/>
-                  </svg>
-                </div>
-                <div className="text-left flex-1">
-                  <div className="text-sm font-medium text-gray-800">历史记录</div>
-                  <div className="text-xs text-gray-500">查看历史对话</div>
-                </div>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400 group-hover:text-gray-600 transition-colors">
-                  <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
-              </button>
-            </div>
+              </div>
+              <div className="text-left flex-1">
+                <div className="text-sm font-medium text-gray-800">历史记录</div>
+                <div className="text-xs text-gray-500">查看历史对话</div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400 group-hover:text-gray-600 transition-colors">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
 
             {/* 分隔线 */}
-            <div className="border-t border-gray-100 my-4"></div>
+            <div className="border-t border-gray-100"></div>
 
-            {/* 设置项 */}
-            <div className="space-y-2">
+            {/* 设置卡片 */}
+            <div className="bg-gray-50 rounded-xl p-3 space-y-3">
               {/* 悬浮图标开关 */}
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center">
+                  <div className="w-9 h-9 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center flex-shrink-0">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <circle cx="12" cy="12" r="10"></circle>
                       <path d="M12 16v-4"></path>
@@ -214,31 +138,36 @@ export default function App() {
                     <div className="text-xs text-gray-500">页面右下角的快捷入口</div>
                   </div>
                 </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={floatingIconEnabled}
-                      onChange={(e) => handleFloatingIconToggle(e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-slate-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-slate-700"></div>
-                  </label>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={floatingIconEnabled}
+                    onChange={(e) => handleFloatingIconToggle(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-slate-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-slate-700"></div>
+                </label>
               </div>
-            </div>
 
-            {/* 当前模型 */}
-            {hasModels && chatModel && (
-              <>
-                <div className="border-t border-gray-100 my-4"></div>
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                  <span>当前模型: <span className="text-gray-700 font-medium">{chatModel.name}</span></span>
+              {/* 当前模型 */}
+              {hasModels && chatModel && (
+                <div className="flex items-center gap-2 pt-2 border-t border-gray-200/60">
+                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full flex-shrink-0"></span>
+                  <span className="text-xs text-gray-500">
+                    当前模型: <span className="text-gray-700 font-medium">{chatModel.name}</span>
+                  </span>
+                  <span className="flex-1"></span>
+                  <button
+                    onClick={openOptions}
+                    className="text-xs text-slate-600 hover:text-slate-800 transition-colors px-2 py-1 rounded-md hover:bg-gray-100"
+                  >
+                    更换
+                  </button>
                 </div>
-              </>
-            )}
+              )}
+            </div>
           </>
         )}
-
       </div>
     </div>
   );

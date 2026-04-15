@@ -4,6 +4,7 @@ import { streamExplain, streamTranslate, streamQuestion, streamSearch } from '..
 import {
   addSession,
   updateSession,
+  updateSession,
   generateSessionId,
   generateTitle,
   getHistory,
@@ -54,6 +55,7 @@ let currentSessionId: string | null = null;
 let currentSessionType: 'explain' | 'translate' | 'question' | 'custom' = 'explain';
 let currentSelectedText: string = '';
 let currentSessionMessages: HistoryMessage[] = [];
+let currentSessionSaved = false; // 标记会话是否已保存到历史记录
 
 // 全屏状态
 let isFullscreen: boolean = false;
@@ -1160,6 +1162,7 @@ async function resumeSession(session: HistorySession, box: HTMLElement): Promise
   currentSessionType = session.type;
   currentSelectedText = session.selectedText;
   currentSessionMessages = [...session.messages];
+  currentSessionSaved = true; // 恢复的会话已存在于历史记录中
 
   // 清空当前聊天容器
   const chatContainer = box.querySelector('.select-ask-chat-container') as HTMLElement;
@@ -1637,6 +1640,20 @@ async function callBackendAPI(
   let hasAnswer = false;
 
   try {
+    // 初始化新会话（仅当未恢复历史时）
+    if (!currentSessionId) {
+      currentSessionId = generateSessionId();
+      currentSessionType = apiAction === 'translate' ? 'translate' : 'explain';
+      currentSelectedText = text;
+      currentSessionMessages = [];
+      currentSessionSaved = false;
+      currentSessionMessages.push({
+        role: 'user',
+        content: text,
+        timestamp: Date.now(),
+      });
+    }
+
     // 转换上下文格式
     const llmContext = context ? {
       selected: text,
@@ -1752,18 +1769,29 @@ async function callBackendAPI(
     // 保存会话到历史记录
     if (currentSessionId && currentSessionMessages.length > 0) {
       const currentModel = await getSelectedChatModel();
-      const session: HistorySession = {
-        id: currentSessionId,
-        title: generateTitle(text, currentSessionType),
-        type: currentSessionType,
-        selectedText: currentSelectedText,
-        messages: currentSessionMessages,
-        modelId: currentModel?.id || 'unknown',
-        modelName: currentModel?.name || 'AI',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-      await addSession(session);
+      if (!currentSessionSaved) {
+        // 首次保存，添加新会话
+        const session: HistorySession = {
+          id: currentSessionId,
+          title: generateTitle(text, currentSessionType),
+          type: currentSessionType,
+          selectedText: currentSelectedText,
+          messages: currentSessionMessages,
+          modelId: currentModel?.id || 'unknown',
+          modelName: currentModel?.name || 'AI',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        await addSession(session);
+        currentSessionSaved = true;
+      } else {
+        // 已保存过，更新会话
+        await updateSession(currentSessionId, {
+          messages: currentSessionMessages,
+          modelId: currentModel?.id || 'unknown',
+          modelName: currentModel?.name || 'AI',
+        });
+      }
     }
 
     // 启用输入功能
@@ -3284,6 +3312,9 @@ async function restoreSession(sidebar: HTMLElement, session: HistorySession): Pr
   const chatContainer = sidebar.querySelector('.select-ask-sidebar-chat') as HTMLElement;
   chatContainer.innerHTML = '';
 
+  // 设置会话已保存标记（恢复的会话已存在于历史记录中）
+  currentSessionSaved = true;
+
   // 添加原始选中的文本
   if (session.selectedText) {
     const contextDiv = document.createElement('div');
@@ -3310,6 +3341,7 @@ async function showResponseInSidebar(title: string, text: string, context: any):
   currentSelectedText = text;
   currentSessionType = title === '解释' ? 'explain' : title === '翻译' ? 'translate' : title === '搜索' ? 'search' : 'custom';
   currentSessionMessages = [];
+  currentSessionSaved = false; // 新建会话，尚未保存到历史记录
 
   // 只发送"解释"或"翻译"或"搜索"给 AI，不包含选中文本
   const userMessageText = title; // 直接发送"解释"或"翻译"或"搜索"
@@ -3480,18 +3512,29 @@ async function callBackendAPIForSidebar(
     // 保存会话到历史记录
     if (currentSessionId && currentSessionMessages.length > 0) {
       const currentModel = await getSelectedChatModel();
-      const session: HistorySession = {
-        id: currentSessionId,
-        title: generateTitle(text, currentSessionType),
-        type: currentSessionType,
-        selectedText: currentSelectedText,
-        messages: currentSessionMessages,
-        modelId: currentModel?.id || 'unknown',
-        modelName: currentModel?.name || 'AI',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-      await addSession(session);
+      if (!currentSessionSaved) {
+        // 首次保存，添加新会话
+        const session: HistorySession = {
+          id: currentSessionId,
+          title: generateTitle(text, currentSessionType),
+          type: currentSessionType,
+          selectedText: currentSelectedText,
+          messages: currentSessionMessages,
+          modelId: currentModel?.id || 'unknown',
+          modelName: currentModel?.name || 'AI',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        await addSession(session);
+        currentSessionSaved = true;
+      } else {
+        // 已保存过，更新会话
+        await updateSession(currentSessionId, {
+          messages: currentSessionMessages,
+          modelId: currentModel?.id || 'unknown',
+          modelName: currentModel?.name || 'AI',
+        });
+      }
     }
 
     // 启用输入功能
