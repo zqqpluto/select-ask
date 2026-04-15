@@ -98,6 +98,11 @@ export default function App() {
   const [selectedTextExpanded, setSelectedTextExpanded] = useState(false);
   const [selectedTextNeedsExpand, setSelectedTextNeedsExpand] = useState(false);
 
+  // 语音输入相关状态
+  const [isListening, setIsListening] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState('');
+  const recognitionRef = useRef<any>(null);
+
   // 追问气泡相关状态
   const [recommendedQuestions, setRecommendedQuestions] = useState<string[]>([]);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
@@ -231,6 +236,90 @@ export default function App() {
     }
   };
 
+  // ===== 语音输入功能 =====
+  // 初始化语音识别
+  const initializeSpeechRecognition = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      console.warn('Speech Recognition API not supported in this browser');
+      return null;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'zh-CN';
+
+    recognition.onresult = (event: any) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      if (finalTranscript) {
+        setVoiceTranscript(finalTranscript);
+        setInputValue(prev => {
+          const newValue = prev + finalTranscript;
+          return newValue;
+        });
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+      if (event.error === 'not-allowed') {
+        alert('请允许麦克风权限以使用语音输入功能');
+      }
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      setVoiceTranscript('');
+    };
+
+    return recognition;
+  };
+
+  // 开始语音输入
+  const startListening = () => {
+    if (!recognitionRef.current) {
+      recognitionRef.current = initializeSpeechRecognition();
+    }
+
+    if (!recognitionRef.current) {
+      alert('您的浏览器不支持语音识别功能');
+      return;
+    }
+
+    try {
+      recognitionRef.current.start();
+      setIsListening(true);
+    } catch (error) {
+      console.error('Failed to start speech recognition:', error);
+      setIsListening(false);
+    }
+  };
+
+  // 停止语音输入
+  const stopListening = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (error) {
+        console.error('Failed to stop speech recognition:', error);
+      }
+    }
+    setIsListening(false);
+  };
+
   // 加载模型配置 - 直接从 chrome.storage.sync 读取
   useEffect(() => {
     const loadModels = async () => {
@@ -285,19 +374,24 @@ export default function App() {
     // 建立长连接，让 background 跟踪 side panel 是否打开
     const port = chrome.runtime.connect({ name: 'sidepanel' });
     port.onDisconnect.addListener(() => {
-      // 连接断开，side panel 即将关闭
-      // 清理 pending 数据
       chrome.storage.local.remove('pending_sidebar_init').catch(() => {});
     });
 
     const messageListener = (message: any, sender: chrome.runtime.MessageSender, sendResponse: (response: any) => void) => {
       if (message.type === 'SIDEBAR_INIT') {
-        setSelectedText(message.selectedText || '');
-        setContext(message.context || null);
-        initMessage = message;
+        // 已打开的侧边栏收到新的初始化请求——写入 storage 后触发 storage onChanged 监听器
+        chrome.storage.local.set({
+          pending_sidebar_init: {
+            selectedText: message.selectedText,
+            context: message.context,
+            userMessage: message.userMessage,
+            summaryPrompt: message.summaryPrompt,
+            pageUrl: message.pageUrl,
+            pageTitle: message.pageTitle,
+          },
+        }).catch(console.error);
         sendResponse({ success: true });
       } else if (message.type === 'CLOSE_SIDE_PANEL') {
-        // 收到关闭指令，调用 window.close() 关闭自身
         window.close();
         sendResponse({ success: true });
       }
@@ -314,6 +408,46 @@ export default function App() {
       port.disconnect();
     };
   }, []);
+
+  // 监听 storage 变化（处理已打开侧边栏收到新页面总结请求的场景）
+  useEffect(() => {
+    const storageListener = (changes: Record<string, chrome.storage.StorageChange>, areaName: string) => {
+      if (areaName === 'local' && changes.pending_sidebar_init?.newValue) {
+        const { selectedText, context, userMessage, summaryPrompt, pageUrl, pageTitle } = changes.pending_sidebar_init.newValue;
+        setSelectedText(selectedText || '');
+        setContext(context || null);
+        setPageInfo({
+          selectedText: selectedText || '',
+          pageUrl: pageUrl || '',
+          pageTitle: pageTitle || '',
+        });
+        if (userMessage && currentModel) {
+          const userMsg: ExtendedHistoryMessage = {
+            role: 'user',
+            content: userMessage,
+            timestamp: Date.now(),
+          };
+          if (summaryPrompt) {
+            // 页面总结：替换当前对话
+            setMessages([userMsg]);
+            getAIResponseWithMessages(summaryPrompt, currentModel);
+          } else {
+            // 普通请求：追加到现有对话
+            setMessages(prev => [...prev, userMsg]);
+            getAIResponse(userMessage, currentModel, selectedText || '', context || null);
+          }
+          // 处理完后清除 pending
+          setTimeout(() => {
+            chrome.storage.local.remove('pending_sidebar_init').catch(() => {});
+          }, 500);
+        }
+      }
+    };
+    chrome.storage.onChanged.addListener(storageListener);
+    return () => {
+      chrome.storage.onChanged.removeListener(storageListener);
+    };
+  }, [currentModel]);
 
   // 当模型加载完成后，处理初始化消息
   useEffect(() => {
@@ -464,20 +598,28 @@ export default function App() {
         '解释': 'explain',
         '翻译': 'translate',
         '搜索': 'search',
+        '总结页面': 'summarize',
       };
       const firstMsg = messages[0];
       const sessionType = typeMap[firstMsg?.content] || 'question';
 
+      // 标题：如果 textForTitle 太长（summaryPrompt 场景），用第一条消息内容
+      const sessionTitle = textForTitle.length > 100
+        ? (firstMsg?.content || '对话')
+        : generateTitle(textForTitle, sessionType);
+
       const session = {
         id: sessionId,
-        title: generateTitle(textForTitle, sessionType),
+        title: sessionTitle,
         type: sessionType,
-        selectedText: textForTitle,
+        selectedText: textForTitle.length > 100 ? '' : textForTitle,
         messages: messagesToSave,
         modelId: modelToUse.id,
         modelName: modelToUse.name,
         createdAt: Date.now(),
         updatedAt: Date.now(),
+        pageUrl: pageInfo.pageUrl || undefined,
+        pageTitle: pageInfo.pageTitle || undefined,
       };
 
       // 检查是否已存在，存在则更新，否则新增
@@ -564,6 +706,9 @@ export default function App() {
           setIsLoading(false);
           currentPortRef.current = null;
           port.disconnect();
+
+          // 保存到历史记录（页面总结场景）
+          saveToHistory(modelToUse, prompt, null);
         } else if (message.type === 'LLM_STREAM_ERROR') {
           setIsLoading(false);
           currentPortRef.current = null;
@@ -1008,6 +1153,16 @@ export default function App() {
     }
   };
 
+  // 组件卸载时清理语音识别
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch {}
+        recognitionRef.current = null;
+      }
+    };
+  }, []);
+
   return (
     <div className="side-panel-container">
       {/* 内容区域 */}
@@ -1310,25 +1465,55 @@ export default function App() {
 
       {/* 输入区域 */}
       <div className="side-panel-input">
-        {/* 网页总结按钮 */}
-        {pageInfo?.pageUrl && messages.length > 0 && (
-          <button
-            className="side-panel-summarize-btn"
-            onClick={() => {
-              const summaryMsg = `请总结当前页面内容：${pageInfo.pageTitle || '当前网页'}`;
-              handleSendWithQuestion(summaryMsg);
-            }}
-          >
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <path d="M14 2v6h6"/>
-              <path d="M16 13H8"/>
-              <path d="M16 17H8"/>
-              <path d="M10 9H8"/>
-            </svg>
-            <span>总结网页</span>
-          </button>
-        )}
+        {/* 操作按钮行：总结网页（左）+ 新建会话（右） */}
+        <div className="side-panel-action-bar">
+          {pageInfo?.pageUrl && messages.length > 0 && (
+            <button
+              className="side-panel-summarize-btn"
+              onClick={() => {
+                const summaryMsg = `请总结当前页面内容：${pageInfo.pageTitle || '当前网页'}`;
+                handleSendWithQuestion(summaryMsg);
+              }}
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <path d="M14 2v6h6"/>
+                <path d="M16 13H8"/>
+                <path d="M16 17H8"/>
+                <path d="M10 9H8"/>
+              </svg>
+              <span>总结网页</span>
+            </button>
+          )}
+
+          {/* 新建会话按钮 — 仅图标 */}
+          {messages.length > 0 && (
+            <button
+              className="side-panel-new-chat-btn"
+              onClick={() => {
+                // 如果有正在进行的请求，先取消
+                if (currentPortRef.current) {
+                  try { currentPortRef.current.disconnect(); } catch {}
+                  currentPortRef.current = null;
+                }
+                setIsLoading(false);
+                setMessages([]);
+                setSelectedText('');
+                setContext(null);
+                setRecommendedQuestions([]);
+                setCurrentSessionId(generateSessionId());
+                setExpandedReasoning({});
+              }}
+              title="新建会话"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                <line x1="12" y1="8" x2="12" y2="14"/>
+                <line x1="9" y1="11" x2="15" y2="11"/>
+              </svg>
+            </button>
+          )}
+        </div>
 
         <div className="side-panel-input-box">
           {/* 上栏：文本输入 */}
@@ -1344,6 +1529,32 @@ export default function App() {
               }}
               onKeyDown={handleKeyDown}
             />
+            {/* 语音输入按钮 */}
+            <button
+              className={`side-panel-voice-btn ${isListening ? 'side-panel-voice-btn-listening' : ''}`}
+              onClick={isListening ? stopListening : startListening}
+              title={isListening ? '停止语音输入' : '语音输入'}
+              type="button"
+            >
+              {isListening ? (
+                // 停止图标 - 麦克风带斜线
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/>
+                  <line x1="8" y1="23" x2="16" y2="23"/>
+                  <line x1="2" y1="2" x2="22" y2="22" stroke="red" strokeWidth="2.5"/>
+                </svg>
+              ) : (
+                // 麦克风图标
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/>
+                  <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+              )}
+            </button>
           </div>
 
           {/* 下栏：模型选择 + 发送按钮 */}

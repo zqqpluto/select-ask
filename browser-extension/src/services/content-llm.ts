@@ -36,7 +36,7 @@ async function* streamViaBackground(
 
   if (!model) {
     console.error('[content-llm] 模型未配置');
-    throw new Error('请先在设置中选择问答模型');
+    throw new Error('请先在设置中配置并启用至少一个模型');
   }
 
   console.log('[content-llm] 模型:', model.name);
