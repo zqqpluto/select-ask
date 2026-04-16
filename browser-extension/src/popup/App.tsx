@@ -152,43 +152,6 @@ export default function App() {
           </div>
         ) : (
           <>
-            {/* 模型选择 */}
-            <div className="popup-model-row">
-              <span className="popup-model-label">当前模型</span>
-              <div className="popup-model-selector-wrapper">
-                <button ref={modelButtonRef} className="popup-model-btn" onClick={toggleModelSelector}>
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                    <circle cx="12" cy="5" r="2.5"/>
-                    <circle cx="6" cy="12" r="2.5"/>
-                    <circle cx="18" cy="12" r="2.5"/>
-                    <circle cx="12" cy="19" r="2.5"/>
-                    <path d="M12 7.5v2M7.5 12h2M14.5 12h2M12 14.5v2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-                  </svg>
-                  <span>{currentModel?.name || '选择模型'}</span>
-                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M6 9l6 6 6-6"/>
-                  </svg>
-                </button>
-
-                {showModelSelector && dropdownPosition && (
-                  <div className="popup-model-dropdown" style={{ bottom: dropdownPosition.bottom, left: dropdownPosition.left }}>
-                    {availableModels.map(model => (
-                      <button
-                        key={model.id}
-                        className={`popup-model-option ${currentModel?.id === model.id ? 'active' : ''}`}
-                        onClick={() => handleModelSelect(model.id)}
-                      >
-                        {model.name}
-                      </button>
-                    ))}
-                    {availableModels.length === 0 && (
-                      <div className="popup-model-empty">请先在设置中添加模型</div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
             {/* 历史记录 */}
             <button onClick={openHistory} className="popup-history-btn">
               <div className="popup-history-icon">
@@ -247,6 +210,43 @@ export default function App() {
                   />
                   <div className="popup-toggle-slider"></div>
                 </label>
+              </div>
+            </div>
+
+            {/* 模型选择 - 放最下方 */}
+            <div className="popup-model-row">
+              <span className="popup-model-label">当前模型</span>
+              <div className="popup-model-selector-wrapper">
+                <button ref={modelButtonRef} className="popup-model-btn" onClick={toggleModelSelector}>
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                    <circle cx="12" cy="5" r="2.5"/>
+                    <circle cx="6" cy="12" r="2.5"/>
+                    <circle cx="18" cy="12" r="2.5"/>
+                    <circle cx="12" cy="19" r="2.5"/>
+                    <path d="M12 7.5v2M7.5 12h2M14.5 12h2M12 14.5v2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+                  </svg>
+                  <span>{currentModel?.name || '选择模型'}</span>
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M6 9l6 6 6-6"/>
+                  </svg>
+                </button>
+
+                {showModelSelector && (
+                  <div className="popup-model-dropdown popup-model-dropdown-down">
+                    {availableModels.map(model => (
+                      <button
+                        key={model.id}
+                        className={`popup-model-option ${currentModel?.id === model.id ? 'active' : ''}`}
+                        onClick={() => handleModelSelect(model.id)}
+                      >
+                        {model.name}
+                      </button>
+                    ))}
+                    {availableModels.length === 0 && (
+                      <div className="popup-model-empty">请先在设置中添加模型</div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </>

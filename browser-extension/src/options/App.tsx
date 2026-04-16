@@ -1282,13 +1282,16 @@ export default function App() {
                             {msg.role === 'user' ? (
                               <div className="history-message-wrapper history-message-user-wrapper">
                                 <div className="history-message-content">
-                                  {/* 第一条用户消息：显示操作类型 + 选中文本引用 + 页面URL */}
+                                  {/* 第一条用户消息：显示操作类型和选中文本引用 */}
                                   {idx === 0 && session.selectedText ? (
                                     <>
+                                      {/* 操作类型标签 */}
                                       <span className="history-action-type-label">{msg.content}</span>
+                                      {/* Markdown 引用格式显示选中的文本 */}
                                       <blockquote className="history-selected-text-quote">
                                         {escapeHtml(session.selectedText)}
                                       </blockquote>
+                                      {/* 页面 URL */}
                                       {session.pageUrl && (() => {
                                         const { displayText, faviconUrl } = formatUrlForDisplay(session.pageUrl);
                                         return (
@@ -1507,43 +1510,20 @@ export default function App() {
                             />
                           </div>
 
-                          {/* 底部控制栏：模型选择器 + 发送按钮 */}
-                          <div className="flex gap-2 items-center justify-between px-3 pb-2">
-                            <div className="inline-flex items-center gap-1">
-                              <select
-                                value={currentChatModel?.id || ''}
-                                onChange={async (e) => {
-                                  const modelId = e.target.value;
-                                  if (modelId) {
-                                    await setSelectedChatModel(modelId);
-                                    const model = chatEnabledModels.find(m => m.id === modelId);
-                                    setCurrentChatModel(model || null);
-                                  }
-                                }}
-                                className="py-1 px-0 border-none rounded-none bg-transparent text-[13px] font-medium text-[#1d2129] cursor-pointer outline-none appearance-none whitespace-nowrap hover:text-[#165dff] focus:text-[#165dff]"
-                              >
-                                {chatEnabledModels.map(model => (
-                                  <option key={model.id} value={model.id}>{model.name}</option>
-                                ))}
-                              </select>
-                              <svg className="w-4 h-4 text-[#86909c] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </div>
-                            {/* 发送按钮 */}
+                          {/* 底部控制栏：发送按钮（右对齐） */}
+                          <div className="flex items-center justify-end px-3 pb-2">
                             <button
                               onClick={handleSendFollowUp}
                               disabled={isStreaming || !chatInput.trim()}
-                              className="w-8 h-8 border-none rounded-full flex items-center justify-center transition-all flex-shrink-0 p-0 bg-gradient-to-br from-[#3b82f6] to-[#6366f1] text-white shadow-[0_2px_8px_rgba(59,130,246,0.3)] hover:from-[#2563eb] hover:to-[#4f46e5] hover:-translate-y-[1px] hover:shadow-[0_4px_16px_rgba(59,130,246,0.4)] active:scale-[0.95] disabled:bg-[#e5e6eb] disabled:cursor-not-allowed disabled:text-[#c9cdd4] disabled:shadow-none disabled:hover:translate-y-0"
+                              className="history-send-btn"
                             >
                               {isStreaming ? (
-                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                  <rect x="7" y="7" width="10" height="10" rx="2.5"/>
                                 </svg>
                               ) : (
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M12 19V5M5 12l7-7 7 7"/>
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                  <path d="M12 4L4 14h5v6h6v-6h5L12 4z"/>
                                 </svg>
                               )}
                             </button>
@@ -1789,9 +1769,8 @@ export default function App() {
               </div>
             </div>
 
-            {/* 选择供应商 — 3 分类布局，与关于页面一致 */}
-            {!editingModel && (
-              <div className="px-5 py-3 border-b border-gray-200">
+            {/* 选择供应商 — 添加和编辑模式都显示 */}
+            <div className="px-5 py-3 border-b border-gray-200">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   选择供应商
                   <span className="ml-1 text-xs text-gray-400 font-normal">（自动填充 API 地址）</span>
@@ -1818,7 +1797,8 @@ export default function App() {
                             setShowModelDropdown(false);
                             setFormData({
                               ...DEFAULT_FORM_DATA,
-                              id: `custom-${Date.now()}`,
+                              id: editingModel?.id || `custom-${Date.now()}`,
+                              name: editingModel?.name || '',
                               provider,
                               baseUrl: defaults.baseUrl,
                               modelId: '',
@@ -1861,7 +1841,8 @@ export default function App() {
                             setShowModelDropdown(false);
                             setFormData({
                               ...DEFAULT_FORM_DATA,
-                              id: `custom-${Date.now()}`,
+                              id: editingModel?.id || `custom-${Date.now()}`,
+                              name: editingModel?.name || '',
                               provider,
                               baseUrl,
                               modelId: '',
@@ -1901,7 +1882,8 @@ export default function App() {
                             setShowModelDropdown(false);
                             setFormData({
                               ...DEFAULT_FORM_DATA,
-                              id: `custom-${Date.now()}`,
+                              id: editingModel?.id || `custom-${Date.now()}`,
+                              name: editingModel?.name || '',
                               provider,
                               baseUrl: defaults.baseUrl,
                               modelId: defaults.modelId,
@@ -1921,7 +1903,6 @@ export default function App() {
                   </div>
                 </div>
               </div>
-            )}
 
             {/* Form */}
             <div className="px-5 py-4 space-y-4">
@@ -1987,7 +1968,7 @@ export default function App() {
                         value={formData.modelId}
                         onChange={(e) => {
                           const val = e.target.value;
-                          setFormData(prev => ({ ...prev, modelId: val }));
+                          setFormData(prev => ({ ...prev, modelId: val, name: val }));
                           setModelSearchQuery(val);
                         }}
                         onFocus={() => {
@@ -1998,7 +1979,7 @@ export default function App() {
                       />
                       {/* 模型下拉列表 */}
                       {showModelDropdown && availableModels.length > 0 && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        <div className="model-dropdown-wrapper absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                           {availableModels
                             .filter(m => !modelSearchQuery || m.toLowerCase().includes(modelSearchQuery.toLowerCase()))
                             .slice(0, 50)
@@ -2007,7 +1988,7 @@ export default function App() {
                                 key={model}
                                 type="button"
                                 onClick={() => {
-                                  setFormData(prev => ({ ...prev, modelId: model }));
+                                  setFormData(prev => ({ ...prev, modelId: model, name: model }));
                                   setShowModelDropdown(false);
                                 }}
                                 className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${

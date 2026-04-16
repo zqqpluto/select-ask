@@ -80,13 +80,14 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-right: 0;
 }
 
 /* 操作类型标签 */
 .history-action-type-label {
   font-size: 12px;
-  font-weight: 500;
-  color: #6366f1;
+  font-weight: 400;
+  color: #000000;
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
@@ -94,16 +95,22 @@ body {
 /* 选中文本引用块 */
 .history-selected-text-quote {
   margin: 0;
-  padding: 6px 10px;
+  padding: 4px 10px;
   background: rgba(255, 255, 255, 0.8);
   border-left: 3px solid rgba(99, 102, 241, 0.5);
   border-radius: 4px;
   font-size: 12px;
   line-height: 1.5;
   color: #86909c;
-  max-height: 60px;
+  max-height: 22px;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  white-space: pre-wrap;
+  word-break: break-word;
+  position: relative;
 }
 
 /* 页面 URL 链接 */
@@ -358,4 +365,47 @@ body {
 .history-message-content a:hover,
 .history-ai-content-flat a:hover {
   text-decoration: underline;
+}
+
+/* 历史记录发送按钮（与侧边栏一致） */
+.history-send-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.history-send-btn:hover:not(:disabled) {
+  transform: scale(1.08);
+  box-shadow: 0 5px 16px rgba(59, 130, 246, 0.4);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.history-send-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.history-send-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.history-send-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.history-send-btn svg rect {
+  transition: all 0.2s ease-out;
+  rx: 3;
 }
