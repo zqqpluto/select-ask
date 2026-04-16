@@ -1,99 +1,134 @@
 # Select Ask
 
-> Select text, AI helps you explain, translate, and ask questions
+> Select text, AI replies instantly — Open-source browser extension
 
-A smart browser extension that allows you to select text and get AI-powered explanations, translations, answers, and FAQ generation. All AI calls are made directly in the browser without requiring a backend service.
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![GitHub stars](https://img.shields.io/github/stars/zqqpluto/select-ask.svg?style=social)](https://github.com/zqqpluto/select-ask/stargazers)
 
-## Features
+A smart browser extension that enables AI-powered explain, translate, ask, and search on selected text. Fully open source, supports local model configuration.
 
-- 🖱️ **Smart Text Recognition** - Auto-popup menu after selecting text
-- 🤖 **AI Functions** - Explain, Translate, Ask, FAQ Generation
-- 🔍 **Context-Aware** - Automatically captures context around selected text
-- 💬 **Follow-up Questions** - Supports multi-turn conversations
-- 🧠 **Multi-Model Support** - OpenAI, Claude, DeepSeek, Qwen, GLM, and more
-- 🔐 **Local Secure Storage** - API Keys encrypted with AES-256-GCM
-- 📊 **Display Modes** - Popup and Sidebar modes
-- 🕐 **History** - Auto-saves conversation history
-- 🌍 **i18n Support** - English & Chinese (Auto language detection)
+## Core Features
 
-## Supported AI Models
+### AI Text Interaction
+- **Smart Text Recognition** — Popup menu appears after selecting text
+- **Multi-dimensional AI Features**
+  - **AI Search** — Search for information related to selected text
+  - **Translate** — Smart translation with automatic source language detection
+  - **Explain** — AI explains selected concepts in plain language
+  - **Ask** — Free-form questions, open-ended dialogue
+- **Context-Aware** — Automatically captures context around selected text for better AI responses
+- **Follow-up Conversations** — Supports multi-turn dialogue
+
+### Page-level Operations
+- **Translate Full Page** — One-click translate entire webpage, preserving original layout
+- **Summarize Page** — Extract page content, AI generates concise summary (shown in side panel)
+
+### User Experience
+- **Floating Icon Menu** — Persistent entry in bottom-right corner, hover to expand actions
+- **Adjustable Side Panel** — Drag to resize width, immersive AI conversation experience
+- **Side Panel Chat** — Chrome Side Panel API, full streaming dialogue experience
+- **Markdown Rendering** — Real-time streaming AI output with Markdown support
+- **History Management** — Session-based history with search and review
+
+## Multi-Model Support
 
 | Provider | Models | Features |
 |----------|--------|----------|
-| OpenAI | GPT-4o, GPT-4 | Standard OpenAI API |
-| Anthropic | Claude Sonnet, Opus | Claude-specific API format |
+| OpenAI | GPT-4o, GPT-4 Turbo | Standard OpenAI API |
+| Anthropic | Claude Sonnet, Claude Opus | Native API, strong reasoning |
 | DeepSeek | DeepSeek Chat, Reasoner | Native thinking process output |
 | Qwen | Qwen-Turbo, Qwen-Plus | Alibaba Cloud DashScope API |
 | GLM | GLM-4 | Zhipu AI OpenAI-compatible API |
-| Custom | Any OpenAI-compatible API | Self-hosted or alternative APIs |
+| OpenAI Compatible | Custom | Any OpenAI-compatible API |
+| Local Models | Ollama, LM Studio | Local deployment, privacy-safe |
 
-## Installation
-
-### Option 1: Chrome Web Store (Recommended)
-
-*Coming soon*
-
-### Option 2: Manual Installation
-
-1. Download the latest release from [GitHub Releases](../../releases)
-2. Unzip to any directory
-3. Open Chrome and navigate to `chrome://extensions/`
-4. Enable "Developer mode" in the top right
-5. Click "Load unpacked" and select the unzipped directory
-6. Done! You can now use it on any webpage
-
-## Quick Start
-
-### 1. Configure AI Model
-
-First-time setup requires configuring an AI model:
-
-1. Click the extension icon in browser toolbar
-2. Click "Open Settings"
-3. Click "Add Model"
-4. Choose a preset or custom model
-5. Enter your API Key (encrypted and stored locally)
-6. Click "Test Connection" to verify
-7. Save and select the model as default
-
-### 2. Start Using
-
-1. Select any text on a webpage
-2. Click the popup icon
-3. Choose a function:
-   - **Explain** - AI explains the selected content
-   - **Translate** - Translates to your language
-   - **Ask** - Enter custom questions
-   - **FAQs** - AI generates relevant questions
-4. View the answer in the popup dialog
-5. Continue with follow-up questions
-
-## Directory Structure
+## Project Architecture
 
 ```
 select-ask/
-├── browser-extension/          # Browser extension
-│   ├── public/
-│   │   ├── icons/             # Extension icons
-│   │   ├── logos/             # AI provider logos
-│   │   └── _locales/          # i18n translations
+├── browser-extension/          # Browser extension (frontend)
 │   ├── src/
-│   │   ├── background/        # Service Worker
-│   │   ├── content/           # Content scripts
-│   │   ├── popup/             # Popup page
-│   │   ├── options/           # Settings page
-│   │   ├── services/          # Service layer
-│   │   │   └── llm/          # LLM providers
-│   │   ├── hooks/            # React hooks
-│   │   ├── utils/            # Utilities
-│   │   └── types/            # TypeScript types
-│   └── manifest.json
-├── analytics-service/          # Optional: Analytics service
-│   └── src/                   # Cloudflare Worker code
-└── README.md
+│   │   ├── background/         # Background script (Service Worker)
+│   │   │   ├── index.ts        # Main entry, message routing + state persistence
+│   │   │   └── llm-service.ts  # LLM streaming service
+│   │   ├── content/            # Content scripts (injected into pages)
+│   │   │   ├── index.ts        # Main entry
+│   │   │   ├── floating-icon.ts    # Floating icon menu
+│   │   │   ├── floating-window.ts  # Floating translation window
+│   │   │   └── style.css       # Injected styles
+│   │   ├── popup/              # Popup window (quick actions)
+│   │   ├── options/            # Settings page (model management, history)
+│   │   ├── side-panel/         # Side panel chat interface
+│   │   ├── services/           # Service layer
+│   │   │   └── llm/            # LLM provider implementations
+│   │   │       ├── base.ts     # Abstract base class
+│   │   │       ├── factory.ts  # Factory pattern
+│   │   │       ├── openai.ts
+│   │   │       ├── anthropic.ts
+│   │   │       ├── deepseek.ts
+│   │   │       ├── qwen.ts
+│   │   │       ├── glm.ts
+│   │   │       └── openai-compat.ts
+│   │   ├── utils/              # Utilities
+│   │   │   ├── context.ts      # Context collection
+│   │   │   ├── crypto.ts       # AES-256-GCM encryption
+│   │   │   ├── history-manager.ts  # History management
+│   │   │   └── content-extractor.ts # Page content extraction
+│   │   ├── store/              # Zustand state management
+│   │   └── types/              # TypeScript type definitions
+│   ├── tests/                  # Playwright end-to-end tests
+│   ├── manifest.json           # Chrome extension manifest
+│   └── package.json
+└── docs/                       # Documentation
 ```
 
-## Development
+**Architecture Notes**:
+- The extension runs independently, no backend service required
+- LLM calls go directly from the browser to your configured provider APIs, no intermediate servers
+- Users configure their own API keys, data stays fully local
+
+## Installation
+
+### Manual Installation
+
+1. Clone or download this repository
+2. Enter the `browser-extension` directory and install dependencies:
+   ```bash
+   cd browser-extension
+   npm install
+   npm run build
+   ```
+3. Open Chrome and navigate to `chrome://extensions/`
+4. Enable "Developer mode" in the top-right corner
+5. Click "Load unpacked" and select the `browser-extension` directory
+6. Done!
+
+## Quick Start
+
+### 1. Configure Model
+
+1. Click the extension icon in the browser toolbar
+2. Click "Open Settings"
+3. Click "Add Model"
+4. Choose a preset or custom model
+5. Enter your API Key (encrypted with AES-256-GCM and stored locally)
+6. Click "Test Connection" to verify
+7. Save and select the model as default
+
+### 2. Use Basic Features
+
+1. Select any text on a webpage
+2. Choose a function from the popup menu: Translate / Explain / Ask / Search
+3. View the AI response in the side panel (with Markdown rendering)
+4. Continue with follow-up questions for multi-turn conversations
+
+### 3. Page-level Operations
+
+Via the floating icon menu in the bottom-right corner:
+- **Translate Full Page** — Translate page content paragraph by paragraph, preserving layout
+- **Summarize Page** — Automatically extract page content and generate summary
+
+## Development Guide
 
 ### Requirements
 
@@ -103,25 +138,23 @@ select-ask/
 ### Local Development
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/select-ask.git
-cd select-ask
-
-# Install dependencies
 cd browser-extension
 npm install
 
-# Development mode
+# Development mode (HMR)
 npm run dev
 
-# Build for production
+# Production build
 npm run build
+
+# Run tests
+npm test
 ```
 
 ### Load Development Build
 
 1. Run `npm run dev` or `npm run build`
-2. Open Chrome and go to `chrome://extensions/`
+2. Open Chrome and navigate to `chrome://extensions/`
 3. Enable "Developer mode"
 4. Click "Load unpacked"
 5. Select the `browser-extension` directory
@@ -138,91 +171,66 @@ npm run build
 
 ## Security
 
-- ✅ All API Keys encrypted with AES-256-GCM and stored locally
-- ✅ Encryption keys stored in `chrome.storage.local`
-- ✅ Chat content only sent to your configured AI providers
-- ✅ No backend dependency (optional analytics service)
-- ✅ Open source code for auditing
-
-## Privacy
-
-- Extension does not collect any personal information
-- API Keys stored locally, never uploaded to any server
-- Chat content only sent to your chosen AI provider
-- Optional analytics service only collects anonymous usage data
-
-## Internationalization
-
-The extension supports multiple languages with automatic browser language detection.
-
-**Supported Languages:**
-- English (en)
-- Chinese (zh_CN)
-
-**Add a New Language:**
-1. Create `public/_locales/{language-code}/messages.json`
-2. Copy the structure from `en/messages.json`
-3. Translate all messages
-4. Submit a pull request
-
-See [I18N.md](./browser-extension/I18N.md) for details.
+- All API Keys encrypted with AES-256-GCM, stored locally in the browser
+- Chat content only sent to your configured AI providers
+- Open source code, auditable by anyone
 
 ## Tech Stack
 
 - React 18 + TypeScript
-- Vite 5
+- Vite 5 + @crxjs/vite-plugin
 - TailwindCSS 3
 - Chrome Extension Manifest V3
-- Web Crypto API
+- Web Crypto API (AES-256-GCM encryption)
 - Zustand (State management)
+- marked (Markdown rendering)
+- Playwright (End-to-end testing)
 
-## Analytics (Optional)
+## Chrome Extension Permissions
 
-The optional analytics service helps you understand usage patterns:
+| Permission | Purpose |
+|------------|---------|
+| `storage` | Store settings, API keys, and chat history |
+| `scripting` | Inject content scripts into web pages |
+| `sidePanel` | Chrome Side Panel API |
+| `tabs` | Tab management |
+| `microphone` | Voice input support |
 
-- Extension startup tracking
-- Feature usage statistics
-- Error monitoring
-- Anonymous user identification
+## License
 
-See [analytics-service/README.md](./analytics-service/README.md) for deployment instructions.
-
-## Roadmap
-
-- [ ] Firefox support
-- [ ] Custom prompt templates
-- [ ] Batch processing
-- [ ] Keyboard shortcuts
-- [ ] More AI models
-- [ ] Pro version with premium features
+This project is licensed under the [MIT License](LICENSE).
 
 ## Contributing
 
 Issues and Pull Requests are welcome!
 
-**Development Process:**
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+### Contributors
 
-## License
+<a href="https://github.com/zqqpluto/select-ask/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=zqqpluto/select-ask" />
+</a>
 
-[MIT License](LICENSE)
+## More Information
+
+- [Privacy Policy](./PRIVACY_POLICY.md)
+
+## Community
+
+- [GitHub Discussions](../../discussions) — Questions, feature requests
+- [Issue Tracker](../../issues) — Bug reports, feature requests
 
 ## Acknowledgments
 
-Thanks to all AI providers for their excellent model services.
+Thanks to all AI providers for their excellent model services:
 
-## Support
-
-If you find this helpful, please give it a ⭐ Star!
-
-**Questions or Issues?**
-- [GitHub Issues](../../issues)
-- Email: your-email@example.com
+- [OpenAI](https://openai.com/)
+- [Anthropic](https://www.anthropic.com/)
+- [DeepSeek](https://www.deepseek.com/)
+- [Qwen](https://tongyi.aliyun.com/)
+- [GLM](https://www.zhipuai.cn/)
 
 ---
 
-Made with ❤️ by [Your Name]
+If this project helps you, please give it a Star!
+
+**Made with ❤️ by [zqqpluto](https://github.com/zqqpluto)**
