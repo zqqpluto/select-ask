@@ -120,19 +120,7 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   container.appendChild(btn);
 
   // ========== 点击图标打开侧边栏 ==========
-  // 在 onPointerUp 中判断 isClick，避免与拖拽冲突
-  btn.addEventListener('click', (e) => {
-    if (isDragging) {
-      e.stopPropagation();
-      return;
-    }
-    // 延迟执行，让拖拽的 setPointerCapture 先释放
-    setTimeout(() => {
-      if (!isDragging) {
-        options.onClickIcon?.();
-      }
-    }, 50);
-  });
+  // 在 setupDrag 的 onPointerUp 中通过回调触发，避免与拖拽冲突
 
   // 关闭按钮 - 胶囊外部（与 btn 同级），不受 overflow 裁切
   const closeBtn = document.createElement('button');
@@ -165,7 +153,7 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   container.appendChild(closeBtn);
 
   // ========== 拖拽逻辑 ==========
-  setupDrag(container, btn, logoWrap);
+  setupDrag(container, btn, logoWrap, () => options.onClickIcon?.());
 
   // btn hover
   btn.addEventListener('mouseenter', showMenu);
@@ -246,7 +234,7 @@ const dragThreshold = {
  * - Y 为正数 = 向下移动
  * - 松手后：X 回弹到 0（紧贴右侧），Y 持久化保存
  */
-function setupDrag(container: HTMLElement, btn: HTMLElement, logoWrap: HTMLElement) {
+function setupDrag(container: HTMLElement, btn: HTMLElement, logoWrap: HTMLElement, onClick?: () => void) {
   let currentX = 0;
   let currentY = ratioToPixel(savedRatio);
   let isPointerDown = false;
@@ -302,6 +290,7 @@ function setupDrag(container: HTMLElement, btn: HTMLElement, logoWrap: HTMLEleme
 
     if (isClick) {
       isDragging = false;
+      onClick?.();
       return;
     }
 
@@ -572,7 +561,7 @@ function buildSummarizeMenuItem(options: FloatingIconOptions, onHideMenu?: () =>
   const btn = document.createElement('button');
   btn.className = 'select-ask-floating-icon-menu-item';
   btn.setAttribute('data-action', 'summarize-page');
-  btn.setAttribute('data-tooltip', '总结全文');
+  btn.setAttribute('data-tooltip', '总结网页');
 
   const icon = buildSummarizeIcon();
   if (icon) btn.appendChild(icon);

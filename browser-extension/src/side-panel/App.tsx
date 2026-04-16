@@ -1455,7 +1455,7 @@ export default function App() {
         </div>
 
         <div className="side-panel-input-box">
-          {/* 上栏：文本输入 */}
+          {/* 输入行：文本输入 + 发送按钮 */}
           <div className="side-panel-input-row">
             <textarea
               ref={textareaRef}
@@ -1468,10 +1468,6 @@ export default function App() {
               }}
               onKeyDown={handleKeyDown}
             />
-          </div>
-
-          {/* 发送按钮 */}
-          <div className="side-panel-input-controls">
             <button
               className="side-panel-send"
               onClick={isLoading ? handleStopGeneration : handleSend}

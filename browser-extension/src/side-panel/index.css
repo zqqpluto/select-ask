@@ -742,11 +742,11 @@ body {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
 }
 
-/* 输入框上栏：文本输入区域 */
+/* 输入行：textarea + 发送按钮同行 */
 .side-panel-input-row {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
+  align-items: flex-end;
+  gap: 6px;
 }
 
 .side-panel-input-box textarea {
@@ -767,69 +767,22 @@ body {
   color: #c9cdd4;
 }
 
-/* 输入框下栏：模型选择 + 发送按钮 */
-.side-panel-input-controls {
+/* 发送按钮 - 与输入框同行，右对齐 */
+.side-panel-send {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding-top: 4px;
-  position: relative;
-}
-
-/* 模型选择器 - 下栏左侧 */
-.side-panel-model-selector-left {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.side-panel-model-btn-left {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  color: #6b7280;
-  font-size: 11px;
-  font-weight: 500;
+  justify-content: center;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  border: none;
+  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+  color: white;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.15s ease-out;
-  white-space: nowrap;
-  height: 28px;
-  width: auto;
-  min-width: 80px;
-}
-
-.side-panel-model-btn-left:hover {
-  background: #f3f4f6;
-  border-color: #d1d5db;
-  color: #374151;
-}
-
-.side-panel-model-btn-left:active {
-  transform: scale(0.98);
-}
-
-.side-panel-model-btn-left .model-icon {
-  width: 12px;
-  height: 12px;
+  transition: all 0.15s;
   flex-shrink: 0;
-  color: #6366f1;
-}
-
-.side-panel-model-btn-left svg:last-child {
-  width: 10px;
-  height: 10px;
-  flex-shrink: 0;
-  opacity: 0.5;
-  transition: transform 0.2s ease-out;
-}
-
-.side-panel-model-btn-left:hover svg:last-child {
-  opacity: 1;
-  transform: rotate(180deg);
+  margin-bottom: 2px;
 }
 
 @keyframes dropdown-fade-in {
