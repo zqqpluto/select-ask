@@ -1,0 +1,202 @@
+/* 脑图组件样式 (React 组件使用) */
+
+/* 脑图容器 */
+.select-ask-mindmap-container {
+  position: relative;
+  width: 100%;
+  min-height: 400px;
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* 脑图 SVG */
+.select-ask-mindmap-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* 加载骨架 */
+.select-ask-mindmap-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  gap: 16px;
+  color: #86909c;
+  font-size: 14px;
+}
+
+.select-ask-mindmap-loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e5e6eb;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: select-ask-mindmap-spin 0.8s linear infinite;
+}
+
+@keyframes select-ask-mindmap-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 错误状态 */
+.select-ask-mindmap-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  gap: 12px;
+  padding: 24px;
+  color: #f53f3f;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* 全屏覆盖层 */
+.select-ask-mindmap-fullscreen-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  animation: select-ask-mindmap-fadeIn 0.2s ease-out;
+}
+
+@keyframes select-ask-mindmap-fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 全屏头部 */
+.select-ask-mindmap-fullscreen-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e6eb;
+  min-height: 48px;
+}
+
+.select-ask-mindmap-fullscreen-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1d2129;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 全屏内容区 */
+.select-ask-mindmap-fullscreen-content {
+  flex: 1;
+  padding: 16px;
+  background: #f9fafb;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.select-ask-mindmap-fullscreen-content .select-ask-mindmap-container {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* 工具栏 */
+.select-ask-mindmap-toolbar {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  z-index: 10;
+}
+
+.select-ask-mindmap-toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #4e5969;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.select-ask-mindmap-toolbar-btn:hover {
+  background: #f2f3f5;
+  color: #1d2129;
+}
+
+.select-ask-mindmap-toolbar-btn:active {
+  background: #e5e6eb;
+}
+
+.select-ask-mindmap-toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: #e5e6eb;
+  margin: 0 2px;
+}
+
+/* 导出下拉菜单 */
+.select-ask-mindmap-export-dropdown {
+  position: absolute;
+  bottom: 52px;
+  right: 12px;
+  min-width: 160px;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+  padding: 6px;
+  z-index: 11;
+}
+
+.select-ask-mindmap-export-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #1d2129;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  text-align: left;
+}
+
+.select-ask-mindmap-export-item:hover {
+  background: #f2f3f5;
+}
+
+.select-ask-mindmap-export-item:active {
+  background: #e5e6eb;
+}
+
+.select-ask-mindmap-export-item svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}

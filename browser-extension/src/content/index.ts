@@ -20,6 +20,8 @@ import { marked } from 'marked';
 import styleContent from './style.css?inline';
 import chatStyleContent from './chat-style.css?inline';
 import translationStyleContent from './translation-style.css?inline';
+import mindmapStyleContent from './mindmap-style.css?inline';
+import { addMindMapButton } from './mindmap';
 
 /**
  * 注入样式到页面（作为 manifest.json CSS 注入的备用方案）
@@ -33,7 +35,7 @@ function injectStyles(): void {
 
   const style = document.createElement('style');
   style.id = 'select-ask-styles';
-  style.textContent = styleContent + '\n' + chatStyleContent + '\n' + translationStyleContent;
+  style.textContent = styleContent + '\n' + chatStyleContent + '\n' + translationStyleContent + '\n' + mindmapStyleContent;
 
   // 尝试插入到 head 中，如果 head 不存在则插入到 body
   const target = document.head || document.body || document.documentElement;
@@ -543,6 +545,9 @@ function addActionButtonsToAnswer(
     disclaimer.textContent = '内容由AI生成，仅供参考';
     actionsArea.appendChild(disclaimer);
   }
+
+  // 添加脑图按钮（在免责声明之前）
+  addMindMapButton(actionsArea, markdownContent || answerText, messageElement);
 }
 
 /**

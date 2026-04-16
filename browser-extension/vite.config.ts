@@ -20,4 +20,13 @@ export default defineConfig({
       port: 5174,
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          markmap: ['markmap-lib', 'markmap-view', 'markmap-toolbar'],
+        },
+      },
+    },
+  },
 });
