@@ -77,7 +77,7 @@ chrome.runtime.onConnect.addListener((port) => {
 });
 
 // 监听来自content script的消息
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   const msgType = message.type || message.action;
   switch (msgType) {
     case 'GET_STATE':
@@ -121,7 +121,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         } else {
           chrome.sidePanel.open({ windowId: tab.windowId })
             .then(() => {
-              sidePanelOpenTabs.add(tab.id);
+              if (tab.id) sidePanelOpenTabs.add(tab.id);
               sendResponse({ success: true, action: 'opened' });
               chrome.storage.local.set({
                 pending_sidebar_init: {
@@ -153,7 +153,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         chrome.sidePanel.open({ windowId: tab.windowId })
           .then(() => {
-            sidePanelOpenTabs.add(tab.id);
+            if (tab.id) sidePanelOpenTabs.add(tab.id);
             sendResponse({ success: true });
             // 写入 pending 数据，供新打开或已打开的侧边栏读取
             chrome.storage.local.set({
@@ -221,33 +221,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 // 监听store变化并持久化
-useAppStore.subscribe(
-  (state) => ({
-    selectedModel: state.selectedModel,
-    customApiKey: state.customApiKey,
-    chatHistory: state.chatHistory,
-    currentSessionId: state.currentSessionId,
-  }),
-  (currentState, previousState) => {
-    // 只在相关状态变化时持久化
-    if (
-      currentState.selectedModel !== previousState.selectedModel ||
-      currentState.customApiKey !== previousState.customApiKey
-    ) {
-      chrome.storage.sync.set({
-        selectedModel: currentState.selectedModel,
-        customApiKey: currentState.customApiKey,
-      });
-    }
-
-    if (
-      currentState.chatHistory !== previousState.chatHistory ||
-      currentState.currentSessionId !== previousState.currentSessionId
-    ) {
-      chrome.storage.local.set({
-        chatHistory: currentState.chatHistory,
-        currentSessionId: currentState.currentSessionId,
-      });
-    }
+let _prevSelectedModel = useAppStore.getState().selectedModel;
+let _prevApiKey = useAppStore.getState().customApiKey;
+let _prevChatHistory = useAppStore.getState().chatHistory;
+let _prevSessionId = useAppStore.getState().currentSessionId;
+useAppStore.subscribe((state) => {
+  if (state.selectedModel !== _prevSelectedModel || state.customApiKey !== _prevApiKey) {
+    chrome.storage.sync.set({
+      selectedModel: state.selectedModel,
+      customApiKey: state.customApiKey,
+    });
+    _prevSelectedModel = state.selectedModel;
+    _prevApiKey = state.customApiKey;
   }
-);
+  if (state.chatHistory !== _prevChatHistory || state.currentSessionId !== _prevSessionId) {
+    chrome.storage.local.set({
+      chatHistory: state.chatHistory,
+      currentSessionId: state.currentSessionId,
+    });
+    _prevChatHistory = state.chatHistory;
+    _prevSessionId = state.currentSessionId;
+  }
+});

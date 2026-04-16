@@ -52,7 +52,7 @@ const ICONS: Record<string, React.FC> = {
   question: QuestionIcon,
 };
 
-export function IconMenu({ position, onExplain, onTranslate, onQuestion, onQuestions, onClose }: IconMenuProps) {
+export function IconMenu({ position, onExplain, onTranslate, onQuestion, onSearch, onClose }: IconMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   // 点击外部关闭菜单

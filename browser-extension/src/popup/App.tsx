@@ -5,7 +5,7 @@ import { useI18n } from '../hooks/useI18n';
 
 export default function App() {
   const { t } = useI18n();
-  const [models, setModels] = useState<ModelConfig[]>([]);
+  const [_models, setModels] = useState<ModelConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [floatingIconEnabled, setFloatingIconEnabled] = useState(true);
 
@@ -13,14 +13,7 @@ export default function App() {
   const [currentModel, setCurrentModel] = useState<ModelConfig | null>(null);
   const [availableModels, setAvailableModels] = useState<ModelConfig[]>([]);
   const [showModelSelector, setShowModelSelector] = useState(false);
-  const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
 
-  // 多模型选择器状态
-  const [showMultiModelSelector, setShowMultiModelSelector] = useState(false);
-  const multiModelButtonRef = useRef<HTMLButtonElement>(null);
-  const [multiModelDropdownPos, setMultiModelDropdownPos] = useState<{ top: number } | null>(null);
-
-  // 单模型切换状态
   const modelButtonRef = useRef<HTMLButtonElement>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{ bottom: number; left: number } | null>(null);
 
@@ -30,28 +23,21 @@ export default function App() {
 
   // 点击外部关闭下拉菜单
   useEffect(() => {
-    if (!showModelSelector && !showMultiModelSelector) return;
+    if (!showModelSelector) return;
 
     const handleClickOutside = (e: MouseEvent) => {
-      if (showModelSelector && modelButtonRef.current && !modelButtonRef.current.contains(e.target as Node)) {
+      if (modelButtonRef.current && !modelButtonRef.current.contains(e.target as Node)) {
         const dropdown = document.querySelector('.popup-model-dropdown');
         if (dropdown && !dropdown.contains(e.target as Node)) {
           setShowModelSelector(false);
           setDropdownPosition(null);
         }
       }
-      if (showMultiModelSelector && multiModelButtonRef.current && !multiModelButtonRef.current.contains(e.target as Node)) {
-        const dropdown = document.querySelector('.popup-multi-model-dropdown');
-        if (dropdown && !dropdown.contains(e.target as Node)) {
-          setShowMultiModelSelector(false);
-          setMultiModelDropdownPos(null);
-        }
-      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showModelSelector, showMultiModelSelector]);
+  }, [showModelSelector]);
 
   const loadConfig = async () => {
     try {
@@ -60,8 +46,6 @@ export default function App() {
       setFloatingIconEnabled(config.showFloatingIcon ?? true);
 
       const selectedIds = config.selectedChatModelIds || [];
-      setSelectedModelIds(selectedIds);
-
       const enabledModels = config.models.filter((m: ModelConfig) => m.enabled);
       let modelsToUse: ModelConfig[] = [];
 
@@ -75,7 +59,7 @@ export default function App() {
 
       setAvailableModels(modelsToUse);
 
-      const selectedId = config.selectedChatModel;
+      const selectedId = selectedIds.length > 0 ? selectedIds[0] : undefined;
       if (selectedId) {
         const model = modelsToUse.find(m => m.id === selectedId);
         if (model) setCurrentModel(model);
@@ -138,51 +122,6 @@ export default function App() {
     }
   };
 
-  const toggleModelEnabled = async (modelId: string, enabled: boolean) => {
-    try {
-      const config = await getAppConfig();
-      let selectedIds = config.selectedChatModelIds || [];
-
-      if (enabled) {
-        if (!selectedIds.includes(modelId)) selectedIds = [...selectedIds, modelId];
-      } else {
-        selectedIds = selectedIds.filter(id => id !== modelId);
-      }
-
-      config.selectedChatModelIds = selectedIds;
-      await chrome.storage.sync.set({ appConfig: config });
-      setSelectedModelIds(selectedIds);
-
-      const enabledModels = config.models.filter((m: ModelConfig) => m.enabled);
-      let modelsToUse: ModelConfig[] = [];
-      if (selectedIds.length > 0) {
-        modelsToUse = selectedIds
-          .map(id => enabledModels.find(m => m.id === id))
-          .filter((m): m is ModelConfig => m !== undefined && m.enabled);
-      } else {
-        modelsToUse = enabledModels;
-      }
-      setAvailableModels(modelsToUse);
-
-      if (!selectedIds.includes(currentModel?.id || '') && modelsToUse.length > 0) {
-        setCurrentModel(modelsToUse[0]);
-      }
-    } catch (error) {
-      console.error('Failed to toggle model:', error);
-    }
-  };
-
-  const toggleMultiModelSelector = useCallback(() => {
-    if (showMultiModelSelector) {
-      setShowMultiModelSelector(false);
-      setMultiModelDropdownPos(null);
-    } else if (multiModelButtonRef.current) {
-      const rect = multiModelButtonRef.current.getBoundingClientRect();
-      setMultiModelDropdownPos({ top: rect.height + 6 });
-      setShowMultiModelSelector(true);
-    }
-  }, [showMultiModelSelector]);
-
   return (
     <div className="popup-container">
       {/* Header */}
@@ -213,85 +152,38 @@ export default function App() {
           </div>
         ) : (
           <>
-            {/* 模型选择器卡片 */}
-            <div className="popup-model-card">
-              <div className="popup-model-card-header">
-                <div className="popup-model-card-icon">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            {/* 模型选择 */}
+            <div className="popup-model-row">
+              <span className="popup-model-label">当前模型</span>
+              <div className="popup-model-selector-wrapper">
+                <button ref={modelButtonRef} className="popup-model-btn" onClick={toggleModelSelector}>
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                     <circle cx="12" cy="5" r="2.5"/>
                     <circle cx="6" cy="12" r="2.5"/>
                     <circle cx="18" cy="12" r="2.5"/>
                     <circle cx="12" cy="19" r="2.5"/>
                     <path d="M12 7.5v2M7.5 12h2M14.5 12h2M12 14.5v2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-                    <path d="M7.5 13.5l3 3M13.5 7.5l3-3M16.5 13.5l-3 3M7.5 10.5l3-3" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.6"/>
                   </svg>
-                </div>
-                <div className="popup-model-card-text">
-                  <div className="popup-model-card-title">模型选择</div>
-                  <div className="popup-model-card-desc">选择要使用的 AI 模型</div>
-                </div>
-              </div>
-
-              {/* 当前模型 + 切换按钮 */}
-              <div className="popup-current-model">
-                <div className="popup-model-selector-left">
-                  <button ref={modelButtonRef} className="popup-model-btn-left" onClick={toggleModelSelector} title="切换模型">
-                    <svg className="model-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-                      <circle cx="12" cy="5" r="2.5"/>
-                      <circle cx="6" cy="12" r="2.5"/>
-                      <circle cx="18" cy="12" r="2.5"/>
-                      <circle cx="12" cy="19" r="2.5"/>
-                      <path d="M12 7.5v2M7.5 12h2M14.5 12h2M12 14.5v2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-                      <path d="M7.5 13.5l3 3M13.5 7.5l3-3M16.5 13.5l-3 3M7.5 10.5l3-3" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.6"/>
-                    </svg>
-                    <span>{currentModel?.name || '选择模型'}</span>
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M6 9l6 6 6-6"/>
-                    </svg>
-                  </button>
-
-                  {showModelSelector && dropdownPosition && (
-                    <div className="popup-model-dropdown" style={{ bottom: dropdownPosition.bottom, left: dropdownPosition.left }}>
-                      {availableModels.map(model => (
-                        <button
-                          key={model.id}
-                          className={`popup-model-option ${currentModel?.id === model.id ? 'active' : ''}`}
-                          onClick={() => handleModelSelect(model.id)}
-                        >
-                          {model.name}
-                        </button>
-                      ))}
-                      {availableModels.length === 0 && (
-                        <div className="popup-model-empty">请先在配置中管理模型</div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* 多模型管理按钮 */}
-                <button ref={multiModelButtonRef} className="popup-multi-model-btn" onClick={toggleMultiModelSelector} title="管理模型">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="3" y="3" width="7" height="7" rx="1"/>
-                    <rect x="14" y="3" width="7" height="7" rx="1"/>
-                    <rect x="3" y="14" width="7" height="7" rx="1"/>
-                    <rect x="14" y="14" width="7" height="7" rx="1"/>
+                  <span>{currentModel?.name || '选择模型'}</span>
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M6 9l6 6 6-6"/>
                   </svg>
-                  <span>管理</span>
                 </button>
 
-                {showMultiModelSelector && multiModelDropdownPos && (
-                  <div className="popup-multi-model-dropdown" style={{ top: multiModelDropdownPos.top }}>
-                    <div className="popup-multi-model-title">勾选要启用的模型</div>
-                    {models.filter(m => m.enabled).map(model => (
-                      <label key={model.id} className="popup-multi-model-item">
-                        <input
-                          type="checkbox"
-                          checked={selectedModelIds.includes(model.id)}
-                          onChange={(e) => toggleModelEnabled(model.id, e.target.checked)}
-                        />
-                        <span className="popup-multi-model-name">{model.name}</span>
-                      </label>
+                {showModelSelector && dropdownPosition && (
+                  <div className="popup-model-dropdown" style={{ bottom: dropdownPosition.bottom, left: dropdownPosition.left }}>
+                    {availableModels.map(model => (
+                      <button
+                        key={model.id}
+                        className={`popup-model-option ${currentModel?.id === model.id ? 'active' : ''}`}
+                        onClick={() => handleModelSelect(model.id)}
+                      >
+                        {model.name}
+                      </button>
                     ))}
+                    {availableModels.length === 0 && (
+                      <div className="popup-model-empty">请先在设置中添加模型</div>
+                    )}
                   </div>
                 )}
               </div>
@@ -314,9 +206,6 @@ export default function App() {
                 <polyline points="9 18 15 12 9 6"></polyline>
               </svg>
             </button>
-
-            {/* 分隔线 */}
-            <div className="popup-divider"></div>
 
             {/* 设置卡片 */}
             <div className="popup-settings-card">

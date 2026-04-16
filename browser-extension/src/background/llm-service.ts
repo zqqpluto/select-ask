@@ -91,6 +91,7 @@ function buildMessages(
  */
 function adaptContext(context: LLMContext) {
   return {
+    selectedText: context.selected || '',
     beforeText: context.before || '',
     afterText: context.after || '',
   };

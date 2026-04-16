@@ -3828,24 +3828,24 @@ function initFloatingIcon(): void {
       const icon = createFloatingIcon({
         onFullPageTranslate: () => {
           isTranslating = true;
-          updateMenuState(true);
+          updateMenuState();
           startFullPageTranslation();
         },
         onRestore: () => {
           restoreAllTranslations();
           isTranslating = false;
-          updateMenuState(false);
+          updateMenuState();
         },
         onToggleFullPageTranslate: () => {
           if (isTranslating) {
             // 停止翻译：恢复原文
             restoreAllTranslations();
             isTranslating = false;
-            updateMenuState(false);
+            updateMenuState();
           } else {
             // 开始翻译 - 先更新UI，再启动翻译（fire-and-forget）
             isTranslating = true;
-            updateMenuState(true);
+            updateMenuState();
             startFullPageTranslation();
           }
         },

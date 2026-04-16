@@ -361,7 +361,7 @@ function buildTranslateMenuItem(options: FloatingIconOptions): HTMLButtonElement
 /**
  * 构建搜索菜单项 - 纯图标按钮
  */
-function buildSearchMenuItem(onHideMenu?: () => void): HTMLButtonElement {
+function _buildSearchMenuItem(onHideMenu?: () => void): HTMLButtonElement {
   const btn = document.createElement('button');
   btn.className = 'select-ask-floating-icon-menu-item';
   btn.setAttribute('data-action', 'search');
@@ -387,7 +387,7 @@ function buildSearchMenuItem(onHideMenu?: () => void): HTMLButtonElement {
 /**
  * 构建解释菜单项 - 纯图标按钮
  */
-function buildExplainMenuItem(onHideMenu?: () => void): HTMLButtonElement {
+function _buildExplainMenuItem(onHideMenu?: () => void): HTMLButtonElement {
   const btn = document.createElement('button');
   btn.className = 'select-ask-floating-icon-menu-item';
   btn.setAttribute('data-action', 'explain');
@@ -572,7 +572,7 @@ function buildSummarizeMenuItem(options: FloatingIconOptions, onHideMenu?: () =>
   const btn = document.createElement('button');
   btn.className = 'select-ask-floating-icon-menu-item';
   btn.setAttribute('data-action', 'summarize-page');
-  btn.setAttribute('data-tooltip', '总结');
+  btn.setAttribute('data-tooltip', '总结全文');
 
   const icon = buildSummarizeIcon();
   if (icon) btn.appendChild(icon);
@@ -824,15 +824,19 @@ function buildTranslateIcon(type: string): SVGSVGElement | null {
 }
 
 /**
- * 构建总结图标 SVG
+ * 构建总结图标 SVG — 与上下文菜单的 AI 总结图标保持一致
  */
 function buildSummarizeIcon(): SVGSVGElement | null {
-  const svg = createSvg('20', '20', '0 0 24 24');
-  appendSvgPath(svg, 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z');
-  appendSvgPath(svg, 'M14 2v6h6');
-  appendSvgPath(svg, 'M16 13H8');
-  appendSvgPath(svg, 'M16 17H8');
-  appendSvgPath(svg, 'M10 9H8');
+  const svg = createSvg('20', '20', '0 0 1024 1024');
+  svg.setAttribute('fill', 'currentColor');
+  // 第一个 path：文档形状
+  const p1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  p1.setAttribute('d', 'M725.76 9.344H185.770667q-61.994667 0-105.813334 43.818667T36.181333 158.976v706.048q0 61.994667 43.818667 105.813333t105.813333 43.818667h234.154667q17.237333 0 29.44-12.202667 12.202667-12.202667 12.202667-29.44 0-17.237333-12.202667-29.44-12.202667-12.202667-29.44-12.202666H185.813333q-66.346667 0-66.346666-66.346667V158.976q0-66.346667 66.346666-66.346667h539.904q66.346667 0 66.346667 66.346667v329.088q0 17.28 12.202667 29.44 12.202667 12.202667 29.44 12.202667 17.237333 0 29.44-12.16 12.202667-12.202667 12.202666-29.44V158.933333q0-61.994667-43.818666-105.813333T725.717333 9.344z m-37.290667 274.944q0 18.986667-13.44 32.426667-13.397333 13.397333-32.341333 13.397333H268.885333q-18.986667 0-32.426666-13.44-13.354667-13.397333-13.354667-32.384 0-18.944 13.397333-32.384 13.397333-13.397333 32.384-13.397333h373.76q18.986667 0 32.426667 13.397333 13.397333 13.44 13.397333 32.426667z m-207.658666 232.789333q0 18.944-13.397334 32.384-13.44 13.397333-32.426666 13.397334H268.928q-18.986667 0-32.384-13.397334-13.397333-13.44-13.397333-32.426666 0-18.944 13.397333-32.341334 13.397333-13.44 32.384-13.44h166.144q18.944 0 32.384 13.44 13.397333 13.397333 13.397333 32.384z');
+  svg.appendChild(p1);
+  // 第二个 path：闪电形状
+  const p2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  p2.setAttribute('d', 'M526.677333 1010.346667h85.973334l29.824-108.885334h136.96l29.866666 108.928h89.386667l-135.850667-424.746666h-100.309333l-135.850667 424.746666z m134.101334-174.805334l12.629333-46.421333c12.629333-44.16 24.661333-92.288 36.096-138.709333h2.304c12.629333 45.269333 24.064 94.549333 37.248 138.666666l12.629333 46.506667h-100.906666z m237.909333 174.848h84.821333v-424.746666h-84.821333v424.746666z');
+  svg.appendChild(p2);
   return svg;
 }
 
@@ -879,7 +883,7 @@ function appendSvgPath(svg: SVGSVGElement, d: string): void {
 /**
  * 更新菜单状态（用于翻译状态切换后刷新图标）
  */
-export function updateMenuState(isTranslating: boolean): void {
+export function updateMenuState(): void {
   if (!floatingIconEl) return;
   const refreshFn = (floatingIconEl as any).__refreshMenuState;
   if (refreshFn) refreshFn();
