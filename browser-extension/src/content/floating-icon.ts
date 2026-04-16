@@ -31,6 +31,7 @@ export interface FloatingIconOptions {
   onClickIcon?: () => void; // 点击图标（打开侧边栏）
   isTranslating?: boolean; // 是否正在翻译
   onHideMenu?: () => void; // 隐藏菜单回调
+  onModelSelect?: (modelId: string) => void; // 选择模型回调
 }
 
 /** 读取持久化比例 */
@@ -111,11 +112,9 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   const translateItem = buildTranslateMenuItem(options);
   const summarizeItem = buildSummarizeMenuItem(options, hideMenu);
   const historyItem = buildHistoryMenuItem(hideMenu);
-  const settingsItem = buildSettingsMenuItem(hideMenu);
   menu.appendChild(translateItem);
   menu.appendChild(summarizeItem);
   menu.appendChild(historyItem);
-  menu.appendChild(settingsItem);
   btn.appendChild(menu);
 
   container.appendChild(btn);
@@ -360,13 +359,220 @@ function buildTranslateMenuItem(options: FloatingIconOptions): HTMLButtonElement
 }
 
 /**
+ * 构建搜索菜单项 - 纯图标按钮
+ */
+function buildSearchMenuItem(onHideMenu?: () => void): HTMLButtonElement {
+  const btn = document.createElement('button');
+  btn.className = 'select-ask-floating-icon-menu-item';
+  btn.setAttribute('data-action', 'search');
+  btn.setAttribute('data-tooltip', '搜索');
+
+  const svg = createSvg('20', '20', '0 0 24 24');
+  appendSvgPath(svg, 'M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z');
+  appendSvgPath(svg, 'M19 10v2a7 7 0 0 1-14 0v-2');
+  appendSvgPath(svg, 'M12 19v4');
+  appendSvgPath(svg, 'M8 23h8');
+  btn.appendChild(svg);
+
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onHideMenu?.();
+    chrome.runtime.sendMessage({ type: 'OPEN_OPTIONS_PAGE' });
+  });
+
+  return btn;
+}
+
+/**
+ * 构建解释菜单项 - 纯图标按钮
+ */
+function buildExplainMenuItem(onHideMenu?: () => void): HTMLButtonElement {
+  const btn = document.createElement('button');
+  btn.className = 'select-ask-floating-icon-menu-item';
+  btn.setAttribute('data-action', 'explain');
+  btn.setAttribute('data-tooltip', '解释');
+
+  const svg = createSvg('20', '20', '0 0 24 24');
+  appendSvgPath(svg, 'M9 18h6');
+  appendSvgPath(svg, 'M10 22h4');
+  appendSvgPath(svg, 'M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14');
+  btn.appendChild(svg);
+
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onHideMenu?.();
+    // 触发解释功能 — 通过 content script 的主流程
+    chrome.runtime.sendMessage({ type: 'TOGGLE_SIDE_PANEL', action: 'explain' });
+  });
+
+  return btn;
+}
+
+/**
+ * 构建模型选择器菜单项 — 显示当前模型名称，点击弹出模型列表
+ */
+function buildModelSelectorMenuItem(
+  onHideMenu?: () => void,
+  onModelSelect?: (modelId: string) => void
+): HTMLElement {
+  const container = document.createElement('div');
+  container.className = 'select-ask-floating-icon-menu-model-container';
+
+  // 主按钮 — 显示当前模型名称
+  const btn = document.createElement('button');
+  btn.className = 'select-ask-floating-icon-menu-item select-ask-model-selector-btn';
+  btn.setAttribute('data-action', 'model-selector');
+  btn.setAttribute('data-tooltip', '切换模型');
+
+  // 加载图标
+  const loadingSvg = createSvg('20', '20', '0 0 24 24');
+  loadingSvg.classList.add('select-ask-menu-item-loading');
+  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  circle.setAttribute('cx', '12'); circle.setAttribute('cy', '12'); circle.setAttribute('r', '10');
+  circle.setAttribute('stroke-dasharray', '60'); circle.setAttribute('stroke-dashoffset', '20');
+  circle.setAttribute('stroke', 'currentColor'); circle.setAttribute('fill', 'none');
+  circle.setAttribute('stroke-width', '2');
+  loadingSvg.appendChild(circle);
+  btn.appendChild(loadingSvg);
+
+  // 模型名称标签
+  const label = document.createElement('span');
+  label.className = 'select-ask-model-selector-label';
+  label.textContent = '加载中...';
+  btn.appendChild(label);
+
+  // 箭头图标
+  const arrowSvg = createSvg('16', '16', '0 0 24 24');
+  arrowSvg.classList.add('select-ask-model-selector-arrow');
+  appendSvgPath(arrowSvg, 'M6 9l6 6 6-6');
+  arrowSvg.setAttribute('fill', 'none');
+  arrowSvg.setAttribute('stroke', 'currentColor');
+  arrowSvg.setAttribute('stroke-width', '2');
+  arrowSvg.setAttribute('stroke-linecap', 'round');
+  arrowSvg.setAttribute('stroke-linejoin', 'round');
+  btn.appendChild(arrowSvg);
+
+  container.appendChild(btn);
+
+  // 子菜单 — 模型列表
+  const subMenu = document.createElement('div');
+  subMenu.className = 'select-ask-floating-icon-menu select-ask-model-submenu';
+
+  // 异步加载模型
+  let currentModelId = '';
+  let modelsLoaded = false;
+
+  chrome.storage.sync.get(['app_config']).then((result) => {
+    // 移除加载中的旋转图标
+    loadingSvg.remove();
+
+    const config = result.app_config;
+    if (config && config.models) {
+      const enabledModels = config.models
+        .filter((m: { enabled: boolean; enableChat?: boolean }) => m.enabled && m.enableChat !== false);
+      const selectedIds: string[] = config.selectedChatModelIds || [];
+
+      const modelsToUse = selectedIds.length > 0
+        ? selectedIds
+            .map((id: string) => enabledModels.find((m: { id: string }) => m.id === id))
+            .filter((m: { enabled: boolean } | undefined): m is { enabled: boolean; id: string; name: string } => m !== undefined && m.enabled)
+        : enabledModels;
+
+      // 更新主按钮显示
+      const firstModel = modelsToUse[0];
+      if (firstModel) {
+        label.textContent = firstModel.name;
+        currentModelId = firstModel.id;
+      } else {
+        label.textContent = '未配置模型';
+      }
+
+      // 构建子菜单
+      if (modelsToUse.length > 1) {
+        modelsToUse.forEach((model: { id: string; name: string }) => {
+          const item = document.createElement('button');
+          item.className = 'select-ask-floating-icon-menu-item select-ask-model-option';
+          item.setAttribute('data-model-id', model.id);
+          if (model.id === (selectedIds[0] || firstModel?.id)) {
+            item.classList.add('active');
+          }
+
+          // 模型名称
+          const nameLabel = document.createElement('span');
+          nameLabel.className = 'select-ask-model-option-label';
+          nameLabel.textContent = model.name;
+          item.appendChild(nameLabel);
+
+          // 选中标记
+          const checkSvg = createSvg('16', '16', '0 0 24 24');
+          checkSvg.classList.add('select-ask-model-option-check');
+          appendSvgPath(checkSvg, 'M20 6L9 17l-5-5');
+          checkSvg.setAttribute('fill', 'none');
+          checkSvg.setAttribute('stroke', 'currentColor');
+          checkSvg.setAttribute('stroke-width', '2');
+          checkSvg.setAttribute('stroke-linecap', 'round');
+          checkSvg.setAttribute('stroke-linejoin', 'round');
+          item.appendChild(checkSvg);
+
+          item.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // 更新选中状态
+            subMenu.querySelectorAll('.select-ask-model-option').forEach((opt) => {
+              opt.classList.remove('active');
+            });
+            item.classList.add('active');
+            label.textContent = model.name;
+            currentModelId = model.id;
+
+            // 发送消息到 background 更新选中模型
+            chrome.runtime.sendMessage({
+              type: 'SET_SELECTED_CHAT_MODEL',
+              modelId: model.id,
+            });
+
+            onHideMenu?.();
+            onModelSelect?.(model.id);
+          });
+
+          subMenu.appendChild(item);
+        });
+      }
+    } else {
+      label.textContent = '未配置模型';
+    }
+    modelsLoaded = true;
+  }).catch(() => {
+    loadingSvg.remove();
+    label.textContent = '加载失败';
+  });
+
+  // 点击主按钮切换子菜单
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (modelsLoaded && subMenu.children.length > 1) {
+      btn.classList.toggle('active');
+      subMenu.classList.toggle('open');
+    }
+  });
+
+  container.appendChild(subMenu);
+
+  return container;
+}
+
+/**
  * 构建总结页面菜单项 - 纯图标按钮
  */
 function buildSummarizeMenuItem(options: FloatingIconOptions, onHideMenu?: () => void): HTMLButtonElement {
   const btn = document.createElement('button');
   btn.className = 'select-ask-floating-icon-menu-item';
   btn.setAttribute('data-action', 'summarize-page');
-  btn.setAttribute('data-tooltip', '总结页面');
+  btn.setAttribute('data-tooltip', '总结');
 
   const icon = buildSummarizeIcon();
   if (icon) btn.appendChild(icon);
@@ -423,6 +629,165 @@ function buildSettingsMenuItem(onHideMenu?: () => void): HTMLButtonElement {
   });
 
   return btn;
+}
+
+/**
+ * 构建提问输入框菜单项
+ * 点击后隐藏其他菜单项，展开为输入框 + 发送按钮
+ */
+function buildAskInputMenuItem(onHideMenu?: () => void): HTMLElement {
+  const container = document.createElement('div');
+  container.className = 'select-ask-floating-icon-ask-container';
+
+  // 初始状态：显示为带输入图标的菜单项
+  const triggerBtn = document.createElement('button');
+  triggerBtn.className = 'select-ask-floating-icon-menu-item';
+  triggerBtn.setAttribute('data-action', 'ask-input');
+  triggerBtn.setAttribute('data-tooltip', '提问');
+
+  const svg = createSvg('20', '20', '0 0 24 24');
+  appendSvgPath(svg, 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z');
+  triggerBtn.appendChild(svg);
+
+  container.appendChild(triggerBtn);
+
+  // 输入框区域（初始隐藏）— 发送按钮在输入框内部
+  const inputArea = document.createElement('div');
+  inputArea.className = 'select-ask-floating-icon-ask-input-area';
+  inputArea.style.display = 'none';
+
+  // 包裹层：textarea + 发送按钮（按钮绝对定位在输入框内部右侧）
+  const textareaWrapper = document.createElement('div');
+  textareaWrapper.className = 'select-ask-floating-icon-ask-textarea-wrapper';
+
+  const textarea = document.createElement('textarea');
+  textarea.className = 'select-ask-floating-icon-ask-textarea';
+  textarea.placeholder = '输入你的问题…';
+  textarea.rows = 1;
+
+  const sendBtn = document.createElement('button');
+  sendBtn.className = 'select-ask-floating-icon-ask-send';
+  sendBtn.title = '发送';
+  const sendSvg = createSvg('16', '16', '0 0 24 24');
+  sendSvg.setAttribute('fill', 'currentColor');
+  appendSvgPath(sendSvg, 'M12 4L4 14h5v6h6v-6h5L12 4z');
+  sendBtn.appendChild(sendSvg);
+
+  textareaWrapper.appendChild(textarea);
+  textareaWrapper.appendChild(sendBtn);
+  inputArea.appendChild(textareaWrapper);
+  container.appendChild(inputArea);
+
+  // 点击触发按钮 → 展开输入框
+  triggerBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // 隐藏同级菜单项
+    const menu = container.closest('.select-ask-floating-icon-menu');
+    if (menu) {
+      menu.querySelectorAll('.select-ask-floating-icon-menu-item').forEach((item) => {
+        if (item !== triggerBtn) {
+          (item as HTMLElement).style.display = 'none';
+        }
+      });
+      // 隐藏模型选择器等容器
+      menu.querySelectorAll('.select-ask-floating-icon-menu-model-container').forEach((el) => {
+        (el as HTMLElement).style.display = 'none';
+      });
+    }
+    triggerBtn.style.display = 'none';
+    inputArea.style.display = 'flex';
+    textarea.focus();
+  });
+
+  // 输入框自适应大小：先向右扩展宽度，达到最大宽度后向下扩展高度
+  const MIN_WIDTH = 200;
+  const MAX_WIDTH = 400;
+  const MAX_HEIGHT = 160;
+
+  textarea.addEventListener('input', () => {
+    // 临时设为单行以测量文本宽度
+    textarea.style.height = 'auto';
+
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (context) {
+      const computedStyle = window.getComputedStyle(textarea);
+      context.font = `${computedStyle.fontSize} ${computedStyle.fontFamily}`;
+      const textWidth = context.measureText(textarea.value || textarea.placeholder).width;
+
+      // 计算新宽度（内容宽度 + padding + 按钮空间）
+      const paddingLeft = 10;
+      const paddingRight = 36; // 留给发送按钮的空间
+      const padding = paddingLeft + paddingRight;
+      let newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, textWidth + padding));
+
+      container.style.minWidth = newWidth + 'px';
+      textarea.style.width = (newWidth - padding) + 'px';
+    }
+
+    // 计算高度
+    textarea.style.height = 'auto';
+    const newHeight = Math.min(MAX_HEIGHT, textarea.scrollHeight);
+    textarea.style.height = newHeight + 'px';
+
+    // 多行时发送按钮移到底部
+    if (newHeight > 40) {
+      sendBtn.classList.add('multi-line');
+    } else {
+      sendBtn.classList.remove('multi-line');
+    }
+  });
+
+  // 发送
+  const doSend = () => {
+    const text = textarea.value.trim();
+    if (!text) return;
+
+    // 通过 side panel 发送提问
+    chrome.runtime.sendMessage({
+      type: 'TOGGLE_SIDE_PANEL',
+      selectedText: '',
+      userMessage: text,
+      summaryPrompt: text,
+      pageUrl: window.location.href,
+      pageTitle: document.title,
+    });
+
+    // 收起输入框
+    inputArea.style.display = 'none';
+    triggerBtn.style.display = '';
+    const menu = container.closest('.select-ask-floating-icon-menu');
+    if (menu) {
+      menu.querySelectorAll('.select-ask-floating-icon-menu-item').forEach((item) => {
+        (item as HTMLElement).style.display = '';
+      });
+      menu.querySelectorAll('.select-ask-floating-icon-menu-model-container').forEach((el) => {
+        (el as HTMLElement).style.display = '';
+      });
+    }
+    textarea.value = '';
+    textarea.style.height = 'auto';
+    textarea.style.width = 'auto';
+    container.style.minWidth = '';
+    onHideMenu?.();
+  };
+
+  sendBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    doSend();
+  });
+
+  // Enter 发送，Shift+Enter 换行
+  textarea.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      doSend();
+    }
+  });
+
+  return container;
 }
 
 /**

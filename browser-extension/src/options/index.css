@@ -77,6 +77,70 @@ body {
   font-size: 14px;
   line-height: 1.5;
   max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 操作类型标签 */
+.history-action-type-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6366f1;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* 选中文本引用块 */
+.history-selected-text-quote {
+  margin: 0;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.8);
+  border-left: 3px solid rgba(99, 102, 241, 0.5);
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #86909c;
+  max-height: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 页面 URL 链接 */
+.history-page-url {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #6366f1;
+  padding: 4px 8px;
+  background: rgba(99, 102, 241, 0.06);
+  border-radius: 6px;
+  min-width: 0;
+  max-width: 100%;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s ease-out;
+  word-break: break-all;
+}
+
+.history-page-url:hover {
+  background: rgba(99, 102, 241, 0.12);
+  color: #4338ca;
+}
+
+.history-page-url-favicon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  opacity: 0.7;
+  border-radius: 2px;
+}
+
+.history-page-url span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 /* AI 消息内容 - 平铺无气泡 */

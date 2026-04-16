@@ -154,6 +154,21 @@ function escapeHtml(text: string): string {
   return div.innerHTML;
 }
 
+// 格式化 URL 显示：域名 + 精简路径
+function formatUrlForDisplay(url: string): { displayText: string; faviconUrl: string } {
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname.replace(/^www\./, '');
+    const path = parsed.pathname;
+    const pathShort = path.length > 30 ? path.slice(0, 27) + '...' : path;
+    const displayText = pathShort ? `${hostname}${pathShort}` : hostname;
+    const faviconUrl = `${parsed.origin}/favicon.ico`;
+    return { displayText, faviconUrl };
+  } catch {
+    return { displayText: url, faviconUrl: '' };
+  }
+}
+
 // 格式化耗时
 function formatDuration(ms: number): string {
   const seconds = Math.round(ms / 1000);
@@ -226,7 +241,7 @@ export default function App() {
 
   // 自动获取模型：用户输入 API Key 后延迟触发
   useEffect(() => {
-    if (!showModal || editingModel) return;
+    if (!showModal) return;
     const apiKey = formData.apiKey.trim();
     if (!apiKey || apiKey.length < 5) return;
     if (apiKey === autoFetchedApiKeyRef.current) return; // 已获取过
@@ -260,7 +275,20 @@ export default function App() {
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, [showModal, editingModel, formData.apiKey, formData.provider, formData.baseUrl]);
+  }, [showModal, formData.apiKey, formData.provider, formData.baseUrl]);
+
+  // 点击外部关闭模型下拉
+  useEffect(() => {
+    if (!showModelDropdown) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.model-dropdown-wrapper')) {
+        setShowModelDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showModelDropdown]);
 
   useEffect(() => {
     loadConfig();
@@ -362,37 +390,6 @@ export default function App() {
     // 加载翻译模型
     const translationModel = await getSelectedTranslationModel();
     setSelectedTranslationModelIdState(translationModel?.id || null);
-  };
-
-  // 格式化绝对时间
-  const formatAbsoluteTime = (timestamp: number): string => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const isToday = date.toDateString() === now.toDateString();
-
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-
-    if (isToday) {
-      return `今天 ${hours}:${minutes}`;
-    }
-
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const isYesterday = date.toDateString() === yesterday.toDateString();
-
-    if (isYesterday) {
-      return `昨天 ${hours}:${minutes}`;
-    }
-
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-
-    if (date.getFullYear() === now.getFullYear()) {
-      return `${month}/${day} ${hours}:${minutes}`;
-    }
-
-    return `${date.getFullYear()}/${month}/${day}`;
   };
 
   const scrollToBottom = () => {
@@ -509,8 +506,6 @@ export default function App() {
         setIsStreaming(false);
       });
 
-      const sessionToUpdate = updatedSessions.find(s => s.id === selectedSessionId);
-
       port.postMessage({
         type: 'LLM_STREAM_START',
         payload: {
@@ -524,32 +519,6 @@ export default function App() {
       setIsStreaming(false);
       alert(`发送失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
-  };
-
-  const handlePresetSelect = (presetId: string) => {
-    const preset = MODEL_PRESETS.find(p => p.id === presetId);
-    if (preset) {
-      setAvailableModels([]);
-      setFormData({
-        ...DEFAULT_FORM_DATA,
-        id: `custom-${Date.now()}`,
-        name: preset.name,
-        provider: preset.provider,
-        baseUrl: preset.baseUrl,
-        modelId: preset.modelId,
-      });
-    }
-  };
-
-  const handleProviderChange = (provider: ProviderType) => {
-    const defaults = PROVIDER_DEFAULTS[provider];
-    setAvailableModels([]);
-    setFormData({
-      ...formData,
-      provider,
-      baseUrl: defaults.baseUrl || formData.baseUrl,
-      modelId: defaults.modelId || formData.modelId,
-    });
   };
 
   // 从 API 获取可用模型列表
@@ -997,7 +966,7 @@ export default function App() {
                       onChange={() => {
                         const newVal = !showFloatingIcon;
                         setShowFloatingIcon(newVal);
-                        const config = getAppConfig().then(c => {
+                        getAppConfig().then(c => {
                           c.showFloatingIcon = newVal;
                           saveAppConfig(c);
                         });
@@ -1303,14 +1272,6 @@ export default function App() {
 
                   return (
                     <>
-                      {/* 引用卡片 */}
-                      <div className="px-4 py-3 border-b border-gray-100">
-                        <div className="bg-[#f7f8fa] border-l-[3px] border-l-[#165dff] rounded-md px-3 py-2">
-                          <div className="text-[11px] text-[#86909c] font-medium mb-1">📝 选中文本</div>
-                          <div className="text-[13px] text-[#4e5969] line-clamp-2 leading-relaxed">{session.selectedText}</div>
-                        </div>
-                      </div>
-
                       {/* 消息列表 - 与侧边栏一致的样式 */}
                       <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-[16px]">
                         {session.messages.map((msg, idx) => (
@@ -1321,7 +1282,42 @@ export default function App() {
                             {msg.role === 'user' ? (
                               <div className="history-message-wrapper history-message-user-wrapper">
                                 <div className="history-message-content">
-                                  {escapeHtml(msg.content)}
+                                  {/* 第一条用户消息：显示操作类型 + 选中文本引用 + 页面URL */}
+                                  {idx === 0 && session.selectedText ? (
+                                    <>
+                                      <span className="history-action-type-label">{msg.content}</span>
+                                      <blockquote className="history-selected-text-quote">
+                                        {escapeHtml(session.selectedText)}
+                                      </blockquote>
+                                      {session.pageUrl && (() => {
+                                        const { displayText, faviconUrl } = formatUrlForDisplay(session.pageUrl);
+                                        return (
+                                          <a
+                                            href={session.pageUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="history-page-url"
+                                            title={session.pageUrl}
+                                          >
+                                            {faviconUrl && (
+                                              <img
+                                                src={faviconUrl}
+                                                alt=""
+                                                className="history-page-url-favicon"
+                                                onError={(e) => {
+                                                  (e.target as HTMLImageElement).style.display = 'none';
+                                                }}
+                                              />
+                                            )}
+                                            <span>{displayText}</span>
+                                          </a>
+                                        );
+                                      })()}
+                                    </>
+                                  ) : (
+                                    /* 后续消息正常显示 */
+                                    escapeHtml(msg.content)
+                                  )}
                                 </div>
                                 <div className="history-message-actions">
                                   <button
@@ -1418,7 +1414,7 @@ export default function App() {
                                           <circle cx="12" cy="12" r="10"/>
                                           <path d="M12 6v6l4 2"/>
                                         </svg>
-                                        <span className="history-reasoning-model">{currentModel?.name || 'AI'}</span>
+                                        <span className="history-reasoning-model">{currentChatModel?.name || 'AI'}</span>
                                         <span>思考中...</span>
                                       </div>
                                     </div>
@@ -1771,7 +1767,7 @@ export default function App() {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl border border-gray-200 max-h-[90vh] overflow-y-auto scroll-smooth overscroll-contain">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl border border-gray-200 max-h-[90vh] overflow-y-auto scroll-smooth overscroll-contain">
             <div className="px-6 py-4 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-semibold text-gray-900">
@@ -1798,7 +1794,7 @@ export default function App() {
               <div className="px-6 py-4 border-b border-gray-200">
                 <label className="block text-sm font-medium text-gray-700 mb-3">
                   选择供应商
-                  <span className="ml-1 text-xs text-gray-400 font-normal">（自动填充地址和默认模型）</span>
+                  <span className="ml-1 text-xs text-gray-400 font-normal">（自动填充 API 地址）</span>
                 </label>
                 {/* 主流模型 */}
                 <div className="mb-3">
@@ -1819,12 +1815,13 @@ export default function App() {
                           type="button"
                           onClick={() => {
                             setAvailableModels([]);
+                            setShowModelDropdown(false);
                             setFormData({
                               ...DEFAULT_FORM_DATA,
                               id: `custom-${Date.now()}`,
                               provider,
                               baseUrl: defaults.baseUrl,
-                              modelId: defaults.modelId,
+                              modelId: '',
                             });
                           }}
                           className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm transition-all whitespace-nowrap ${
@@ -1845,15 +1842,15 @@ export default function App() {
                   <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">OpenAI 兼容</p>
                   <div className="flex flex-wrap gap-2">
                     {([
-                      { label: 'Moonshot · Kimi', provider: 'openai-compat' as ProviderType, baseUrl: 'https://api.moonshot.cn/v1', modelId: 'moonshot-v1-8k' },
-                      { label: '字节豆包', provider: 'openai-compat' as ProviderType, baseUrl: 'https://ark.cn-beijing.volces.com/api/v3', modelId: '' },
-                      { label: '百度文心', provider: 'openai-compat' as ProviderType, baseUrl: 'https://qianfan.baidubce.com/v2', modelId: '' },
-                      { label: 'MiniMax', provider: 'openai-compat' as ProviderType, baseUrl: 'https://api.minimax.chat/v1', modelId: '' },
-                      { label: '硅基流动', provider: 'openai-compat' as ProviderType, baseUrl: 'https://api.siliconflow.cn/v1', modelId: '' },
-                      { label: 'Google Gemini', provider: 'openai-compat' as ProviderType, baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', modelId: 'gemini-2.0-flash' },
-                      { label: 'Groq', provider: 'openai-compat' as ProviderType, baseUrl: 'https://api.groq.com/openai/v1', modelId: 'llama-3.1-70b-versatile' },
-                      { label: 'Mistral AI', provider: 'openai-compat' as ProviderType, baseUrl: 'https://api.mistral.ai/v1', modelId: 'mistral-large-latest' },
-                    ]).map(({ label, provider, baseUrl, modelId }) => {
+                      { label: 'Moonshot · Kimi', provider: 'openai-compat' as ProviderType, baseUrl: 'https://api.moonshot.cn/v1', icon: '🌙', iconColor: 'bg-indigo-500' },
+                      { label: '字节豆包', provider: 'openai-compat' as ProviderType, baseUrl: 'https://ark.cn-beijing.volces.com/api/v3', icon: '🫘', iconColor: 'bg-red-500' },
+                      { label: '百度文心', provider: 'openai-compat' as ProviderType, baseUrl: 'https://qianfan.baidubce.com/v2', icon: '🔵', iconColor: 'bg-blue-600' },
+                      { label: 'MiniMax', provider: 'openai-compat' as ProviderType, baseUrl: 'https://api.minimax.chat/v1', icon: 'M', iconColor: 'bg-violet-500' },
+                      { label: '硅基流动', provider: 'openai-compat' as ProviderType, baseUrl: 'https://api.siliconflow.cn/v1', icon: 'S', iconColor: 'bg-teal-500' },
+                      { label: 'Google Gemini', provider: 'openai-compat' as ProviderType, baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', icon: 'G', iconColor: 'bg-green-500' },
+                      { label: 'Groq', provider: 'openai-compat' as ProviderType, baseUrl: 'https://api.groq.com/openai/v1', icon: '⚡', iconColor: 'bg-yellow-600' },
+                      { label: 'Mistral AI', provider: 'openai-compat' as ProviderType, baseUrl: 'https://api.mistral.ai/v1', icon: '🌬', iconColor: 'bg-sky-500' },
+                    ]).map(({ label, provider, baseUrl, icon, iconColor }) => {
                       const isSelected = formData.provider === provider && formData.baseUrl === baseUrl;
                       return (
                         <button
@@ -1861,12 +1858,13 @@ export default function App() {
                           type="button"
                           onClick={() => {
                             setAvailableModels([]);
+                            setShowModelDropdown(false);
                             setFormData({
                               ...DEFAULT_FORM_DATA,
                               id: `custom-${Date.now()}`,
                               provider,
                               baseUrl,
-                              modelId,
+                              modelId: '',
                             });
                           }}
                           className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm transition-all whitespace-nowrap ${
@@ -1875,7 +1873,9 @@ export default function App() {
                               : 'border-gray-200 text-gray-600 hover:border-blue-300 hover:bg-blue-50/50'
                           }`}
                         >
-                          {getProviderIcon('openai-compat')}
+                          <div className={`w-5 h-5 ${iconColor} rounded-md flex items-center justify-center text-white text-[10px] font-semibold`}>
+                            {icon}
+                          </div>
                           <span>{label}</span>
                         </button>
                       );
@@ -1898,6 +1898,7 @@ export default function App() {
                           type="button"
                           onClick={() => {
                             setAvailableModels([]);
+                            setShowModelDropdown(false);
                             setFormData({
                               ...DEFAULT_FORM_DATA,
                               id: `custom-${Date.now()}`,
@@ -1942,6 +1943,9 @@ export default function App() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   API Key <span className="text-red-500">*</span>
+                  {formData.provider && formData.provider !== 'local-ollama' && formData.provider !== 'local-lm-studio' && (
+                    <span className="ml-2 text-xs text-gray-400 font-normal">— 输入后自动获取模型列表</span>
+                  )}
                 </label>
                 <div className="relative">
                   <input
@@ -1988,7 +1992,7 @@ export default function App() {
                         onFocus={() => {
                           if (availableModels.length > 0) setShowModelDropdown(true);
                         }}
-                        placeholder="gpt-4o"
+                        placeholder={availableModels.length > 0 ? '选择或输入模型名称' : 'gpt-4o'}
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
                       />
                       {/* 模型下拉列表 */}
@@ -2016,21 +2020,36 @@ export default function App() {
                         </div>
                       )}
                     </div>
-                    {loadingModels && (
-                      <div className="px-3 py-2.5 text-sm text-gray-400 border border-gray-200 rounded-lg flex items-center gap-2">
-                        <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                        </svg>
-                        获取中
-                      </div>
-                    )}
+                    <button
+                      type="button"
+                      onClick={fetchAvailableModels}
+                      disabled={loadingModels || !formData.apiKey.trim()}
+                      className="px-3 py-2.5 text-sm font-medium text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center gap-1.5"
+                      title="获取模型列表"
+                    >
+                      {loadingModels ? (
+                        <>
+                          <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                          </svg>
+                          获取中
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          获取模型
+                        </>
+                      )}
+                    </button>
                   </div>
                   {availableModels.length > 0 && (
-                    <p className="text-xs text-green-600 mt-1">✓ 已获取 {availableModels.length} 个可用模型，可从上方列表中选择</p>
+                    <p className="text-xs text-green-600 mt-1.5">✓ 已获取 {availableModels.length} 个可用模型，可从下拉列表选择</p>
                   )}
-                  {availableModels.length === 0 && !loadingModels && formData.apiKey.length > 5 && (
-                    <p className="text-xs text-gray-400 mt-1">正在自动获取模型列表...</p>
+                  {availableModels.length === 0 && !loadingModels && formData.apiKey.length > 0 && (
+                    <p className="text-xs text-gray-400 mt-1.5">点击"获取模型"按钮获取可用模型列表，或手动输入模型名称</p>
                   )}
                 </div>
               </div>

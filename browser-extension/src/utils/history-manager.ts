@@ -110,6 +110,8 @@ export function generateTitle(selectedText: string, type: string): string {
     explain: '解释',
     translate: '翻译',
     question: '问答',
+    search: '搜索',
+    summarize: '总结',
     custom: '自定义',
   };
   return `${typeNames[type] || type}：${truncated}`;

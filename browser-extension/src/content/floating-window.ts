@@ -1,6 +1,6 @@
 /**
- * 悬浮翻译窗口
- * 选中文本后点击翻译，在选区附近显示悬浮窗口
+ * 悬浮翻译窗口 — 双栏布局
+ * 左侧原文，右侧译文。原文自动识别语言，可手动调整；译文默认转系统语言，可调整。支持快速复制译文。
  */
 
 import { marked } from 'marked';
@@ -9,11 +9,19 @@ import { TARGET_LANGUAGES } from '../types/config';
 const WINDOW_Z_INDEX = 2147483646;
 const FLOAT_PADDING = 12;
 
-/** 获取语言标签显示文本 */
+/** 语言代码 → 显示标签的映射（auto 始终显示"智能"） */
 function getLangLabel(code: string): string {
   if (code === 'auto') return '智能';
   const lang = TARGET_LANGUAGES.find(l => l.code === code);
   return lang ? lang.label : code;
+}
+
+/** 基于 navigator.language 推断系统语言（用于译文默认目标） */
+function detectSystemLanguage(): string {
+  const browserLang = navigator.language || 'zh-CN';
+  const code = browserLang.toLowerCase().split('-')[0];
+  // 中文系统默认翻成英文，其他默认翻成中文
+  return code === 'zh' ? 'en' : 'zh';
 }
 
 export interface FloatingTranslationWindow {
@@ -40,7 +48,9 @@ export function createFloatingTranslationWindow(
     onClose?: () => void;
   }
 ): FloatingTranslationWindow {
-  let currentLang = options?.initialTargetLanguage || 'en';
+  const systemLang = detectSystemLanguage();
+  let sourceLang = 'auto';   // 原文语言（auto=智能识别）
+  let targetLang = options?.initialTargetLanguage || systemLang;
   let fullContent = '';
   let isStreaming = false;
   let isDestroyed = false;
@@ -48,6 +58,37 @@ export function createFloatingTranslationWindow(
   const windowEl = document.createElement('div');
   windowEl.className = 'select-ask-float-window';
   windowEl.style.zIndex = String(WINDOW_Z_INDEX);
+
+  // 构建语言选项 HTML（供两个下拉菜单复用）
+  const sourceLangOptions = `
+    <button class="select-ask-float-lang-option${sourceLang === 'auto' ? ' active' : ''}" value="auto">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+        <polyline points="21 3 21 9 15 9"/>
+      </svg>
+      <span>智能识别</span>
+    </button>
+    ${TARGET_LANGUAGES.map(lang => `
+      <button class="select-ask-float-lang-option${lang.code === sourceLang ? ' active' : ''}" value="${lang.code}">
+        <span>${lang.label}</span>
+      </button>
+    `).join('')}
+  `;
+
+  const targetLangOptions = `
+    <button class="select-ask-float-lang-option${targetLang === 'auto' ? ' active' : ''}" value="auto">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+        <polyline points="21 3 21 9 15 9"/>
+      </svg>
+      <span>智能识别</span>
+    </button>
+    ${TARGET_LANGUAGES.map(lang => `
+      <button class="select-ask-float-lang-option${lang.code === targetLang ? ' active' : ''}" value="${lang.code}">
+        <span>${lang.label}</span>
+      </button>
+    `).join('')}
+  `;
 
   windowEl.innerHTML = `
     <div class="select-ask-float-header">
@@ -65,8 +106,17 @@ export function createFloatingTranslationWindow(
         <span class="select-ask-float-title">翻译</span>
       </div>
       <div class="select-ask-float-header-right">
-        <button class="select-ask-float-lang-btn" title="目标语言">
-          <span class="select-ask-float-lang-label">${getLangLabel(currentLang)}</span>
+        <!-- 原文语言选择 -->
+        <button class="select-ask-float-lang-btn" data-lang-panel="source" title="原文语言">
+          <span class="select-ask-float-lang-label">${getLangLabel(sourceLang)}</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m6 9 6 6 6-6"/>
+          </svg>
+        </button>
+        <span class="select-ask-float-arrow">→</span>
+        <!-- 译文语言选择 -->
+        <button class="select-ask-float-lang-btn" data-lang-panel="target" title="译文语言">
+          <span class="select-ask-float-lang-label">${getLangLabel(targetLang)}</span>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="m6 9 6 6 6-6"/>
           </svg>
@@ -79,105 +129,158 @@ export function createFloatingTranslationWindow(
         </button>
       </div>
     </div>
-    <div class="select-ask-float-content">
-      <div class="select-ask-float-body"></div>
-      <div class="select-ask-float-streaming-cursor"></div>
+    <div class="select-ask-float-body-split">
+      <!-- 左侧：原文面板 -->
+      <div class="select-ask-float-panel select-ask-float-panel-source">
+        <div class="select-ask-float-panel-label">原文</div>
+        <div class="select-ask-float-panel-content select-ask-float-source-text"></div>
+        <div class="select-ask-float-source-streaming-cursor"></div>
+      </div>
+      <!-- 右侧：译文面板 -->
+      <div class="select-ask-float-panel select-ask-float-panel-target">
+        <div class="select-ask-float-panel-header">
+          <span class="select-ask-float-panel-label">译文</span>
+          <button class="select-ask-float-copy-btn" title="复制译文">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+              <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+            </svg>
+          </button>
+        </div>
+        <div class="select-ask-float-panel-content select-ask-float-target-text"></div>
+        <div class="select-ask-float-target-streaming-cursor"></div>
+      </div>
     </div>
-    <div class="select-ask-float-actions">
-      <button class="select-ask-float-action-btn" data-action="copy">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
-          <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
-        </svg>
-        <span>复制</span>
-      </button>
+    <!-- 原文语言下拉菜单 -->
+    <div class="select-ask-float-lang-dropdown select-ask-float-lang-dropdown-source">
+      ${sourceLangOptions}
     </div>
-    <div class="select-ask-float-lang-dropdown">
-      <button class="select-ask-float-lang-option" value="auto">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-          <polyline points="21 3 21 9 15 9"/>
-        </svg>
-        <span>智能识别</span>
-      </button>
-      ${TARGET_LANGUAGES.map(lang => `
-        <button class="select-ask-float-lang-option${lang.code === currentLang ? ' active' : ''}" value="${lang.code}">
-          <span>${lang.label}</span>
-        </button>
-      `).join('')}
+    <!-- 译文语言下拉菜单 -->
+    <div class="select-ask-float-lang-dropdown select-ask-float-lang-dropdown-target">
+      ${targetLangOptions}
+    </div>
+    <!-- 加载中状态 -->
+    <div class="select-ask-float-loading-overlay" style="display:none;">
+      <div class="select-ask-float-loading-dots">
+        <span></span><span></span><span></span>
+      </div>
     </div>
   `;
 
-  const bodyEl = windowEl.querySelector('.select-ask-float-body') as HTMLElement;
-  const cursorEl = windowEl.querySelector('.select-ask-float-streaming-cursor') as HTMLElement;
-  const langBtn = windowEl.querySelector('.select-ask-float-lang-btn') as HTMLButtonElement;
-  const langDropdown = windowEl.querySelector('.select-ask-float-lang-dropdown') as HTMLElement;
-  const langLabel = windowEl.querySelector('.select-ask-float-lang-label') as HTMLElement;
+  // --- Element references ---
+  const sourceTextEl = windowEl.querySelector('.select-ask-float-source-text') as HTMLElement;
+  const targetTextEl = windowEl.querySelector('.select-ask-float-target-text') as HTMLElement;
+  const sourceLangBtn = windowEl.querySelector('[data-lang-panel="source"]') as HTMLButtonElement;
+  const targetLangBtn = windowEl.querySelector('[data-lang-panel="target"]') as HTMLButtonElement;
+  const sourceDropdown = windowEl.querySelector('.select-ask-float-lang-dropdown-source') as HTMLElement;
+  const targetDropdown = windowEl.querySelector('.select-ask-float-lang-dropdown-target') as HTMLElement;
+  const copyBtn = windowEl.querySelector('.select-ask-float-copy-btn') as HTMLButtonElement;
+  const loadingOverlay = windowEl.querySelector('.select-ask-float-loading-overlay') as HTMLElement;
 
-  // 语言按钮：点击显示/隐藏下拉菜单
-  langBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    // 智能定位：如果下方空间不足，在上方显示
-    const dropdownRect = langDropdown.getBoundingClientRect();
-    const btnRect = langBtn.getBoundingClientRect();
+  const sourceLangLabel = sourceLangBtn.querySelector('.select-ask-float-lang-label') as HTMLElement;
+  const targetLangLabel = targetLangBtn.querySelector('.select-ask-float-lang-label') as HTMLElement;
+
+  // --- Dropdown open/close ---
+  function openDropdown(dropdown: HTMLElement, triggerBtn: HTMLButtonElement) {
+    // 先关闭其他下拉
+    [sourceDropdown, targetDropdown].forEach(dd => {
+      if (dd !== dropdown) dd.classList.remove('open');
+    });
+
+    // 将下拉菜单移到 body，使用 fixed 定位避免被窗口 overflow:hidden 裁剪
+    if (dropdown.parentElement !== document.body) {
+      dropdown.style.position = 'fixed';
+      document.body.appendChild(dropdown);
+    }
+
+    const btnRect = triggerBtn.getBoundingClientRect();
+    const dropdownHeight = 280;
     const spaceBelow = window.innerHeight - btnRect.bottom;
-    const dropdownHeight = dropdownRect.height || 280; // 默认估算高度
     const shouldShowAbove = spaceBelow < dropdownHeight;
 
     if (shouldShowAbove) {
-      langDropdown.style.top = 'auto';
-      langDropdown.style.bottom = '100%';
-      langDropdown.style.transform = 'translateY(-4px)';
+      dropdown.style.top = `${btnRect.top - 4}px`;
+      dropdown.style.bottom = 'auto';
+      dropdown.style.transform = 'translateY(-100%)';
     } else {
-      langDropdown.style.top = '100%';
-      langDropdown.style.bottom = 'auto';
-      langDropdown.style.transform = 'translateY(4px)';
+      dropdown.style.top = `${btnRect.bottom + 4}px`;
+      dropdown.style.bottom = 'auto';
+      dropdown.style.transform = 'none';
     }
+    dropdown.style.left = `${btnRect.left}px`;
+    dropdown.style.right = 'auto';
 
-    langDropdown.classList.toggle('open');
+    dropdown.classList.add('open');
+  }
+
+  function closeAllDropdowns() {
+    sourceDropdown.classList.remove('open');
+    targetDropdown.classList.remove('open');
+  }
+
+  sourceLangBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openDropdown(sourceDropdown, sourceLangBtn);
   });
 
-  // 语言选项点击
-  langDropdown.addEventListener('click', (e) => {
-    const option = (e.target as HTMLElement).closest('.select-ask-float-lang-option') as HTMLButtonElement;
-    if (!option) return;
+  targetLangBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openDropdown(targetDropdown, targetLangBtn);
+  });
 
-    currentLang = option.value;
-    langLabel.textContent = getLangLabel(currentLang);
-    langDropdown.classList.remove('open');
+  // --- Language option click (delegate) ---
+  function handleLangOptionClick(dropdown: HTMLElement, isSource: boolean) {
+    dropdown.addEventListener('click', (e) => {
+      const option = (e.target as HTMLElement).closest('.select-ask-float-lang-option') as HTMLButtonElement;
+      if (!option) return;
 
-    // 更新 active 状态
-    langDropdown.querySelectorAll('.select-ask-float-lang-option').forEach(btn => {
-      btn.classList.toggle('active', (btn as HTMLButtonElement).value === currentLang);
+      const newLang = option.value;
+      if (isSource) {
+        sourceLang = newLang;
+        sourceLangLabel.textContent = getLangLabel(newLang);
+      } else {
+        targetLang = newLang;
+        targetLangLabel.textContent = getLangLabel(newLang);
+      }
+
+      // 更新 active
+      dropdown.querySelectorAll('.select-ask-float-lang-option').forEach(btn => {
+        btn.classList.toggle('active', (btn as HTMLButtonElement).value === newLang);
+      });
+
+      closeAllDropdowns();
+
+      if (options?.onLanguageChange && options?.originalText) {
+        options.onLanguageChange(isSource ? sourceLang : targetLang);
+      }
     });
+  }
 
-    if (options?.onLanguageChange && options?.originalText) {
-      options.onLanguageChange(currentLang);
-    }
-  });
+  handleLangOptionClick(sourceDropdown, true);
+  handleLangOptionClick(targetDropdown, false);
 
-  // 点击外部关闭下拉菜单
-  const closeDropdownHandler = () => {
-    langDropdown.classList.remove('open');
-  };
-  document.addEventListener('click', closeDropdownHandler);
+  document.addEventListener('click', closeAllDropdowns);
 
-  // 复制按钮
-  const copyBtn = windowEl.querySelector('[data-action="copy"]') as HTMLButtonElement;
+  // --- Copy button ---
   copyBtn.addEventListener('click', async (e) => {
     e.stopPropagation();
     try {
       await navigator.clipboard.writeText(fullContent);
-      const originalText = copyBtn.querySelector('span')!.textContent;
-      copyBtn.querySelector('span')!.textContent = '已复制';
       copyBtn.classList.add('success');
+      copyBtn.title = '已复制';
       setTimeout(() => {
-        copyBtn.querySelector('span')!.textContent = originalText;
         copyBtn.classList.remove('success');
+        copyBtn.title = '复制译文';
       }, 1500);
     } catch { /* ignore */ }
   });
 
+  // 设置原文内容
+  if (options?.originalText) {
+    sourceTextEl.textContent = options.originalText;
+  }
+
+  // --- Positioning ---
   function positionWindow() {
     const rect = range.getBoundingClientRect();
     const winRect = windowEl.getBoundingClientRect();
@@ -207,13 +310,13 @@ export function createFloatingTranslationWindow(
   document.body.appendChild(windowEl);
   positionWindow();
 
-  // 拖拽
+  // --- Drag ---
   const headerEl = windowEl.querySelector('.select-ask-float-header') as HTMLElement;
   let isDragging = false;
   let dragStartX = 0, dragStartY = 0, dragStartLeft = 0, dragStartTop = 0;
 
   function onDragStart(e: MouseEvent) {
-    if ((e.target as HTMLElement).closest('.select-ask-float-lang-btn, .select-ask-float-close, .select-ask-float-lang-option, .select-ask-float-action-btn')) return;
+    if ((e.target as HTMLElement).closest('.select-ask-float-lang-btn, .select-ask-float-close, .select-ask-float-lang-option, .select-ask-float-copy-btn')) return;
     isDragging = true;
     dragStartX = e.clientX;
     dragStartY = e.clientY;
@@ -246,7 +349,7 @@ export function createFloatingTranslationWindow(
   document.addEventListener('mousemove', onDragMove);
   document.addEventListener('mouseup', onDragEnd);
 
-  // 关闭
+  // --- Close ---
   const closeBtn = windowEl.querySelector('.select-ask-float-close') as HTMLButtonElement;
   closeBtn.addEventListener('click', () => {
     if (isDestroyed) return;
@@ -254,7 +357,6 @@ export function createFloatingTranslationWindow(
     options?.onClose?.();
   });
 
-  // 点击外部关闭
   function onClickOutside(e: MouseEvent) {
     if (isDestroyed) return;
     if (!(e.target as HTMLElement).closest('.select-ask-float-window')) {
@@ -266,26 +368,31 @@ export function createFloatingTranslationWindow(
     document.addEventListener('mousedown', onClickOutside);
   }, 100);
 
+  // --- Public methods ---
   function setContent(text: string) {
     fullContent = text;
-    bodyEl.innerHTML = marked.parse(text) as string;
+    targetTextEl.innerHTML = marked.parse(text) as string;
   }
 
   function appendContent(chunk: string) {
     fullContent += chunk;
-    bodyEl.innerHTML = marked.parse(fullContent) as string;
-    const contentEl = windowEl.querySelector('.select-ask-float-content') as HTMLElement;
+    targetTextEl.innerHTML = marked.parse(fullContent) as string;
+    const contentEl = windowEl.querySelector('.select-ask-float-panel-target') as HTMLElement;
     contentEl.scrollTop = contentEl.scrollHeight;
   }
 
   function setStreaming(streaming: boolean) {
     isStreaming = streaming;
-    cursorEl.style.display = streaming ? 'inline' : 'none';
+    const sourceCursor = windowEl.querySelector('.select-ask-float-source-streaming-cursor') as HTMLElement;
+    const targetCursor = windowEl.querySelector('.select-ask-float-target-streaming-cursor') as HTMLElement;
+    if (sourceCursor) sourceCursor.style.display = streaming ? 'inline' : 'none';
+    if (targetCursor) targetCursor.style.display = streaming ? 'inline' : 'none';
   }
 
   function setError(error: string) {
-    bodyEl.innerHTML = `<span class="select-ask-float-error">${escapeHtml(error)}</span>`;
+    targetTextEl.innerHTML = `<span class="select-ask-float-error">${escapeHtml(error)}</span>`;
     setStreaming(false);
+    loadingOverlay.style.display = 'none';
   }
 
   function show() {
@@ -302,9 +409,9 @@ export function createFloatingTranslationWindow(
   }
 
   function setTargetLanguage(lang: string) {
-    currentLang = lang;
-    langLabel.textContent = getLangLabel(lang);
-    langDropdown.querySelectorAll('.select-ask-float-lang-option').forEach(btn => {
+    targetLang = lang;
+    targetLangLabel.textContent = getLangLabel(lang);
+    targetDropdown.querySelectorAll('.select-ask-float-lang-option').forEach(btn => {
       btn.classList.toggle('active', (btn as HTMLButtonElement).value === lang);
     });
   }
@@ -315,7 +422,7 @@ export function createFloatingTranslationWindow(
     document.removeEventListener('mousedown', onClickOutside);
     document.removeEventListener('mousemove', onDragMove);
     document.removeEventListener('mouseup', onDragEnd);
-    document.removeEventListener('click', closeDropdownHandler);
+    document.removeEventListener('click', closeAllDropdowns);
     headerEl.removeEventListener('mousedown', onDragStart);
     windowEl.remove();
   }

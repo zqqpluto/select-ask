@@ -15,13 +15,15 @@ export interface HistoryMessage {
 export interface HistorySession {
   id: string;
   title: string;
-  type: 'explain' | 'translate' | 'question' | 'custom';
+  type: 'explain' | 'translate' | 'question' | 'search' | 'summarize' | 'custom';
   selectedText: string;
   messages: HistoryMessage[];
   modelId: string;
   modelName: string;
   createdAt: number;
   updatedAt: number;
+  pageUrl?: string;
+  pageTitle?: string;
 }
 
 export interface HistoryStorage {

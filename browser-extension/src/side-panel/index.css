@@ -127,16 +127,15 @@ body {
 }
 
 .side-panel-page-url span {
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+  word-break: break-all;
 }
 
 .side-panel-page-url a {
   color: #6366f1;
   text-decoration: none;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
@@ -351,6 +350,19 @@ body {
   transition: all 0.3s ease-out;
   white-space: pre-wrap;
   word-break: break-word;
+  position: relative;
+}
+
+/* 收起状态添加右侧渐变遮罩，提示有省略内容 */
+.side-panel-message-user-wrapper .side-panel-selected-text-blockquote:not(.expanded)::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 30px;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.9));
+  pointer-events: none;
 }
 
 .side-panel-message-user-wrapper .side-panel-selected-text-blockquote.expanded {
@@ -358,6 +370,10 @@ body {
   overflow-y: auto;
   -webkit-line-clamp: unset;
   background: rgba(255, 255, 255, 0.9);
+}
+
+.side-panel-message-user-wrapper .side-panel-selected-text-blockquote.expanded::after {
+  display: none;
 }
 
 /* 用户消息气泡包装器 - 整体气泡样式 */
@@ -1245,13 +1261,21 @@ body {
   transform: scale(0.98);
 }
 
+/* 操作按钮行：总结网页（左）+ 新建会话（右） */
+.side-panel-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
 /* 网页总结按钮 */
 .side-panel-summarize-btn {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
-  margin-bottom: 6px;
   background: #f2f3f5;
   border: 1px solid #e5e6eb;
   border-radius: 20px;
@@ -1259,8 +1283,8 @@ body {
   color: #4e5969;
   cursor: pointer;
   transition: all 0.15s ease;
-  align-self: flex-start;
   font-weight: 400;
+  white-space: nowrap;
 }
 
 .side-panel-summarize-btn:hover {
@@ -1280,4 +1304,35 @@ body {
 
 .side-panel-summarize-btn:hover svg {
   color: #4e5969;
+}
+
+/* 新建会话按钮 — 仅图标 */
+.side-panel-new-chat-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.side-panel-new-chat-btn:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+.side-panel-new-chat-btn:active {
+  transform: scale(0.95);
+}
+
+.side-panel-new-chat-btn svg {
+  flex-shrink: 0;
 }

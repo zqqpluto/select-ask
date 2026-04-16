@@ -144,7 +144,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     case 'OPEN_SIDE_PANEL': {
-      // 打开 Side Panel（仅打开，不切换）
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         const tab = tabs[0];
         if (!tab?.windowId || !tab.id) {
@@ -156,6 +155,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           .then(() => {
             sidePanelOpenTabs.add(tab.id);
             sendResponse({ success: true });
+            // 写入 pending 数据，供新打开或已打开的侧边栏读取
             chrome.storage.local.set({
               pending_sidebar_init: {
                 selectedText: message.selectedText,
@@ -166,6 +166,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 pageTitle: message.pageTitle,
               },
             }).catch(console.error);
+            // 尝试通知已打开的侧边栏（如果侧边栏未打开会失败，忽略）
+            chrome.runtime.sendMessage({
+              type: 'SIDEBAR_INIT',
+              selectedText: message.selectedText,
+              context: message.context,
+              userMessage: message.userMessage,
+              summaryPrompt: message.summaryPrompt,
+              pageUrl: message.pageUrl,
+              pageTitle: message.pageTitle,
+            }).catch(() => {});
           })
           .catch((error) => {
             console.error('Failed to open Side Panel:', error);
@@ -190,7 +200,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true; // 异步响应
 
     case 'OPEN_OPTIONS_PAGE':
-      // 打开配置页面（支持指定 tab）
+      // 打开配置页面（支持指定 tab）— 同时关闭已打开的侧边栏
       if (message.tab === 'history') {
         chrome.tabs.create({ url: chrome.runtime.getURL('src/options/index.html') + '?tab=history' });
       } else if (message.tab === 'settings') {
@@ -198,6 +208,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       } else {
         chrome.runtime.openOptionsPage();
       }
+      // 通知已打开的侧边栏关闭自身
+      chrome.runtime.sendMessage({ type: 'CLOSE_SIDE_PANEL' }).catch(() => {});
       sendResponse({ success: true });
       break;
 

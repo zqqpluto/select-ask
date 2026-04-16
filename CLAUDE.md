@@ -35,18 +35,33 @@ The extension follows Chrome Extension Manifest V3 architecture:
 **Content Script** (`src/content/index.ts`)
 - Injected into all web pages
 - Handles text selection detection and UI rendering
-- Manages floating box and sidebar display modes
+- Manages floating icon menu (secondary dropdown with action buttons + question input)
+- Manages floating translation window (dual-panel: original text + translated text)
+- Manages side panel display mode for in-page conversations
 - Collects context around selected text for better AI responses
 - Streams LLM responses and renders markdown
+- Supports follow-up conversations (multi-turn dialogue)
 
 **Popup** (`src/popup/`)
-- Quick access to settings and model selection
-- Displays current configuration status
+- Model configuration hub: single model selection + multi-model management
+- Toggle extension on/off per site
+- Quick access to history and options page
+- Persisted via `chrome.storage.sync`
+
+**Side Panel** (`src/side-panel/`)
+- Chrome Side Panel API based conversation interface
+- Full chat experience with streaming responses
+- Model selector in input controls row
+- Voice input support (start/stop listening)
+- History session persistence with pageUrl/pageTitle
+- Markdown rendering with `marked` library
 
 **Options Page** (`src/options/`)
-- Detailed model configuration interface
-- API key management with AES-256-GCM encryption
-- Model testing and validation
+- Full-screen configuration page with tabbed navigation
+- Model management: add, edit, delete, test LLM providers
+- History viewer: search, view, resume past conversations
+- Translation settings: source/target language, full-page translation config
+- Display mode settings (floating box vs side panel)
 
 ### LLM Provider System
 
@@ -93,9 +108,26 @@ Extension components communicate via Chrome runtime messages:
 - Never transmitted to external servers (except chosen LLM provider)
 
 **History Management** (`src/utils/history-manager.ts`)
-- Sessions with 7-day expiration
+- Sessions stored in `chrome.storage.local`
 - Auto-generated titles from first message
-- Cleanup on extension startup
+- Cleanup on extension startup (7-day retention, max 100 sessions)
+- Each session includes: `pageUrl`, `pageTitle`, `selectedText`, `messages`, `modelId`
+
+**Floating Translation Window** (`src/content/floating-window.ts`)
+- Dual-panel layout: left panel shows original text, right panel shows translation
+- Language selection dropdowns for both source and target languages
+- Draggable window with header-based dragging
+- Markdown rendering for translations
+- Copy translation button with clipboard API
+- Streaming translation cursor animation
+
+**Floating Icon Menu** (`src/content/floating-icon.ts`)
+- Appears near text selection with action icons
+- Secondary dropdown menu (floating near selection) with:
+  - Explain, Translate, Search action buttons
+  - Follow-up question input (with send button inside textarea)
+- Drag-to-reposition support
+- Fade-out animation on dismiss
 
 **Page Summarization** (`src/utils/content-extractor.ts`)
 - Intelligent content extraction from web pages
@@ -159,12 +191,22 @@ The extension uses `@crxjs/vite-plugin` to handle Chrome Extension specifics:
 ### Chrome Extension Permissions
 
 **Required permissions**:
-- `storage`: For storing settings and API keys
+- `storage`: For storing settings, API keys, and chat history
 - `scripting`: For injecting content scripts
+- `sidePanel`: For Chrome Side Panel API
+- `tabs`: For tab management (page summarization, URL tracking)
 
 **Host permissions**:
-- Specific LLM API domains (OpenAI, Anthropic, DeepSeek, Qwen, GLM)
+- Specific LLM API domains:
+  - `https://api.openai.com/*`
+  - `https://api.anthropic.com/*`
+  - `https://api.deepseek.com/*`
+  - `https://dashscope.aliyuncs.com/*` (Qwen/通义千问)
+  - `https://open.bigmodel.cn/*` (GLM/智谱AI)
 - `<all_urls>`: For content script injection on all pages
+
+**Web accessible resources**:
+- `public/icons/*`, `public/logos/*`, `src/assets/*`
 
 ## Code Conventions
 
@@ -249,24 +291,27 @@ For development with HMR, use `npm run dev` and the extension will hot-reload as
 ```
 User selects text
   → Content script detects selection
-  → Context collected (before/after text)
-  → User chooses action (explain/translate/question/summarize)
-  → Content script sends message to background
+  → Floating icon appears near selection
+  → User clicks icon → secondary menu shows actions
+  → User chooses action (explain/translate/question/search)
+  → Context collected (before/after text, selection context)
+  → Content script sends LLM_STREAM_START via port to background
   → Background script creates streaming port to LLM provider
-  → LLM provider streams response
+  → LLM provider streams response chunks via LLM_STREAM_CHUNK
   → Content script renders markdown in real-time
-  → User can continue conversation (multi-turn)
+  → User can continue conversation (multi-turn follow-up)
+  → Session saved to chrome.storage.local on completion
+  → Sessions accessible via History tab in Options page
 ```
 
 ### Message Types
 
 See `src/types/messages.ts` for all message type definitions:
-- `LLM_REQUEST`: Request to start LLM streaming
-- `LLM_RESPONSE`: Streaming response chunk
-- `LLM_ERROR`: Error during LLM call
-- `LLM_COMPLETE`: Streaming completed
-- `STORE_UPDATE`: State update notification
-- `GET_STORE`: Request current state
+- `LLM_STREAM_START`: Begin LLM streaming session
+- `LLM_STREAM_CHUNK`: Streaming response chunk
+- `LLM_STREAM_ERROR`: Error during LLM call
+- `LLM_STREAM_END`: Streaming completed
+- Port name: `llm-stream` (defined as `LLM_STREAM_PORT_NAME`)
 
 ## Performance Considerations
 

@@ -52,7 +52,7 @@ if (typeof document !== 'undefined') {
 
 // 当前会话 ID（用于保存历史记录）
 let currentSessionId: string | null = null;
-let currentSessionType: 'explain' | 'translate' | 'question' | 'custom' = 'explain';
+let currentSessionType: 'explain' | 'translate' | 'question' | 'search' | 'summarize' | 'custom' = 'explain';
 let currentSelectedText: string = '';
 let currentSessionMessages: HistoryMessage[] = [];
 let currentSessionSaved = false; // 标记会话是否已保存到历史记录
@@ -1441,7 +1441,7 @@ function createIconMenu(x: number, y: number): HTMLElement {
 }
 
 /**
- * 显示二级菜单（AI 搜索、解释、翻译、提问）
+ * 显示二级菜单（AI 搜索、解释、翻译、总结、提问）
  */
 function showDropdownMenu(x: number, y: number): HTMLElement {
   const dropdown = document.createElement('div');
@@ -1450,10 +1450,10 @@ function showDropdownMenu(x: number, y: number): HTMLElement {
   dropdown.style.top = `${y}px`;
 
   const menuItems = [
-    { key: 'search', label: 'AI 搜索', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>' },
-    { key: 'summarize', label: '段落总结', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M16 13H8"></path><path d="M16 17H8"></path><path d="M10 9H8"></path></svg>' },
+    { key: 'search', label: '搜索', svg: '<svg viewBox="0 0 1293 1024" fill="currentColor"><path d="M646.736842 0l281.222737 1024h-253.305263l-62.356211-227.220211L253.305263 1024H0L281.222737 0z m365.568 0l281.222737 1024H1040.168421L758.945684 0zM463.925895 256l-106.819369 389.389474 182.218106-115.280842-75.452632-274.162527z"/></svg>' },
     { key: 'explain', label: '解释', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"></path></svg>' },
     { key: 'translate', label: '翻译', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"></path><path d="m4 14 6-6 2-3"></path><path d="M2 5h12"></path><path d="M7 2h1"></path><path d="m22 22-5-10-5 10"></path><path d="M14 18h6"></path></svg>' },
+    { key: 'summarize', label: '总结', svg: '<svg viewBox="0 0 1024 1024" fill="currentColor"><path d="M725.76 9.344H185.770667q-61.994667 0-105.813334 43.818667T36.181333 158.976v706.048q0 61.994667 43.818667 105.813333t105.813333 43.818667h234.154667q17.237333 0 29.44-12.202667 12.202667-12.202667 12.202667-29.44 0-17.237333-12.202667-29.44-12.202667-12.202667-29.44-12.202666H185.813333q-66.346667 0-66.346666-66.346667V158.976q0-66.346667 66.346666-66.346667h539.904q66.346667 0 66.346667 66.346667v329.088q0 17.28 12.202667 29.44 12.202667 12.202667 29.44 12.202667 17.237333 0 29.44-12.16 12.202667-12.202667 12.202666-29.44V158.933333q0-61.994667-43.818666-105.813333T725.717333 9.344z m-37.290667 274.944q0 18.986667-13.44 32.426667-13.397333 13.397333-32.341333 13.397333H268.885333q-18.986667 0-32.426666-13.44-13.354667-13.397333-13.354667-32.384 0-18.944 13.397333-32.384 13.397333-13.397333 32.384-13.397333h373.76q18.986667 0 32.426667 13.397333 13.397333 13.44 13.397333 32.426667z m-207.658666 232.789333q0 18.944-13.397334 32.384-13.44 13.397333-32.426666 13.397334H268.928q-18.986667 0-32.384-13.397334-13.397333-13.44-13.397333-32.426666 0-18.944 13.397333-32.341334 13.397333-13.44 32.384-13.44h166.144q18.944 0 32.384 13.44 13.397333 13.397333 13.397333 32.384z"/><path d="M526.677333 1010.346667h85.973334l29.824-108.885334h136.96l29.866666 108.928h89.386667l-135.850667-424.746666h-100.309333l-135.850667 424.746666z m134.101334-174.805334l12.629333-46.421333c12.629333-44.16 24.661333-92.288 36.096-138.709333h2.304c12.629333 45.269333 24.064 94.549333 37.248 138.666666l12.629333 46.506667h-100.906666z m237.909333 174.848h84.821333v-424.746666h-84.821333v424.746666z"/></svg>' },
   ];
 
   menuItems.forEach((item) => {
@@ -1483,6 +1483,90 @@ function showDropdownMenu(x: number, y: number): HTMLElement {
     });
     dropdown.appendChild(button);
   });
+
+  // 分割线
+  const divider = document.createElement('div');
+  divider.className = 'select-ask-dropdown-divider';
+  dropdown.appendChild(divider);
+
+  // 提问输入框区域
+  const askContainer = document.createElement('div');
+  askContainer.className = 'select-ask-dropdown-ask-container';
+
+  const textarea = document.createElement('textarea');
+  textarea.className = 'select-ask-dropdown-ask-textarea';
+  textarea.placeholder = '针对选中文本提问…';
+  textarea.rows = 1;
+
+  const textareaWrapper = document.createElement('div');
+  textareaWrapper.className = 'select-ask-dropdown-ask-textarea-wrapper';
+
+  const sendBtn = document.createElement('button');
+  sendBtn.className = 'select-ask-dropdown-ask-send';
+  sendBtn.title = '发送';
+  const sendSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  sendSvg.setAttribute('viewBox', '0 0 24 24');
+  sendSvg.setAttribute('fill', 'currentColor');
+  sendSvg.setAttribute('width', '16');
+  sendSvg.setAttribute('height', '16');
+  const sendPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  sendPath.setAttribute('d', 'M12 4L4 14h5v6h6v-6h5L12 4z');
+  sendSvg.appendChild(sendPath);
+  sendBtn.appendChild(sendSvg);
+
+  textareaWrapper.appendChild(textarea);
+  textareaWrapper.appendChild(sendBtn);
+  askContainer.appendChild(textareaWrapper);
+  dropdown.appendChild(askContainer);
+
+  // 输入框自适应高度
+  const MAX_HEIGHT = 120;
+  textarea.addEventListener('input', () => {
+    textarea.style.height = 'auto';
+    const newHeight = Math.min(MAX_HEIGHT, textarea.scrollHeight);
+    textarea.style.height = newHeight + 'px';
+    // 多行时发送按钮移到底部
+    if (newHeight > 40) {
+      sendBtn.classList.add('multi-line');
+    } else {
+      sendBtn.classList.remove('multi-line');
+    }
+  });
+
+  // 键盘事件：Enter 发送
+  textarea.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAskSubmit();
+    }
+  });
+
+  // 发送按钮点击
+  sendBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    handleAskSubmit();
+  });
+
+  function handleAskSubmit() {
+    const question = textarea.value.trim();
+    if (!question) return;
+    dropdown.remove();
+    currentDropdown = null;
+    removeIconMenus();
+    // 获取当前选中文本
+    const selectedText = window.getSelection()?.toString().trim() || '';
+    // 调用提问功能
+    chrome.runtime.sendMessage({
+      type: 'TOGGLE_SIDE_PANEL',
+      selectedText: selectedText,
+      context: null,
+      userMessage: question,
+      summaryPrompt: null,
+      pageUrl: window.location.href,
+      pageTitle: document.title,
+    });
+  }
 
   document.body.appendChild(dropdown);
   return dropdown;
@@ -1640,13 +1724,29 @@ async function callBackendAPI(
   let hasAnswer = false;
 
   try {
-    // 初始化新会话（仅当未恢复历史时）
+    // 如果之前的会话已保存到历史记录，创建新会话（避免覆盖旧会话）
+    if (currentSessionSaved) {
+      currentSessionId = generateSessionId();
+      currentSessionType = apiAction === 'translate' ? 'translate' : 'explain';
+      currentSelectedText = text;
+      currentSessionMessages = [];
+      currentSessionSaved = false;
+    }
+
+    // 初始化新会话（添加用户消息）
     if (!currentSessionId) {
       currentSessionId = generateSessionId();
       currentSessionType = apiAction === 'translate' ? 'translate' : 'explain';
       currentSelectedText = text;
       currentSessionMessages = [];
       currentSessionSaved = false;
+    }
+
+    // 确保用户消息被添加到会话（每次 LLM 调用都应该有对应的用户消息）
+    const hasUserMessage = currentSessionMessages.some(
+      m => m.role === 'user' && m.content === text
+    );
+    if (!hasUserMessage) {
       currentSessionMessages.push({
         role: 'user',
         content: text,
@@ -1781,6 +1881,8 @@ async function callBackendAPI(
           modelName: currentModel?.name || 'AI',
           createdAt: Date.now(),
           updatedAt: Date.now(),
+          pageUrl: window.location.href,
+          pageTitle: document.title,
         };
         await addSession(session);
         currentSessionSaved = true;
@@ -2827,8 +2929,9 @@ async function handleMenuAction(action: string): Promise<void> {
     // 提问功能已删除
   } else if (action === 'summarize') {
     // 段落总结：对选中的文本进行总结
+    // userMessage 仅用于显示，summaryPrompt 用于发送给 AI
     const summaryPrompt = `请对以下选中的内容进行简明总结，提取核心要点和关键信息：\n\n${text}`;
-    await showResponseInSidebar('段落总结', summaryPrompt, context);
+    await showResponseInSidebar('总结', '总结', context, summaryPrompt);
   } else if (action === 'translate') {
     // 检查翻译模式配置
     const translationMode = await getTranslationMode();
@@ -3335,7 +3438,7 @@ async function restoreSession(sidebar: HTMLElement, session: HistorySession): Pr
 /**
  * 在 Chrome Side Panel 中显示解释/翻译响应
  */
-async function showResponseInSidebar(title: string, text: string, context: any): Promise<void> {
+async function showResponseInSidebar(title: string, text: string, context: any, summaryPrompt?: string): Promise<void> {
   // 初始化历史会话
   currentSessionId = generateSessionId();
   currentSelectedText = text;
@@ -3362,6 +3465,7 @@ async function showResponseInSidebar(title: string, text: string, context: any):
     selectedText: text,
     context: context,
     userMessage: userMessageText,
+    summaryPrompt: summaryPrompt || null,
     pageUrl: pageUrl,
     pageTitle: pageTitle,
   }, (response) => {
@@ -3524,6 +3628,8 @@ async function callBackendAPIForSidebar(
           modelName: currentModel?.name || 'AI',
           createdAt: Date.now(),
           updatedAt: Date.now(),
+          pageUrl: window.location.href,
+          pageTitle: document.title,
         };
         await addSession(session);
         currentSessionSaved = true;
