@@ -28,6 +28,7 @@ export interface FloatingIconOptions {
   onRestore?: () => void;
   onToggleFullPageTranslate?: () => void; // 切换全文翻译
   onSummarizePage?: () => void; // 总结页面
+  onMindMapPage?: () => void; // 生成脑图
   onClickIcon?: () => void; // 点击图标（打开侧边栏）
   isTranslating?: boolean; // 是否正在翻译
   onHideMenu?: () => void; // 隐藏菜单回调
@@ -111,9 +112,11 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
 
   const translateItem = buildTranslateMenuItem(options);
   const summarizeItem = buildSummarizeMenuItem(options, hideMenu);
+  const mindMapItem = buildMindMapMenuItem(options, hideMenu);
   const historyItem = buildHistoryMenuItem(hideMenu);
   menu.appendChild(translateItem);
   menu.appendChild(summarizeItem);
+  menu.appendChild(mindMapItem);
   menu.appendChild(historyItem);
   btn.appendChild(menu);
 
@@ -348,6 +351,18 @@ function buildTranslateMenuItem(options: FloatingIconOptions): HTMLButtonElement
 }
 
 /**
+ * 构建脑图图标 SVG
+ */
+function buildMindMapIcon(): SVGSVGElement | null {
+  const svg = createSvg('20', '20', '0 0 24 24');
+  appendSvgPath(svg, 'M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z');
+  appendSvgPath(svg, 'M19 10v2a7 7 0 0 1-14 0v-2');
+  appendSvgPath(svg, 'M12 19v4');
+  appendSvgPath(svg, 'M8 23h8');
+  return svg;
+}
+
+/**
  * 构建搜索菜单项 - 纯图标按钮
  */
 function _buildSearchMenuItem(onHideMenu?: () => void): HTMLButtonElement {
@@ -571,6 +586,28 @@ function buildSummarizeMenuItem(options: FloatingIconOptions, onHideMenu?: () =>
     e.stopPropagation();
     onHideMenu?.();
     options.onSummarizePage?.();
+  });
+
+  return btn;
+}
+
+/**
+ * 构建脑图菜单项 - 纯图标按钮
+ */
+function buildMindMapMenuItem(options: FloatingIconOptions, onHideMenu?: () => void): HTMLButtonElement {
+  const btn = document.createElement('button');
+  btn.className = 'select-ask-floating-icon-menu-item';
+  btn.setAttribute('data-action', 'mindmap-page');
+  btn.setAttribute('data-tooltip', '生成脑图');
+
+  const icon = buildMindMapIcon();
+  if (icon) btn.appendChild(icon);
+
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onHideMenu?.();
+    options.onMindMapPage?.();
   });
 
   return btn;

@@ -1461,6 +1461,15 @@ function showDropdownMenu(x: number, y: number): HTMLElement {
     { key: 'summarize', label: '总结', svg: '<svg viewBox="0 0 1024 1024" fill="currentColor"><path d="M725.76 9.344H185.770667q-61.994667 0-105.813334 43.818667T36.181333 158.976v706.048q0 61.994667 43.818667 105.813333t105.813333 43.818667h234.154667q17.237333 0 29.44-12.202667 12.202667-12.202667 12.202667-29.44 0-17.237333-12.202667-29.44-12.202667-12.202667-29.44-12.202666H185.813333q-66.346667 0-66.346666-66.346667V158.976q0-66.346667 66.346666-66.346667h539.904q66.346667 0 66.346667 66.346667v329.088q0 17.28 12.202667 29.44 12.202667 12.202667 29.44 12.202667 17.237333 0 29.44-12.16 12.202667-12.202667 12.202666-29.44V158.933333q0-61.994667-43.818666-105.813333T725.717333 9.344z m-37.290667 274.944q0 18.986667-13.44 32.426667-13.397333 13.397333-32.341333 13.397333H268.885333q-18.986667 0-32.426666-13.44-13.354667-13.397333-13.354667-32.384 0-18.944 13.397333-32.384 13.397333-13.397333 32.384-13.397333h373.76q18.986667 0 32.426667 13.397333 13.397333 13.44 13.397333 32.426667z m-207.658666 232.789333q0 18.944-13.397334 32.384-13.44 13.397333-32.426666 13.397334H268.928q-18.986667 0-32.384-13.397334-13.397333-13.44-13.397333-32.426666 0-18.944 13.397333-32.341334 13.397333-13.44 32.384-13.44h166.144q18.944 0 32.384 13.44 13.397333 13.397333 13.397333 32.384z"/><path d="M526.677333 1010.346667h85.973334l29.824-108.885334h136.96l29.866666 108.928h89.386667l-135.850667-424.746666h-100.309333l-135.850667 424.746666z m134.101334-174.805334l12.629333-46.421333c12.629333-44.16 24.661333-92.288 36.096-138.709333h2.304c12.629333 45.269333 24.064 94.549333 37.248 138.666666l12.629333 46.506667h-100.906666z m237.909333 174.848h84.821333v-424.746666h-84.821333v424.746666z"/></svg>' },
   ];
 
+  // 脑图按钮（仅当选中文本长度 > 100 时显示）
+  if (currentSelectionData && currentSelectionData.text.length > 100) {
+    menuItems.push({
+      key: 'mindmap',
+      label: '脑图',
+      svg: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="4" cy="6" r="2"/><circle cx="20" cy="6" r="2"/><circle cx="4" cy="18" r="2"/><circle cx="20" cy="18" r="2"/><line x1="9.5" y1="10.5" x2="5.5" y2="7.5"/><line x1="14.5" y1="10.5" x2="18.5" y2="7.5"/><line x1="9.5" y1="13.5" x2="5.5" y2="16.5"/><line x1="14.5" y1="13.5" x2="18.5" y2="16.5"/></svg>',
+    });
+  }
+
   menuItems.forEach((item) => {
     const button = document.createElement('button');
     button.className = 'select-ask-dropdown-item';
@@ -2960,7 +2969,73 @@ async function handleMenuAction(action: string): Promise<void> {
   } else if (action === 'search') {
     // AI 搜索功能使用侧边栏
     await showResponseInSidebar(title, text, context);
+  } else if (action === 'mindmap') {
+    // 基于选中文本生成脑图
+    await handleMindMapFromSelection();
   }
+}
+
+/**
+ * 基于页面全文生成脑图
+ */
+async function handleMindMapFromPage(): Promise<void> {
+  try {
+    const extractedContent = extractMainContent();
+    if (!extractedContent.content || extractedContent.content.trim().length < 10) {
+      showToast('当前页面内容太少，无法生成脑图');
+      return;
+    }
+
+    const truncatedContent = truncateContent(extractedContent.content, 6000);
+    const prompt = `请将以下内容整理为层级化 Markdown 脑图格式。要求：
+1. 使用 ## 作为一级标题，### 作为二级标题，#### 作为三级标题
+2. 使用 - 列表项表示子节点
+3. 结构清晰，层次分明
+4. 提取核心要点，不要遗漏重要信息
+
+内容：
+${truncatedContent}`;
+
+    chrome.runtime.sendMessage({
+      type: 'OPEN_SIDE_PANEL',
+      selectedText: '',
+      context: null,
+      userMessage: '生成脑图',
+      summaryPrompt: prompt,
+      pageUrl: window.location.href,
+      pageTitle: extractedContent.title || document.title,
+    });
+  } catch (error) {
+    console.error('[脑图] 生成失败:', error);
+    showToast('生成脑图失败: ' + (error instanceof Error ? error.message : String(error)));
+  }
+}
+
+/**
+ * 基于选中文本生成脑图
+ */
+async function handleMindMapFromSelection(): Promise<void> {
+  if (!currentSelectionData) return;
+
+  const { text } = currentSelectionData;
+  const prompt = `请将以下内容整理为层级化 Markdown 脑图格式。要求：
+1. 使用 ## 作为一级标题，### 作为二级标题，#### 作为三级标题
+2. 使用 - 列表项表示子节点
+3. 结构清晰，层次分明
+4. 提取核心要点，不要遗漏重要信息
+
+内容：
+${text}`;
+
+  chrome.runtime.sendMessage({
+    type: 'OPEN_SIDE_PANEL',
+    selectedText: '',
+    context: null,
+    userMessage: '生成脑图',
+    summaryPrompt: prompt,
+    pageUrl: window.location.href,
+    pageTitle: document.title,
+  });
 }
 
 /**
@@ -3708,6 +3783,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       initFloatingIcon();
     }
     sendResponse({ success: true });
+  } else if (message.type === 'EXTRACT_PAGE_FOR_MINDMAP') {
+    // 提取页面内容用于脑图生成
+    try {
+      const extractedContent = extractMainContent();
+      const truncatedContent = truncateContent(extractedContent.content, 6000);
+      sendResponse({
+        title: extractedContent.title || document.title,
+        content: truncatedContent,
+      });
+    } catch (error) {
+      console.error('[脑图] 页面内容提取失败:', error);
+      sendResponse({ error: error instanceof Error ? error.message : String(error) });
+    }
   }
   return true;
 });
@@ -3857,6 +3945,10 @@ function initFloatingIcon(): void {
         onSummarizePage: () => {
           // 统一使用侧边栏展示页面总结
           showPageSummary();
+        },
+        onMindMapPage: () => {
+          // 基于页面全文生成脑图
+          handleMindMapFromPage();
         },
         onClickIcon: () => {
           // 点击图标：切换侧边栏（未打开则打开，已打开则关闭）
