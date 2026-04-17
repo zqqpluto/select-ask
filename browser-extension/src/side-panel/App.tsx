@@ -2,6 +2,8 @@ import { useEffect, useState, useRef } from 'react';
 import { marked } from 'marked';
 import type { HistoryMessage, ModelConfig } from '../types';
 import { generateSessionId, generateTitle } from '../utils/history-manager';
+import { MindMapFullscreen, detectMarkdownStructure } from '../components/mind-map';
+import '../components/mind-map/mind-map.css';
 
 // 工具函数
 function escapeHtml(text: string): string {
@@ -104,6 +106,9 @@ export default function App() {
   const [autoGenerateEnabled, setAutoGenerateEnabled] = useState(true); // 默认开启
   const [hasGeneratedQuestions, setHasGeneratedQuestions] = useState(false); // 是否已生成过推荐问题
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null); // 当前会话 ID，用于保存历史
+
+  // 脑图全屏状态
+  const [mindMapMarkdown, setMindMapMarkdown] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -1360,6 +1365,26 @@ export default function App() {
                         <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
                       </svg>
                     </button>
+                    {/* 脑图按钮 - AI 回复为层级化 Markdown 时显示 */}
+                    {msg.role === 'assistant' && msg.content && detectMarkdownStructure(msg.content) && (
+                      <button
+                        className="side-panel-action-btn"
+                        onClick={() => setMindMapMarkdown(msg.content)}
+                        title="生成脑图"
+                      >
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="3"/>
+                          <circle cx="4" cy="6" r="2"/>
+                          <circle cx="20" cy="6" r="2"/>
+                          <circle cx="4" cy="18" r="2"/>
+                          <circle cx="20" cy="18" r="2"/>
+                          <line x1="9.5" y1="10.5" x2="5.5" y2="7.5"/>
+                          <line x1="14.5" y1="10.5" x2="18.5" y2="7.5"/>
+                          <line x1="9.5" y1="13.5" x2="5.5" y2="16.5"/>
+                          <line x1="14.5" y1="13.5" x2="18.5" y2="16.5"/>
+                        </svg>
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -1485,6 +1510,14 @@ export default function App() {
             </button>
           </div>
         </div>
+
+      {/* 全屏脑图 */}
+      {mindMapMarkdown && (
+        <MindMapFullscreen
+          markdown={mindMapMarkdown}
+          onClose={() => setMindMapMarkdown(null)}
+        />
+      )}
       </div>
     </div>
   );
