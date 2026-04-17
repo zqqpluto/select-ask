@@ -976,6 +976,64 @@ export default function App() {
     await getAIResponseWithMessages(summaryMsg, currentModel);
   };
 
+  // 生成脑图
+  const handleSendMindMap = async () => {
+    if (isLoading) return;
+
+    if (!currentModel) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: '请先在配置中添加并启用模型',
+        timestamp: Date.now(),
+      }]);
+      return;
+    }
+
+    const userMsg: ExtendedHistoryMessage = {
+      role: 'user',
+      content: '生成脑图',
+      timestamp: Date.now(),
+    };
+    setMessages(prev => [...prev, userMsg]);
+
+    const mindMapPrompt = await getPageMindMapPrompt();
+    if (!mindMapPrompt) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: '无法获取页面内容，请稍后重试',
+        timestamp: Date.now(),
+      }]);
+      return;
+    }
+
+    await getAIResponseWithMessages(mindMapPrompt, currentModel);
+  };
+
+  /**
+   * 获取页面脑图 prompt：提取页面主要内容并格式化
+   */
+  async function getPageMindMapPrompt(): Promise<string | null> {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab?.id) return null;
+
+      const response = await chrome.tabs.sendMessage(tab.id, { type: 'EXTRACT_PAGE_FOR_MINDMAP' });
+      if (!response?.content) return null;
+
+      return `请将以下内容整理为层级化 Markdown 脑图格式。要求：
+1. 使用 ## 作为一级标题，### 作为二级标题，#### 作为三级标题
+2. 使用 - 列表项表示子节点
+3. 结构清晰，层次分明
+4. 提取核心要点，不要遗漏重要信息
+
+内容：
+${response.content}`;
+    } catch (error) {
+      console.error('[脑图] 获取页面内容失败:', error);
+      return null;
+    }
+  }
+
   // 发送消息
   const handleSend = async () => {
     const message = inputValue.trim();
@@ -1449,6 +1507,26 @@ export default function App() {
                 <path d="M10 9H8"/>
               </svg>
               <span>总结网页</span>
+            </button>
+          )}
+
+          {pageInfo?.pageUrl && (
+            <button
+              className="side-panel-mindmap-btn"
+              onClick={handleSendMindMap}
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <circle cx="4" cy="6" r="2"/>
+                <circle cx="20" cy="6" r="2"/>
+                <circle cx="4" cy="18" r="2"/>
+                <circle cx="20" cy="18" r="2"/>
+                <line x1="9.5" y1="10.5" x2="5.5" y2="7.5"/>
+                <line x1="14.5" y1="10.5" x2="18.5" y2="7.5"/>
+                <line x1="9.5" y1="13.5" x2="5.5" y2="16.5"/>
+                <line x1="14.5" y1="13.5" x2="18.5" y2="16.5"/>
+              </svg>
+              <span>生成脑图</span>
             </button>
           )}
 

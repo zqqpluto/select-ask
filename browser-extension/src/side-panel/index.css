@@ -1259,6 +1259,42 @@ body {
   color: #4e5969;
 }
 
+/* 生成脑图按钮 */
+.side-panel-mindmap-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: #f2f3f5;
+  border: 1px solid #e5e6eb;
+  border-radius: 20px;
+  font-size: 12px;
+  color: #4e5969;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.side-panel-mindmap-btn:hover {
+  background: #e8e9eb;
+  border-color: #c9cdd4;
+  color: #1d2129;
+}
+
+.side-panel-mindmap-btn:active {
+  transform: scale(0.97);
+}
+
+.side-panel-mindmap-btn svg {
+  flex-shrink: 0;
+  color: #86909c;
+}
+
+.side-panel-mindmap-btn:hover svg {
+  color: #4e5969;
+}
+
 /* 新建会话按钮 — 仅图标 */
 .side-panel-new-chat-btn {
   display: flex;
