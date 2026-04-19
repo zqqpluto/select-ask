@@ -293,6 +293,16 @@ export default function App() {
   useEffect(() => {
     loadConfig();
     loadHistory();
+
+    // Listen for storage changes from Popup page
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName === 'sync' && changes.app_config) {
+        const newConfig = changes.app_config.newValue;
+        if (newConfig && newConfig.showFloatingIcon !== undefined) {
+          setShowFloatingIcon(newConfig.showFloatingIcon);
+        }
+      }
+    });
   }, []);
 
   // Check URL parameters to switch to history tab
@@ -1698,6 +1708,36 @@ export default function App() {
                         {provider.desc && <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">{provider.desc}</span>}
                       </div>
                     ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* 反馈建议 */}
+              <div className="mb-6">
+                <div className="p-4 bg-white rounded-xl border border-gray-200 hover:border-blue-300 transition-colors shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900 text-sm">反馈建议</h4>
+                        <p className="text-xs text-gray-500 mt-0.5">遇到问题或有好的建议？欢迎在 GitHub 提交 Issue</p>
+                      </div>
+                    </div>
+                    <a
+                      href="https://github.com/zqqpluto/select-ask/issues"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                    >
+                      提交反馈
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                      </svg>
+                    </a>
                   </div>
                 </div>
               </div>

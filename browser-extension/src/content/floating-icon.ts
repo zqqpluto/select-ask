@@ -268,6 +268,13 @@ function setupDrag(container: HTMLElement, btn: HTMLElement, logoWrap: HTMLEleme
     dragOffsetY = e.clientY - currentY;
 
     dragThreshold.start(e.clientX, e.clientY);
+
+    // 立即关闭可能弹出的菜单，避免拖拽或点击时被菜单拦截
+    btn.classList.remove('active');
+    btn.style.overflow = '';
+    closeBtn.classList.remove('visible');
+    if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; }
+    if (leaveTimer) { clearTimeout(leaveTimer); leaveTimer = null; }
   }
 
   function onPointerMove(e: PointerEvent) {
@@ -279,7 +286,7 @@ function setupDrag(container: HTMLElement, btn: HTMLElement, logoWrap: HTMLEleme
 
     if (dragThreshold.isValid(e.clientX, e.clientY)) {
       isDragging = true;
-      btn.setPointerCapture(e.pointerId);
+      // Don't use setPointerCapture — it can steal pointer events and break click detection
     }
   }
 
@@ -351,14 +358,19 @@ function buildTranslateMenuItem(options: FloatingIconOptions): HTMLButtonElement
 }
 
 /**
- * 构建脑图图标 SVG
+ * 构建脑图图标 SVG — 与上下文菜单的脑图图标保持一致
  */
 function buildMindMapIcon(): SVGSVGElement | null {
   const svg = createSvg('20', '20', '0 0 24 24');
-  appendSvgPath(svg, 'M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z');
-  appendSvgPath(svg, 'M19 10v2a7 7 0 0 1-14 0v-2');
-  appendSvgPath(svg, 'M12 19v4');
-  appendSvgPath(svg, 'M8 23h8');
+  appendSvgPath(svg, 'M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0');
+  appendSvgPath(svg, 'M4 6m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0');
+  appendSvgPath(svg, 'M20 6m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0');
+  appendSvgPath(svg, 'M4 18m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0');
+  appendSvgPath(svg, 'M20 18m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0');
+  appendSvgPath(svg, 'M9.5 10.5L5.5 7.5');
+  appendSvgPath(svg, 'M14.5 10.5L18.5 7.5');
+  appendSvgPath(svg, 'M9.5 13.5L5.5 16.5');
+  appendSvgPath(svg, 'M14.5 13.5L18.5 16.5');
   return svg;
 }
 
@@ -694,9 +706,11 @@ function buildAskInputMenuItem(onHideMenu?: () => void): HTMLElement {
   const sendBtn = document.createElement('button');
   sendBtn.className = 'select-ask-floating-icon-ask-send';
   sendBtn.title = '发送';
-  const sendSvg = createSvg('16', '16', '0 0 24 24');
+  const sendSvg = createSvg('16', '16', '0 0 1024 1024');
   sendSvg.setAttribute('fill', 'currentColor');
-  appendSvgPath(sendSvg, 'M12 4L4 14h5v6h6v-6h5L12 4z');
+  appendSvgPath(sendSvg, 'M512 236.308a39.385 39.385 0 0 1 39.385 39.384v551.385a39.385 39.385 0 1 1-78.77 0V275.692a39.385 39.385 0 0 1 39.385-39.384z');
+  appendSvgPath(sendSvg, 'M533.268 220.16a39.385 39.385 0 0 1 0 55.532L310.35 498.61a39.385 39.385 0 1 1-55.533-55.532l222.918-222.918a39.385 39.385 0 0 1 55.533 0z');
+  appendSvgPath(sendSvg, 'M490.732 220.16a39.385 39.385 0 0 1 55.533 0l222.917 222.918a39.385 39.385 0 1 1-55.532 55.532L490.732 275.692a39.385 39.385 0 0 1 0-55.532z');
   sendBtn.appendChild(sendSvg);
 
   textareaWrapper.appendChild(textarea);

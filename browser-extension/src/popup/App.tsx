@@ -19,6 +19,16 @@ export default function App() {
 
   useEffect(() => {
     loadConfig();
+
+    // Listen for storage changes from Options page
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName === 'sync' && changes.app_config) {
+        const newConfig = changes.app_config.newValue;
+        if (newConfig && newConfig.showFloatingIcon !== undefined) {
+          setFloatingIconEnabled(newConfig.showFloatingIcon);
+        }
+      }
+    });
   }, []);
 
   // 点击外部关闭下拉菜单
@@ -81,6 +91,11 @@ export default function App() {
 
   const openHistory = () => {
     chrome.tabs.create({ url: chrome.runtime.getURL('src/options/index.html') + '?tab=history' });
+    window.close();
+  };
+
+  const openFeedback = () => {
+    chrome.tabs.create({ url: 'https://github.com/zqqpluto/select-ask/issues' });
     window.close();
   };
 
@@ -170,6 +185,22 @@ export default function App() {
               </svg>
             </button>
 
+            {/* 反馈建议 */}
+            <button onClick={openFeedback} className="popup-feedback-btn">
+              <div className="popup-feedback-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+              </div>
+              <div className="popup-feedback-text">
+                <div className="popup-feedback-title">反馈建议</div>
+                <div className="popup-feedback-desc">提交问题或建议</div>
+              </div>
+              <svg className="popup-feedback-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+
             {/* 设置卡片 */}
             <div className="popup-settings-card">
               <div className="popup-setting-item">
@@ -192,18 +223,17 @@ export default function App() {
                     checked={floatingIconEnabled}
                     onChange={(e) => {
                       const checked = e.target.checked;
-                      chrome.storage.sync.get(['app_config']).then((result) => {
-                        const config = result.app_config;
-                        if (config) {
-                          config.showFloatingIcon = checked;
-                          chrome.storage.sync.set({ appConfig: config });
+                      getAppConfig().then((config) => {
+                        config.showFloatingIcon = checked;
+                        import('../utils/config-manager').then(m => {
+                          m.saveAppConfig(config);
                           setFloatingIconEnabled(checked);
                           chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
                             if (tabs[0]?.id) {
                               chrome.tabs.sendMessage(tabs[0].id, { action: 'floatingIconToggle', enabled: checked });
                             }
                           });
-                        }
+                        });
                       });
                     }}
                     className="sr-only peer"

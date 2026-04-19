@@ -40,7 +40,7 @@ html, body {
 
 /* === Header === */
 .popup-header {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   padding: 18px 20px 16px;
   display: flex;
   align-items: center;
@@ -110,7 +110,7 @@ html, body {
 
 .popup-subtitle {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.85);
   margin: 2px 0 0;
   line-height: 1.3;
   font-weight: 400;
@@ -163,7 +163,7 @@ html, body {
   width: 24px;
   height: 24px;
   border: 2.5px solid #e5e7eb;
-  border-top-color: #6366f1;
+  border-top-color: #3b82f6;
   border-radius: 50%;
   animation: popup-spin 0.8s linear infinite;
   margin: 0 auto 10px;
@@ -176,7 +176,7 @@ html, body {
 /* === Model Selector Card === */
 .popup-card {
   background: #f8f9fb;
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 12px 14px;
   border: 1px solid rgba(0, 0, 0, 0.04);
 }
@@ -218,9 +218,9 @@ html, body {
 }
 
 .popup-model-btn:hover {
-  border-color: #c7d2fe;
+  border-color: #bfdbfe;
   background: #fafafe;
-  box-shadow: 0 1px 3px rgba(99, 102, 241, 0.08);
+  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.08);
 }
 
 .popup-model-btn:active {
@@ -228,7 +228,7 @@ html, body {
 }
 
 .popup-model-btn svg:first-child {
-  color: #6366f1;
+  color: #3b82f6;
   flex-shrink: 0;
 }
 
@@ -312,8 +312,8 @@ html, body {
 }
 
 .popup-model-option.active {
-  background: #eef2ff;
-  color: #4f46e5;
+  background: #eff6ff;
+  color: #2563eb;
   font-weight: 500;
 }
 
@@ -322,7 +322,7 @@ html, body {
   display: inline-block;
   width: 16px;
   height: 16px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234f46e5' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6L9 17l-5-5'/%3E%3C/svg%3E") no-repeat center;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6L9 17l-5-5'/%3E%3C/svg%3E") no-repeat center;
   background-size: 16px;
   flex-shrink: 0;
 }
@@ -343,7 +343,7 @@ html, body {
   padding: 12px 14px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 14px;
+  border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
@@ -364,8 +364,8 @@ html, body {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-  color: #059669;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #2563eb;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -404,7 +404,7 @@ html, body {
 /* === Settings Card === */
 .popup-settings-card {
   background: #ffffff;
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid #e5e7eb;
   overflow: hidden;
 }
@@ -426,8 +426,8 @@ html, body {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #f3f0ff 0%, #ede9fe 100%);
-  color: #7c3aed;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #2563eb;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -482,7 +482,7 @@ html, body {
 }
 
 .popup-toggle input:checked ~ .popup-toggle-slider {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
 }
 
 .popup-toggle input:checked ~ .popup-toggle-slider::after {
@@ -490,8 +490,75 @@ html, body {
 }
 
 .popup-toggle input:focus ~ .popup-toggle-slider {
-  outline: 2px solid #c7d2fe;
+  outline: 2px solid #bfdbfe;
   outline-offset: 2px;
+}
+
+/* === Feedback Button === */
+.popup-feedback-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.popup-feedback-btn:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+
+.popup-feedback-btn:active {
+  transform: translateY(0) scale(0.99);
+}
+
+.popup-feedback-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.popup-feedback-text {
+  flex: 1;
+  text-align: left;
+}
+
+.popup-feedback-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.2;
+}
+
+.popup-feedback-desc {
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.popup-feedback-arrow {
+  color: #d1d5db;
+  transition: color 0.2s, transform 0.2s;
+  flex-shrink: 0;
+}
+
+.popup-feedback-btn:hover .popup-feedback-arrow {
+  color: #6b7280;
+  transform: translateX(2px);
 }
 
 /* === Scrollbar === */

@@ -767,24 +767,6 @@ body {
   color: #c9cdd4;
 }
 
-/* 发送按钮 - 与输入框同行，右对齐 */
-.side-panel-send {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  min-width: 36px;
-  height: 36px;
-  border: none;
-  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
-  color: white;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.15s;
-  flex-shrink: 0;
-  margin-bottom: 2px;
-}
-
 @keyframes dropdown-fade-in {
   from {
     opacity: 0;
@@ -1223,6 +1205,12 @@ body {
   margin-bottom: 6px;
 }
 
+.side-panel-action-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* 网页总结按钮 */
 .side-panel-summarize-btn {
   display: flex;
@@ -1295,27 +1283,21 @@ body {
   color: #4e5969;
 }
 
-/* 新建会话按钮 — 仅图标 */
+/* 新建会话按钮 — 纯图标 */
 .side-panel-new-chat-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
+  padding: 4px;
   background: transparent;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  color: #6b7280;
+  border: none;
+  color: #86909c;
   cursor: pointer;
   transition: all 0.15s ease;
-  flex-shrink: 0;
 }
 
 .side-panel-new-chat-btn:hover {
-  background: #f3f4f6;
-  border-color: #d1d5db;
-  color: #374151;
+  color: #4e5969;
 }
 
 .side-panel-new-chat-btn:active {
@@ -1323,5 +1305,94 @@ body {
 }
 
 .side-panel-new-chat-btn svg {
-  flex-shrink: 0;
+  display: block;
+}
+
+/* tooltip — 使用 data-tooltip 属性的按钮 */
+.side-panel-summarize-btn[data-tooltip],
+.side-panel-mindmap-btn[data-tooltip],
+.side-panel-new-chat-btn[data-tooltip] {
+  position: relative;
+}
+
+.side-panel-summarize-btn[data-tooltip]::after,
+.side-panel-mindmap-btn[data-tooltip]::after,
+.side-panel-new-chat-btn[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  padding: 4px 8px;
+  background: #1d2129;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 400;
+  white-space: nowrap;
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+  z-index: 1000;
+}
+
+.side-panel-summarize-btn[data-tooltip]:hover::after,
+.side-panel-mindmap-btn[data-tooltip]:hover::after,
+.side-panel-new-chat-btn[data-tooltip]:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ===== 脑图生成中加载状态 ===== */
+.side-panel-mindmap-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 0;
+  font-size: 13px;
+  color: #86909c;
+}
+
+.side-panel-mindmap-loading .side-panel-spin-icon {
+  width: 18px;
+  height: 18px;
+  animation: side-panel-spin 1s linear infinite;
+}
+
+/* ===== 内联脑图容器 ===== */
+.side-panel-mindmap-inline {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fafbfc;
+  margin-top: 8px;
+}
+
+.side-panel-mindmap-inline .select-ask-mindmap-container {
+  height: 300px;
+}
+
+/* 打开全屏按钮 */
+.side-panel-mindmap-expand-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  font-size: 12px;
+  color: #6366f1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.side-panel-mindmap-expand-btn:hover {
+  background: #f0f5ff;
+  color: #4338ca;
+}
+
+.side-panel-mindmap-expand-btn:active {
+  transform: scale(0.98);
 }

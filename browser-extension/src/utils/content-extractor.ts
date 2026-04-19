@@ -149,7 +149,7 @@ export function extractMainContent(): ExtractedContent {
  * 截断内容到指定长度
  * 根据token估算进行截断(大约4个字符 = 1个token)
  */
-export function truncateContent(content: string, maxTokens: number = 6000): string {
+export function truncateContent(content: string, maxTokens: number = 100000): string {
   const estimatedTokens = content.length / 4;
 
   if (estimatedTokens <= maxTokens) {

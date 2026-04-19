@@ -1519,13 +1519,19 @@ function showDropdownMenu(x: number, y: number): HTMLElement {
   sendBtn.className = 'select-ask-dropdown-ask-send';
   sendBtn.title = '发送';
   const sendSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  sendSvg.setAttribute('viewBox', '0 0 24 24');
+  sendSvg.setAttribute('viewBox', '0 0 1024 1024');
   sendSvg.setAttribute('fill', 'currentColor');
   sendSvg.setAttribute('width', '16');
   sendSvg.setAttribute('height', '16');
-  const sendPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  sendPath.setAttribute('d', 'M12 4L4 14h5v6h6v-6h5L12 4z');
-  sendSvg.appendChild(sendPath);
+  const sendPath1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  sendPath1.setAttribute('d', 'M512 236.308a39.385 39.385 0 0 1 39.385 39.384v551.385a39.385 39.385 0 1 1-78.77 0V275.692a39.385 39.385 0 0 1 39.385-39.384z');
+  sendSvg.appendChild(sendPath1);
+  const sendPath2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  sendPath2.setAttribute('d', 'M533.268 220.16a39.385 39.385 0 0 1 0 55.532L310.35 498.61a39.385 39.385 0 1 1-55.533-55.532l222.918-222.918a39.385 39.385 0 0 1 55.533 0z');
+  sendSvg.appendChild(sendPath2);
+  const sendPath3 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  sendPath3.setAttribute('d', 'M490.732 220.16a39.385 39.385 0 0 1 55.533 0l222.917 222.918a39.385 39.385 0 1 1-55.532 55.532L490.732 275.692a39.385 39.385 0 0 1 0-55.532z');
+  sendSvg.appendChild(sendPath3);
   sendBtn.appendChild(sendSvg);
 
   textareaWrapper.appendChild(textarea);

@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { marked } from 'marked';
 import type { HistoryMessage, ModelConfig } from '../types';
 import { generateSessionId, generateTitle } from '../utils/history-manager';
-import { MindMapFullscreen, detectMarkdownStructure } from '../components/mind-map';
+import { MindMap, MindMapFullscreen } from '../components/mind-map';
 import '../components/mind-map/mind-map.css';
 
 // 工具函数
@@ -109,6 +109,9 @@ export default function App() {
 
   // 脑图全屏状态
   const [mindMapMarkdown, setMindMapMarkdown] = useState<string | null>(null);
+  // 脑图内联渲染状态
+  const [mindMapInline, setMindMapInline] = useState<string | null>(null);
+  const [mindMapLoading, setMindMapLoading] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -978,9 +981,11 @@ export default function App() {
 
   // 生成脑图
   const handleSendMindMap = async () => {
+    console.log('[MindMap] handleSendMindMap 被调用, isLoading:', isLoading);
     if (isLoading) return;
 
     if (!currentModel) {
+      console.log('[MindMap] 无模型配置');
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: '请先在配置中添加并启用模型',
@@ -988,6 +993,7 @@ export default function App() {
       }]);
       return;
     }
+    console.log('[MindMap] 当前模型:', currentModel.name, currentModel.id);
 
     const userMsg: ExtendedHistoryMessage = {
       role: 'user',
@@ -995,8 +1001,11 @@ export default function App() {
       timestamp: Date.now(),
     };
     setMessages(prev => [...prev, userMsg]);
+    console.log('[MindMap] 用户消息已添加');
 
+    console.log('[MindMap] 开始获取页面脑图 prompt...');
     const mindMapPrompt = await getPageMindMapPrompt();
+    console.log('[MindMap] getPageMindMapPrompt 返回:', mindMapPrompt ? `长度=${mindMapPrompt.length}` : 'null');
     if (!mindMapPrompt) {
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -1006,7 +1015,210 @@ export default function App() {
       return;
     }
 
-    await getAIResponseWithMessages(mindMapPrompt, currentModel);
+    // 脑图模式：显示思考，隐藏文本回复，完成后内联渲染脑图
+    setMindMapLoading(true);
+    setMindMapInline(null);
+    setIsLoading(true);
+    const startTime = Date.now();
+    let reasoningContent = '';
+    let answerContent = '';
+    console.log('[MindMap] 状态已设置: mindMapLoading=true, mindMapInline=null');
+
+    // 创建 AI 消息占位
+    setMessages(prev => [...prev, {
+      role: 'assistant',
+      content: '',
+      timestamp: Date.now(),
+      modelName: currentModel.name,
+      startTime,
+    }]);
+
+    const port = chrome.runtime.connect({ name: 'llm-stream' });
+    currentPortRef.current = port;
+    console.log('[MindMap] llm-stream port 已创建');
+
+    port.onMessage.addListener((message) => {
+      if (message.type === 'LLM_STREAM_CHUNK') {
+        const chunk = message.chunk || '';
+        if (message.reasoning) {
+          reasoningContent += chunk;
+        } else {
+          answerContent += chunk;
+        }
+        // 实时流式更新思考过程
+        setMessages(prev => {
+          const lastMsg = prev[prev.length - 1];
+          if (lastMsg && lastMsg.role === 'assistant') {
+            return [...prev.slice(0, -1), { ...lastMsg, content: '', reasoning: reasoningContent || undefined, startTime }];
+          }
+          return [...prev, { role: 'assistant', content: '', reasoning: reasoningContent || undefined, timestamp: Date.now(), modelName: currentModel.name, startTime }];
+        });
+      } else if (message.type === 'LLM_STREAM_END') {
+        console.log('[MindMap] LLM_STREAM_END, answerContent 长度:', answerContent.length);
+        console.log('[MindMap] answerContent 前200字符:', answerContent.substring(0, 200));
+        // 提取脑图 markdown
+        const codeBlockMatch = answerContent.match(/```markdown\s*([\s\S]*?)```|```\s*([\s\S]*?)```/);
+        const mindMapContent = codeBlockMatch ? (codeBlockMatch[1] || codeBlockMatch[2]) : answerContent;
+        console.log('[MindMap] 提取的脑图内容长度:', mindMapContent.length);
+        console.log('[MindMap] 脑图内容前200字符:', mindMapContent.substring(0, 200));
+        setMindMapInline(mindMapContent.trim());
+        setMindMapLoading(false);
+        setIsLoading(false);
+        currentPortRef.current = null;
+        console.log('[MindMap] 状态已更新: mindMapInline 已设置, mindMapLoading=false');
+        // 设置 AI 消息 duration
+        setMessages(prev => {
+          const lastMsg = prev[prev.length - 1];
+          if (lastMsg && lastMsg.role === 'assistant') {
+            return [...prev.slice(0, -1), { ...lastMsg, duration: Date.now() - startTime }];
+          }
+          return prev;
+        });
+        port.disconnect();
+      } else if (message.type === 'LLM_STREAM_ERROR') {
+        console.log('[MindMap] LLM_STREAM_ERROR:', message.error);
+        setMindMapLoading(false);
+        setIsLoading(false);
+        currentPortRef.current = null;
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `错误：${message.error}`,
+          timestamp: Date.now(),
+          modelName: currentModel.name,
+        }]);
+        port.disconnect();
+      }
+    });
+
+    port.onDisconnect.addListener(() => {
+      console.log('[MindMap] port.onDisconnect 触发');
+      setMindMapLoading(false);
+      setIsLoading(false);
+      currentPortRef.current = null;
+    });
+
+    console.log('[MindMap] 发送 LLM_STREAM_START, prompt 长度:', mindMapPrompt.length);
+    port.postMessage({
+      type: 'LLM_STREAM_START',
+      prompt: mindMapPrompt,
+      modelId: currentModel.id,
+      selectedText: '',
+      context: null,
+      sessionId: currentSessionId || undefined,
+    });
+  };
+
+  // 将 AI 回复内容转为脑图格式
+  const handleConvertToMindMap = async (content: string) => {
+    if (isLoading) return;
+    if (!currentModel) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: '请先在配置中添加并启用模型',
+        timestamp: Date.now(),
+      }]);
+      return;
+    }
+
+    const mindMapPrompt = `请将以下内容整理为层级化 Markdown 脑图格式。要求：
+1. 使用 ## 作为一级标题，### 作为二级标题，#### 作为三级标题
+2. 使用 - 列表项表示子节点
+3. 结构清晰，层次分明
+4. 提取核心要点，不要遗漏重要信息
+5. 直接输出脑图 Markdown，不要添加任何解释性文字
+
+内容：
+${content}`;
+
+    // 发送一条用户消息
+    const userMsg: ExtendedHistoryMessage = {
+      role: 'user',
+      content: '将以上内容整理为脑图',
+      timestamp: Date.now(),
+    };
+    setMessages(prev => [...prev, userMsg]);
+
+    // 脑图模式：显示思考，隐藏文本回复，完成后内联渲染脑图
+    setMindMapLoading(true);
+    setMindMapInline(null);
+    setIsLoading(true);
+    const startTime = Date.now();
+    let reasoningContent = '';
+    let answerContent = '';
+
+    // 创建 AI 消息占位
+    setMessages(prev => [...prev, {
+      role: 'assistant',
+      content: '',
+      timestamp: Date.now(),
+      modelName: currentModel.name,
+      startTime,
+    }]);
+
+    const port = chrome.runtime.connect({ name: 'llm-stream' });
+    currentPortRef.current = port;
+
+    port.onMessage.addListener((message) => {
+      if (message.type === 'LLM_STREAM_CHUNK') {
+        const chunk = message.chunk || '';
+        if (message.reasoning) {
+          reasoningContent += chunk;
+        } else {
+          answerContent += chunk;
+        }
+        // 实时流式更新思考过程（隐藏文本回复）
+        setMessages(prev => {
+          const lastMsg = prev[prev.length - 1];
+          if (lastMsg && lastMsg.role === 'assistant') {
+            return [...prev.slice(0, -1), { ...lastMsg, content: '', reasoning: reasoningContent || undefined, startTime }];
+          }
+          return [...prev, { role: 'assistant', content: '', reasoning: reasoningContent || undefined, timestamp: Date.now(), modelName: currentModel.name, startTime }];
+        });
+      } else if (message.type === 'LLM_STREAM_END') {
+        // 提取脑图 markdown，内联渲染
+        const codeBlockMatch = answerContent.match(/```markdown\s*([\s\S]*?)```|```\s*([\s\S]*?)```/);
+        const mindMapContent = codeBlockMatch ? (codeBlockMatch[1] || codeBlockMatch[2]) : answerContent;
+        setMindMapInline(mindMapContent.trim());
+        setMindMapLoading(false);
+        setIsLoading(false);
+        currentPortRef.current = null;
+        // 设置 AI 消息 duration
+        setMessages(prev => {
+          const lastMsg = prev[prev.length - 1];
+          if (lastMsg && lastMsg.role === 'assistant') {
+            return [...prev.slice(0, -1), { ...lastMsg, duration: Date.now() - startTime }];
+          }
+          return prev;
+        });
+        port.disconnect();
+      } else if (message.type === 'LLM_STREAM_ERROR') {
+        setMindMapLoading(false);
+        setIsLoading(false);
+        currentPortRef.current = null;
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `错误：${message.error}`,
+          timestamp: Date.now(),
+          modelName: currentModel.name,
+        }]);
+        port.disconnect();
+      }
+    });
+
+    port.onDisconnect.addListener(() => {
+      setMindMapLoading(false);
+      setIsLoading(false);
+      currentPortRef.current = null;
+    });
+
+    port.postMessage({
+      type: 'LLM_STREAM_START',
+      prompt: mindMapPrompt,
+      modelId: currentModel.id,
+      selectedText: '',
+      context: null,
+      sessionId: currentSessionId || undefined,
+    });
   };
 
   /**
@@ -1304,8 +1516,8 @@ ${response.content}`;
                 <div className="side-panel-message-actions side-panel-message-actions-always">
                   <button
                     className="side-panel-action-btn"
+                    data-tooltip="复制"
                     onClick={() => copyToClipboard(msg.content)}
-                    title="复制"
                   >
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
                       <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
@@ -1314,8 +1526,8 @@ ${response.content}`;
                   </button>
                   <button
                     className="side-panel-action-btn"
+                    data-tooltip="重新编辑"
                     onClick={() => handleReEdit(msg.content)}
-                    title="重新编辑"
                   >
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -1374,10 +1586,45 @@ ${response.content}`;
                       </div>
                     </div>
                   )}
-                  {/* 回答正文 */}
-                  <div
-                    dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
-                  />
+                  {/* 回答正文 / 脑图 */}
+                  {(() => {
+                    console.log('[MindMap Render] msg.index:', index, '| mindMapLoading:', mindMapLoading, '| msg.duration:', msg.duration, '| mindMapInline:', mindMapInline ? `长度=${mindMapInline.length}` : 'null');
+                    if (mindMapLoading && !msg.duration) {
+                      console.log('[MindMap Render] → 显示 loading');
+                      return (
+                        <div className="side-panel-mindmap-loading">
+                          <svg className="side-panel-spin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v6l4 2"/>
+                          </svg>
+                          <span>正在生成脑图...</span>
+                        </div>
+                      );
+                    }
+                    if (mindMapInline) {
+                      console.log('[MindMap Render] → 显示内联脑图');
+                      return (
+                        <div className="side-panel-mindmap-inline">
+                          <MindMap markdown={mindMapInline} />
+                          <button
+                            className="side-panel-mindmap-expand-btn"
+                            onClick={() => setMindMapMarkdown(mindMapInline)}
+                          >
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+                            </svg>
+                            打开全屏
+                          </button>
+                        </div>
+                      );
+                    }
+                    console.log('[MindMap Render] → 显示普通文本回复');
+                    return (
+                      <div
+                        dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
+                      />
+                    );
+                  })()}
 
                   {/* 推荐问题 - 在有 questions 字段时显示 */}
                   {msg.questions && msg.questions.length > 0 && (
@@ -1404,8 +1651,8 @@ ${response.content}`;
                   <div className="side-panel-message-actions side-panel-message-actions-always">
                     <button
                       className="side-panel-action-btn"
+                      data-tooltip="复制正文"
                       onClick={() => copyToClipboard(msg.content)}
-                      title="复制正文"
                     >
                       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
                         <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
@@ -1415,31 +1662,31 @@ ${response.content}`;
                     {/* 重新生成按钮 - 每一条 AI 回答消息都显示 */}
                     <button
                       className="side-panel-action-btn"
+                      data-tooltip="重新生成"
                       onClick={() => handleRegenerate(index)}
-                      title="重新生成"
                     >
                       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M23 4v6h-6M1 20v-6h6"/>
                         <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
                       </svg>
                     </button>
-                    {/* 脑图按钮 - AI 回复为层级化 Markdown 时显示 */}
-                    {msg.role === 'assistant' && msg.content && detectMarkdownStructure(msg.content) && (
+                    {/* 脑图按钮 - 将 AI 回复转为脑图格式并自动渲染 */}
+                    {msg.role === 'assistant' && msg.content && (
                       <button
                         className="side-panel-action-btn"
-                        onClick={() => setMindMapMarkdown(msg.content)}
-                        title="生成脑图"
+                        data-tooltip="生成脑图"
+                        onClick={() => handleConvertToMindMap(msg.content)}
                       >
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
-                          <circle cx="12" cy="12" r="3"/>
-                          <circle cx="4" cy="6" r="2"/>
-                          <circle cx="20" cy="6" r="2"/>
-                          <circle cx="4" cy="18" r="2"/>
-                          <circle cx="20" cy="18" r="2"/>
-                          <line x1="9.5" y1="10.5" x2="5.5" y2="7.5"/>
-                          <line x1="14.5" y1="10.5" x2="18.5" y2="7.5"/>
-                          <line x1="9.5" y1="13.5" x2="5.5" y2="16.5"/>
-                          <line x1="14.5" y1="13.5" x2="18.5" y2="16.5"/>
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0"/>
+                          <path d="M4 6m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0"/>
+                          <path d="M20 6m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0"/>
+                          <path d="M4 18m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0"/>
+                          <path d="M20 18m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0"/>
+                          <path d="M9.5 10.5L5.5 7.5"/>
+                          <path d="M14.5 10.5L18.5 7.5"/>
+                          <path d="M9.5 13.5L5.5 16.5"/>
+                          <path d="M14.5 13.5L18.5 16.5"/>
                         </svg>
                       </button>
                     )}
@@ -1494,9 +1741,11 @@ ${response.content}`;
       <div className="side-panel-input">
         {/* 操作按钮行：总结网页（左）+ 新建会话（右） */}
         <div className="side-panel-action-bar">
+          <div className="side-panel-action-left">
           {pageInfo?.pageUrl && (
             <button
               className="side-panel-summarize-btn"
+              data-tooltip="总结当前网页"
               onClick={handleSendSummary}
             >
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1506,33 +1755,36 @@ ${response.content}`;
                 <path d="M16 17H8"/>
                 <path d="M10 9H8"/>
               </svg>
-              <span>总结网页</span>
+              <span>总结</span>
             </button>
           )}
 
           {pageInfo?.pageUrl && (
             <button
               className="side-panel-mindmap-btn"
+              data-tooltip="基于当前页面内容生成脑图"
               onClick={handleSendMindMap}
             >
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="3"/>
-                <circle cx="4" cy="6" r="2"/>
-                <circle cx="20" cy="6" r="2"/>
-                <circle cx="4" cy="18" r="2"/>
-                <circle cx="20" cy="18" r="2"/>
-                <line x1="9.5" y1="10.5" x2="5.5" y2="7.5"/>
-                <line x1="14.5" y1="10.5" x2="18.5" y2="7.5"/>
-                <line x1="9.5" y1="13.5" x2="5.5" y2="16.5"/>
-                <line x1="14.5" y1="13.5" x2="18.5" y2="16.5"/>
+                <path d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0"/>
+                <path d="M4 6m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0"/>
+                <path d="M20 6m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0"/>
+                <path d="M4 18m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0"/>
+                <path d="M20 18m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0"/>
+                <path d="M9.5 10.5L5.5 7.5"/>
+                <path d="M14.5 10.5L18.5 7.5"/>
+                <path d="M9.5 13.5L5.5 16.5"/>
+                <path d="M14.5 13.5L18.5 16.5"/>
               </svg>
-              <span>生成脑图</span>
+              <span>脑图</span>
             </button>
           )}
+          </div>
 
-          {/* 新建会话按钮 — 仅图标 */}
+          {/* 新建会话按钮 */}
           <button
             className="side-panel-new-chat-btn"
+            data-tooltip="新建会话"
             onClick={() => {
               // 如果有正在进行的请求，先取消
               if (currentPortRef.current) {
@@ -1546,13 +1798,14 @@ ${response.content}`;
               setRecommendedQuestions([]);
               setCurrentSessionId(generateSessionId());
               setExpandedReasoning({});
+              setMindMapMarkdown(null);
+              setMindMapInline(null);
+              setMindMapLoading(false);
             }}
-            title="新建会话"
           >
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                <line x1="12" y1="8" x2="12" y2="14"/>
-                <line x1="9" y1="11" x2="15" y2="11"/>
+              <svg viewBox="0 0 1024 1024" width="24" height="24" fill="currentColor">
+                <path d="M594.4832 148.48a30.72 30.72 0 0 0-30.72-30.72h-343.552a153.6 153.6 0 0 0-153.6 153.6v379.392a153.6 153.6 0 0 0 153.6 153.6h14.336v75.264a51.2 51.2 0 0 0 83.1488 40.0384l144.7424-115.3024h341.5552a153.6 153.6 0 0 0 153.6-153.6V486.144a30.72 30.72 0 0 0-61.44 0v164.608a92.16 92.16 0 0 1-92.16 92.16h-363.008l-144.9472 115.456V742.912H220.16a92.16 92.16 0 0 1-92.16-92.16V271.36a92.16 92.16 0 0 1 92.16-92.16h343.552a30.72 30.72 0 0 0 30.72-30.72z"/>
+                <path d="M791.296 106.5984a35.84 35.84 0 0 1 35.5328 31.0272l0.3072 4.864v85.0944h87.04a35.84 35.84 0 0 1 4.864 71.3728l-4.864 0.3072h-87.04v85.0944a35.84 35.84 0 0 1-71.3728 4.864l-0.3072-4.864V299.264h-87.04a35.84 35.84 0 0 1-4.864-71.3728l4.864-0.3072h87.04V142.4896a35.84 35.84 0 0 1 35.84-35.84v-0.0512zM538.5216 455.68a35.84 35.84 0 0 1 4.9152 71.3728l-4.864 0.3072h-245.76a35.84 35.84 0 0 1-4.864-71.3728l4.8128-0.3072h245.76z m-122.88-142.2848a35.84 35.84 0 0 1 4.9152 71.3728l-4.864 0.3072h-122.88a35.84 35.84 0 0 1-4.864-71.3216l4.864-0.3584h122.88z"/>
               </svg>
             </button>
         </div>
@@ -1563,7 +1816,7 @@ ${response.content}`;
             <textarea
               ref={textareaRef}
               placeholder="追问或提出新问题..."
-              rows={2}
+              rows={3}
               value={inputValue}
               onChange={(e) => {
                 setInputValue(e.target.value);
@@ -1581,8 +1834,10 @@ ${response.content}`;
                   <rect x="7" y="7" width="10" height="10" rx="2.5"/>
                 </svg>
               ) : (
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                  <path d="M12 4L4 14h5v6h6v-6h5L12 4z"/>
+                <svg viewBox="0 0 1024 1024" width="16" height="16" fill="currentColor">
+                  <path d="M512 236.308a39.385 39.385 0 0 1 39.385 39.384v551.385A39.385 39.385 0 0 1 512 866.462a39.385 39.385 0 0 1-39.385-39.385V275.692A39.385 39.385 0 0 1 512 236.308z"/>
+                  <path d="M533.268 220.16a39.385 39.385 0 0 1 0 55.532L310.35 498.61a39.385 39.385 0 0 1-55.533 0 39.385 39.385 0 0 1 0-55.532L477.735 220.16a39.385 39.385 0 0 1 55.533 0z"/>
+                  <path d="M490.732 220.16a39.385 39.385 0 0 1 55.533 0l222.917 222.917a39.385 39.385 0 0 1 0 55.532 39.385 39.385 0 0 1-55.533 0L490.732 275.692a39.385 39.385 0 0 1 0-55.532z"/>
                 </svg>
               )}
             </button>
