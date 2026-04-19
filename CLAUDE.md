@@ -313,6 +313,14 @@ See `src/types/messages.ts` for all message type definitions:
 - `LLM_STREAM_END`: Streaming completed
 - Port name: `llm-stream` (defined as `LLM_STREAM_PORT_NAME`)
 
+## Project Rules
+
+- **Content scripts cannot access `chrome.*` APIs** — all extension API calls must go through message passing to the background script
+- **Never use `eval()` or `innerHTML` with unsanitized content** — content scripts run in the user's page context, XSS is critical
+- **Service worker lifecycle** — background script is a short-lived service worker; do not rely on global state persisting between events
+- **Never log or expose API keys in plaintext** — always use `encryptApiKey()` before storage, decrypt only when making API calls
+- **Build before test** — tests require `dist/` directory; run `npm run build` in `browser-extension/` before `npm test`
+
 ## Performance Considerations
 
 - Context collection limits text to avoid token limits
