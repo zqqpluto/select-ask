@@ -1,76 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
-import { marked } from 'marked';
+import { escapeHtml, formatTime, formatDuration, formatUrlForDisplay, copyToClipboard } from '../utils/shared';
+import { renderMarkdown } from '../utils/markdown';
 import type { HistoryMessage, ModelConfig } from '../types';
 import { generateSessionId, generateTitle } from '../utils/history-manager';
-import { MindMap, MindMapFullscreen } from '../components/mind-map';
-import '../components/mind-map/mind-map.css';
-
-// 工具函数
-function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-function formatTime(timestamp: number | Date = Date.now()): string {
-  const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
-  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatDuration(ms: number): string {
-  const seconds = Math.round(ms / 1000);
-  if (seconds < 60) return `${seconds}秒`;
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}分${remainingSeconds}秒`;
-}
-
-function renderMarkdown(text: string): string {
-  try {
-    let processed = marked(text);
-
-    // 表格
-    processed = processed.replace(/<table>/g, '<table class="select-ask-table">');
-
-    // 代码块
-    processed = processed.replace(/<pre>/g, '<pre class="select-ask-pre">');
-    processed = processed.replace(/<code>/g, '<code class="select-ask-code">');
-
-    // 引用
-    processed = processed.replace(/<blockquote>/g, '<blockquote class="select-ask-blockquote">');
-
-    // 列表
-    processed = processed.replace(/<ul>/g, '<ul class="select-ask-ul">');
-    processed = processed.replace(/<ol>/g, '<ol class="select-ask-ol">');
-    processed = processed.replace(/<li>/g, '<li class="select-ask-li">');
-
-    // 分割线
-    processed = processed.replace(/<hr\s*\/?>/g, '<hr class="select-ask-hr">');
-
-    // 链接 - 添加安全属性
-    processed = processed.replace(/<a href="([^"]*)"/g, '<a href="$1" target="_blank" rel="noopener noreferrer"');
-
-    return processed;
-  } catch (error) {
-    console.error('Markdown render error:', error);
-    return text;
-  }
-}
-
-// 格式化 URL 显示：域名 + 精简路径
-function formatUrlForDisplay(url: string): { displayText: string; faviconUrl: string } {
-  try {
-    const parsed = new URL(url);
-    const hostname = parsed.hostname.replace(/^www\./, '');
-    const path = parsed.pathname;
-    const pathShort = path.length > 30 ? path.slice(0, 27) + '...' : path;
-    const displayText = pathShort ? `${hostname}${pathShort}` : hostname;
-    const faviconUrl = `${parsed.origin}/favicon.ico`;
-    return { displayText, faviconUrl };
-  } catch {
-    return { displayText: url, faviconUrl: '' };
-  }
-}
+import { MindMap, MindMapFullscreen } from '../components/MindMap';
+import '../components/MindMap/mind-map.css';
 
 interface ExtendedHistoryMessage extends HistoryMessage {
   modelName?: string;
@@ -225,15 +159,6 @@ export default function App() {
 
     // 重新生成
     await getAIResponse(userMessage, currentModel);
-  };
-
-  // 复制文本
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch (error) {
-      console.error('Failed to copy:', error);
-    }
   };
 
   // 重新编辑用户消息

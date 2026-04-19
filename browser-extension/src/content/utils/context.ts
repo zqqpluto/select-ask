@@ -1,4 +1,4 @@
-import type { ContextData } from '../types';
+import type { ContextData } from '../../types';
 
 const CONTEXT_CONFIG = {
   maxLength: 500,

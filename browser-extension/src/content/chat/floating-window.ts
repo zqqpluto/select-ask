@@ -4,7 +4,8 @@
  */
 
 import { marked } from 'marked';
-import { TARGET_LANGUAGES } from '../types/config';
+import { escapeHtml } from '../../utils/shared';
+import { TARGET_LANGUAGES } from '../../types/config';
 
 const WINDOW_Z_INDEX = 2147483646;
 const FLOAT_PADDING = 12;
@@ -441,10 +442,4 @@ export function createFloatingTranslationWindow(
     onLanguageChange: options?.onLanguageChange,
     onClose: options?.onClose,
   };
-}
-
-function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
 }

@@ -26,7 +26,8 @@ import { MODEL_PRESETS, PROVIDER_NAMES, PROVIDER_DEFAULTS } from '../types/confi
 import { LLM_STREAM_PORT_NAME } from '../types/messages';
 import type { ModelConfig, ProviderType, TranslationConfig, FullPageTranslationConfig } from '../types';
 import type { HistorySession, HistoryMessage } from '../types/history';
-import { marked } from 'marked';
+import { escapeHtml, formatTime, formatDuration, formatUrlForDisplay, copyToClipboard } from '../utils/shared';
+import { renderMarkdown } from '../utils/markdown';
 
 interface ModelFormData {
   id: string;
@@ -47,51 +48,6 @@ const DEFAULT_FORM_DATA: ModelFormData = {
   modelId: '',
   enabled: true,
 };
-
-// 格式化时间 - 包含年月日时分秒
-function formatTime(timestamp: number): string {
-  const date = new Date(timestamp);
-  const year = date.getFullYear();
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const day = date.getDate().toString().padStart(2, '0');
-  const hours = date.getHours().toString().padStart(2, '0');
-  const minutes = date.getMinutes().toString().padStart(2, '0');
-  const seconds = date.getSeconds().toString().padStart(2, '0');
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-}
-
-// 渲染 Markdown
-function renderMarkdown(text: string): string {
-  try {
-    let processed = marked(text);
-
-    // 表格
-    processed = processed.replace(/<table>/g, '<table class="select-ask-table">');
-
-    // 代码块
-    processed = processed.replace(/<pre>/g, '<pre class="select-ask-pre">');
-    processed = processed.replace(/<code>/g, '<code class="select-ask-code">');
-
-    // 引用
-    processed = processed.replace(/<blockquote>/g, '<blockquote class="select-ask-blockquote">');
-
-    // 列表
-    processed = processed.replace(/<ul>/g, '<ul class="select-ask-ul">');
-    processed = processed.replace(/<ol>/g, '<ol class="select-ask-ol">');
-    processed = processed.replace(/<li>/g, '<li class="select-ask-li">');
-
-    // 分割线
-    processed = processed.replace(/<hr\s*\/?>/g, '<hr class="select-ask-hr">');
-
-    // 链接 - 添加安全属性
-    processed = processed.replace(/<a href="([^"]*)"/g, '<a href="$1" target="_blank" rel="noopener noreferrer"');
-
-    return processed;
-  } catch (error) {
-    console.error('Markdown render error:', error);
-    return text;
-  }
-}
 
 // 生成推荐问题
 async function generateRecommendedQuestions(
@@ -147,46 +103,7 @@ async function generateRecommendedQuestions(
   }
 }
 
-// 转义 HTML 防止 XSS
-function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-// 格式化 URL 显示：域名 + 精简路径
-function formatUrlForDisplay(url: string): { displayText: string; faviconUrl: string } {
-  try {
-    const parsed = new URL(url);
-    const hostname = parsed.hostname.replace(/^www\./, '');
-    const path = parsed.pathname;
-    const pathShort = path.length > 30 ? path.slice(0, 27) + '...' : path;
-    const displayText = pathShort ? `${hostname}${pathShort}` : hostname;
-    const faviconUrl = `${parsed.origin}/favicon.ico`;
-    return { displayText, faviconUrl };
-  } catch {
-    return { displayText: url, faviconUrl: '' };
-  }
-}
-
-// 格式化耗时
-function formatDuration(ms: number): string {
-  const seconds = Math.round(ms / 1000);
-  if (seconds < 60) return `${seconds}秒`;
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}分${remainingSeconds}秒`;
-}
-
-// 复制到剪贴板
-async function copyToClipboard(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
-}
+// 转义 HTML 防止 XSS — now imported from ../utils/shared
 
 export default function App() {
   const [models, setModels] = useState<ModelConfig[]>([]);

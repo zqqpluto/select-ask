@@ -7,6 +7,7 @@
  */
 
 import { marked } from 'marked';
+import { escapeHtml } from '../../utils/shared';
 
 const TRANSLATION_MARKER_ATTR = 'data-sa-translation';
 const PARAGRAPH_ID_ATTR = 'data-sa-paragraph-id';
@@ -299,12 +300,6 @@ function markParagraphError(paragraph: TranslatableParagraph, error: string): vo
   translationBlock.classList.remove('select-ask-translation-streaming');
   paragraph.status = 'error';
   paragraph.error = error;
-}
-
-function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
 }
 
 /** 批量翻译分隔符（参照沉浸式翻译） */

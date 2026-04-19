@@ -3,8 +3,8 @@
  * 处理关闭按钮、双击原文、ESC 键等交互操作
  */
 
-import { TranslationManager } from './translation-manager';
-import { removeTranslation } from './translation-dom';
+import { TranslationManager } from './manager';
+import { removeTranslation } from './dom';
 
 /**
  * 设置译文元素的交互事件

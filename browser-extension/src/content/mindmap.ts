@@ -13,7 +13,7 @@ import {
   loadCSS,
   loadJS,
   CHINESE_FONT_CSS,
-} from '../components/mind-map/mindmap-utils';
+} from '../components/MindMap/mindmap-utils';
 
 const MARKMAP_OPTIONS = {
   duration: 500,

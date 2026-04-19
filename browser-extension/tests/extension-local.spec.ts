@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename);
 const EXTENSION_PATH = path.join(__dirname, '../dist');
 
 // 测试页面路径（使用 file:// 协议）
-const TEST_PAGE_PATH = path.join(__dirname, 'test-page.html');
+const TEST_PAGE_PATH = path.join(__dirname, 'fixtures', 'test-page.html');
 
 test.describe('Select Ask Extension - 完整功能测试', () => {
   let context: BrowserContext;
