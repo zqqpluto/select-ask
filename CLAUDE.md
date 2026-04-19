@@ -12,6 +12,10 @@
 - 修复 bug 后，**始终验证修复是否生效**再标记完成。对 CSS 修复，检查视觉结果是否与用户描述匹配（不只是改大小，还要确认图标不再显示为黑色色块等）。
 - 脑图/内联渲染修复：确认 AI 回复后实际渲染出脑图，而非仅显示文字。
 
+### 代码提交
+- 每次完整的修改完成后，**及时提交代码**。不要积累多个不相关的改动。
+- 提交信息遵循 Conventional Commits 格式，描述清晰反映变更内容。
+
 ### 项目结构速查
 - **关键文件**：`src/side-panel/App.tsx`（侧边栏 UI）、`src/options/App.tsx`（选项页）、`src/popup/App.tsx`（弹出页）、`src/content/floating-icon.ts`（悬浮图标）、`src/content/mindmap.ts`（脑图）、`src/content/floating-window.ts`（悬浮翻译窗）
 - **配置文件**：`manifest.json`（扩展权限/配置）
