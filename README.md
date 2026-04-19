@@ -42,51 +42,6 @@
 | OpenAI 兼容 | 自定义 | 支持任何 OpenAI 兼容 API |
 | 本地模型 | Ollama, LM Studio | 本地部署，隐私安全 |
 
-## 项目架构
-
-```
-select-ask/
-├── browser-extension/          # 浏览器插件（前端）
-│   ├── src/
-│   │   ├── background/         # 后台脚本 (Service Worker)
-│   │   │   ├── index.ts        # 主入口，消息路由 + 状态持久化
-│   │   │   └── llm-service.ts  # LLM 流式服务
-│   │   ├── content/            # 内容脚本 (注入网页)
-│   │   │   ├── index.ts        # 主入口
-│   │   │   ├── floating-icon.ts    # 悬浮图标菜单
-│   │   │   ├── floating-window.ts  # 悬浮翻译窗口
-│   │   │   └── style.css       # 注入样式
-│   │   ├── popup/              # 弹出窗口（快捷操作）
-│   │   ├── options/            # 设置页面（模型管理、历史记录）
-│   │   ├── side-panel/         # 侧边栏聊天界面
-│   │   ├── services/           # 服务层
-│   │   │   └── llm/            # LLM 提供商实现
-│   │   │       ├── base.ts     # 抽象基类
-│   │   │       ├── factory.ts  # 工厂模式
-│   │   │       ├── openai.ts
-│   │   │       ├── anthropic.ts
-│   │   │       ├── deepseek.ts
-│   │   │       ├── qwen.ts
-│   │   │       ├── glm.ts
-│   │   │       └── openai-compat.ts
-│   │   ├── utils/              # 工具函数
-│   │   │   ├── context.ts      # 上下文收集
-│   │   │   ├── crypto.ts       # AES-256-GCM 加密
-│   │   │   ├── history-manager.ts  # 历史记录管理
-│   │   │   └── content-extractor.ts # 页面内容提取
-│   │   ├── store/              # Zustand 状态管理
-│   │   └── types/              # TypeScript 类型定义
-│   ├── tests/                  # Playwright 端到端测试
-│   ├── manifest.json           # Chrome 扩展清单
-│   └── package.json
-└── docs/                       # 文档
-```
-
-**架构说明**：
-- 插件完全独立运行，不依赖任何后端服务
-- LLM 调用直接从浏览器发送到配置的提供商 API，不经过任何中间服务器
-- 用户自行配置 API 密钥，数据完全本地可控
-
 ## 安装方式
 
 ### 手动安装
