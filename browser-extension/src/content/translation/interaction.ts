@@ -78,8 +78,9 @@ export function closeTranslation(id: string): void {
 
   // 如果是块级模式的 wrapper，也移除整个 wrapper
   if (wrapper && wrapper.classList.contains('block')) {
-    wrapper.style.transition = 'all 0.2s ease';
-    wrapper.style.opacity = '0';
+    const wrapperEl = wrapper as HTMLElement;
+    wrapperEl.style.transition = 'all 0.2s ease';
+    wrapperEl.style.opacity = '0';
     setTimeout(() => {
       wrapper.remove();
     }, 200);

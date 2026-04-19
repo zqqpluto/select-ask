@@ -8,7 +8,6 @@ import {
   getModelConfigs,
   getSelectedChatModel,
   getDisplayMode,
-  setDisplayMode,
   getSelectedTranslationModel,
   setSelectedTranslationModel,
   getTranslationConfig,
@@ -18,9 +17,8 @@ import {
   getFallbackLanguage,
   setFallbackLanguage,
 } from '../utils/config-manager';
-import { TARGET_LANGUAGES, DEFAULT_TRANSLATION_CONFIG, DEFAULT_FULLPAGE_TRANSLATION_CONFIG } from '../types/config';
+import { DEFAULT_TRANSLATION_CONFIG, DEFAULT_FULLPAGE_TRANSLATION_CONFIG } from '../types/config';
 import { getHistory } from '../utils/history-manager';
-import { MODEL_PRESETS, PROVIDER_NAMES, PROVIDER_DEFAULTS } from '../types/config';
 import type { ModelConfig, ProviderType, TranslationConfig, FullPageTranslationConfig } from '../types';
 import type { HistorySession } from '../types/history';
 
@@ -60,7 +58,7 @@ export default function App() {
   });
   const [fallbackLang, setFallbackLang] = useState<string>('en');
   const [showFloatingIcon, setShowFloatingIcon] = useState(true);
-  const [displayMode, setDisplayModeState] = useState<'floating' | 'sidebar'>('floating');
+  const [_displayMode, setDisplayModeState] = useState<'floating' | 'sidebar'>('floating');
   const [translationConfig, setTranslationConfig] = useState<TranslationConfig>(DEFAULT_TRANSLATION_CONFIG);
   const [fullPageConfig, setFullPageConfig] = useState<FullPageTranslationConfig>(DEFAULT_FULLPAGE_TRANSLATION_CONFIG);
   const [showModal, setShowModal] = useState(false);
@@ -441,7 +439,11 @@ export default function App() {
     setDragOverModelId(null);
   };
 
-  const providerNames: Record<ProviderType, string> = PROVIDER_NAMES;
+  const providerNames: Record<ProviderType, string> = {
+    'openai': 'OpenAI', 'anthropic': 'Anthropic', 'deepseek': 'DeepSeek',
+    'qwen': 'Qwen', 'glm': 'GLM', 'openai-compat': 'OpenAI Compatible',
+    'local-ollama': 'Ollama', 'local-lm-studio': 'LM Studio',
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">

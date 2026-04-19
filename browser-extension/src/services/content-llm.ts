@@ -337,6 +337,7 @@ export async function* streamTranslate(
   try {
     // 将 prefix/suffix 适配到 LLMContext 格式
     const llmContext: LLMContext | undefined = context ? {
+      selected: text,
       before: context.prefix || '',
       after: context.suffix || '',
     } : undefined;
@@ -377,6 +378,13 @@ export async function* streamSummarize(
   yield* streamViaBackground('question', text, undefined, undefined);
 }
 
+
+// Prompt builders preserved for reference
+void buildExplainPrompt;
+void buildSearchPrompt;
+void buildTranslatePrompt;
+void buildQuestionPrompt;
+void buildQuestionsGenerationPrompt;
 
 /**
  * 检查模型是否已配置

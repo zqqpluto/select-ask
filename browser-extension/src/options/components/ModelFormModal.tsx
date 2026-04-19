@@ -1,5 +1,5 @@
 import type { ModelConfig, ProviderType } from '../../types';
-import { MODEL_PRESETS, PROVIDER_NAMES, PROVIDER_DEFAULTS } from '../../types/config';
+import { PROVIDER_DEFAULTS } from '../../types/config';
 
 interface ModelFormModalProps {
   editingModel: ModelConfig | null;

@@ -4,7 +4,6 @@
  * 纯 TS 实现，不依赖 React
  */
 
-import type { Markmap } from 'markmap-view';
 import {
   detectMarkdownStructure,
   createTransformer,
@@ -201,7 +200,7 @@ async function renderMindMapToElement(container: HTMLElement, markdown: string) 
     }
     if (assets.scripts?.length) {
       await Promise.allSettled(
-        assets.scripts.map((s: { url: string }) => loadJS(s.url))
+        assets.scripts.map((s: any) => loadJS(s.url))
       );
     }
 

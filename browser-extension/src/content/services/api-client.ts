@@ -1,4 +1,3 @@
-import { streamExplain, streamTranslate, streamQuestion, streamSearch } from '../services/content-llm';
 import {
   addSession,
   updateSession,
@@ -13,6 +12,20 @@ import {
 } from '../utils/helpers';
 import { saveToCache } from '../utils/response-cache';
 import type { HistorySession, HistoryMessage } from '../../types/history';
+
+/**
+ * 动态导入 stream 函数（避免循环依赖）
+ */
+async function getStreamFn(action: string) {
+  const { streamExplain, streamTranslate, streamQuestion, streamSearch } = await import('../../services/content-llm');
+  const actionMap: Record<string, Function> = {
+    '解释': streamExplain,
+    '翻译': streamTranslate,
+    '搜索': streamSearch,
+    '追问': streamQuestion,
+  };
+  return actionMap[action] || streamQuestion;
+}
 
 /**
  * Session state interface for API calls
@@ -60,7 +73,8 @@ export async function callBackendAPI(
 
   const apiAction = actionMap[action] || action;
 
-  const { reasoningText, answerText, reasoningToggle, reasoningSection, aiContent, messageElement, floatingBox, inputArea } = ui;
+  const { reasoningText, answerText, reasoningToggle, reasoningSection, messageElement, inputArea } = ui;
+  void inputArea;
 
   let reasoningContent = '';
   let answerContent = '';
@@ -109,9 +123,8 @@ export async function callBackendAPI(
       after: context.after || '',
     } : undefined;
 
-    const streamGenerator = apiAction === 'translate'
-      ? streamTranslate(text)
-      : streamExplain(text, llmContext);
+    const streamFn = await getStreamFn(action);
+    const streamGenerator = streamFn(text, llmContext);
 
     for await (const chunk of streamGenerator) {
       if (chunk === '[REASONING]') {
@@ -228,13 +241,6 @@ export async function callBackendAPI(
         });
       }
     }
-
-    return {
-      answerContent,
-      reasoningContent,
-      elapsed: (Date.now() - startTime) / 1000,
-      messages: finalMessages,
-    };
   } catch (error) {
     console.error('Failed to call LLM:', error);
     if (answerText) {
@@ -270,8 +276,9 @@ export async function callFollowUpBackendAPI(
   },
   onUpdateSession: (messages: HistoryMessage[]) => void
 ): Promise<{ answerContent: string; reasoningContent: string }> {
-  const startTime = Date.now();
   const { messageElement, inputArea, reasoningText, answerText, reasoningToggle, reasoningSection, aiContent } = ui;
+  void inputArea;
+  void aiContent;
 
   let reasoningContent = '';
   let answerContent = '';
@@ -285,7 +292,8 @@ export async function callFollowUpBackendAPI(
       after: context.after || '',
     } : undefined;
 
-    for await (const chunk of streamQuestion(question, originalText, llmContext)) {
+    const streamFn = await getStreamFn('追问');
+    for await (const chunk of streamFn(question, originalText, llmContext)) {
       if (chunk === '[REASONING]') {
         hasReasoning = true;
         if (reasoningSection) {
@@ -422,6 +430,9 @@ export async function callBackendAPIForSidebar(
   const apiAction = actionMap[action] || action;
 
   const { messageElement, sidebar, inputArea, reasoningText, answerText, reasoningToggle, reasoningSection, aiContent, aiTimeEl } = ui;
+  void sidebar;
+  void inputArea;
+  void aiContent;
 
   let reasoningContent = '';
   let answerContent = '';
@@ -435,14 +446,8 @@ export async function callBackendAPIForSidebar(
       after: context.after || '',
     } : undefined;
 
-    let streamGenerator;
-    if (apiAction === 'translate') {
-      streamGenerator = streamTranslate(text);
-    } else if (apiAction === 'search') {
-      streamGenerator = streamSearch(text, llmContext);
-    } else {
-      streamGenerator = streamExplain(text, llmContext);
-    }
+    const streamFn = await getStreamFn(action);
+    const streamGenerator = streamFn(text, llmContext);
 
     for await (const chunk of streamGenerator) {
       if (chunk === '[REASONING]') {

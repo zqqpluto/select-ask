@@ -1,41 +1,14 @@
 import { getContextData } from './utils/context';
 import { isValidSelection, getSelectionPosition, removeIconMenus } from './utils/dom-utils';
-import { streamExplain, streamTranslate, streamQuestion, streamSearch } from '../services/content-llm';
-import {
-  addSession,
-  updateSession,
-  generateSessionId,
-  generateTitle,
-  getHistory,
-} from '../utils/history-manager';
-import { getSelectedChatModel, getAppConfig, saveAppConfig, setSelectedChatModel, getDisplayMode, setDisplayMode, getTranslationMode } from '../utils/config-manager';
 import { extractMainContent, truncateContent } from './utils/content-extractor';
-import { loadCache, saveToCache } from './utils/response-cache';
+import { loadCache } from './utils/response-cache';
 
 // Extracted modules
-import { showToast, getProviderDisplayName, normalizeReasoningText, renderReasoningText } from './utils/helpers';
-import { openSidebarLayout, closeSidebarLayout, ensureBoxInViewport } from './utils/layout';
-import { saveSelectionRange, restoreSelectionRange } from './utils/selection';
-import { createModelSelector } from './components/model-selector';
-import { createCopyButton, createRegenerateButton, addActionButtonsToAnswer } from './components/action-buttons';
+import { handleMenuAction } from './handlers/menu-handler';
 import {
-  createChatHeader,
-  setupDraggable,
-  toggleDisplayMode,
-} from './components/chat-box';
-import { handleMenuAction, type MenuHandlerOptions } from './handlers/menu-handler';
-import {
-  currentSessionId,
-  currentSessionType,
-  currentSelectedText,
-  currentSessionMessages,
-  currentSessionSaved,
   setSessionState,
-  processNestedLists,
-  enableFollowUp,
   handleMenuActionDelegate,
   setMenuActionDelegateDeps,
-  setFollowUpDeps,
 } from './utils/session-manager';
 
 // 样式
@@ -43,7 +16,6 @@ import styleContent from './styles/base.css?inline';
 import chatStyleContent from './chat/style.css?inline';
 import translationStyleContent from './translation/style.css?inline';
 import mindmapStyleContent from './styles/mindmap.css?inline';
-import { addMindMapButton } from './mindmap';
 import { handleMindMapFromPage, handleMindMapFromSelection } from './handlers/mindmap-handler';
 import { showPageSummary } from './handlers/summary-handler';
 import {
@@ -54,26 +26,15 @@ import {
   showDropdownMenu,
   fadeOutIcon,
   createIconMenuState,
-  handleMenuClick,
-  showIconMenu,
   handleMouseUp as handleIconMouseUp,
-  type IconMenuState,
 } from './components/icon-menu';
 import {
   showFloatingTranslation,
   showInPlaceTranslation,
-  translateMultipleParagraphs,
 } from './components/translation-ui';
 import {
-  toggleFullscreen,
-  loadFullscreenHistoryData,
-  setupFullscreenButton,
   showHistoryPanel,
   setFullscreenModeDeps,
-  getFullscreenState,
-  setFullscreenState,
-  getCurrentHistorySidebar,
-  setCurrentHistorySidebar,
 } from './components/fullscreen-mode';
 
 /**
@@ -115,21 +76,6 @@ if (typeof document !== 'undefined') {
 
 // Tool functions — now imported from ./utils/helpers and ./utils/layout
 
-/**
- * 获取当前模型名称
- */
-async function getCurrentModelName(): Promise<string> {
-  try {
-    const model = await getSelectedChatModel();
-    if (model) {
-      return getProviderDisplayName(model.provider);
-    }
-  } catch (e) {
-    // 忽略错误
-  }
-  return 'AI';
-}
-
 // modelSupportsReasoning — now in helpers.ts
 
 // createModelSelector — now in components/model-selector.ts
@@ -143,7 +89,7 @@ async function getCurrentModelName(): Promise<string> {
 /**
  * 设置历史记录按钮事件
  */
-export function setupHistoryButton(header: HTMLElement, box: HTMLElement): void {
+export function setupHistoryButton(header: HTMLElement, _box: HTMLElement): void {
   const historyBtn = header.querySelector('.select-ask-history-btn');
   if (!historyBtn) return;
 
@@ -158,29 +104,10 @@ export function setupHistoryButton(header: HTMLElement, box: HTMLElement): void 
 
 // formatRelativeTime — already exists in utils/helpers.ts
 
-// setupFullscreenButton, setupCloseButton — setupFullscreenButton in components/fullscreen-mode.ts
-function setupCloseButton(header: HTMLElement, box: HTMLElement): void {
-  // 关闭按钮已移除，此函数保留以兼容旧代码
-  const closeBtn = header.querySelector('.select-ask-close-btn');
-  if (!closeBtn) return;
-
-  closeBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    setFullscreenState(false);
-    box.remove();
-    import('./components/sidebar').then(({ getCurrentSidebar, setCurrentSidebar }) => {
-      if (getCurrentSidebar() === box) {
-        closeSidebarLayout();
-      }
-      setCurrentSidebar(null);
-    });
-  });
-}
+// setupFullscreenButton — in components/fullscreen-mode.ts
 
 // 状态 — icon menu state is now managed by IconMenuState
 let iconMenuState = createIconMenuState();
-let currentQuestionText: string = ''; // 当前问题的文本内容
-let currentQuestionContext: any = null; // 当前问题的上下文
 
 // 缓存函数 — now imported from ./utils/response-cache
 
@@ -219,10 +146,10 @@ function init(): void {
   setMenuActionDelegateDeps({
     iconMenuState,
     handleMenuAction,
-    showResponseInSidebar,
-    showFloatingTranslation,
-    showInPlaceTranslation,
-    handleMindMapFromSelection,
+    showResponseInSidebar: showResponseInSidebar as any,
+    showFloatingTranslation: showFloatingTranslation as any,
+    showInPlaceTranslation: showInPlaceTranslation as any,
+    handleMindMapFromSelection: handleMindMapFromSelection as any,
   });
 
   // 鼠标按下时隐藏已有菜单（除非是点击图标、浮动框或下拉菜单）
@@ -284,7 +211,7 @@ init();
 /**
  * 监听来自 popup 的消息
  */
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === 'OPEN_SIDEBAR') {
     // 使用 Chrome Side Panel 打开侧边栏
     chrome.runtime.sendMessage({
@@ -315,7 +242,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ success: true });
   } else if (message.action === 'startPageSummarize') {
     // 来自 popup 的总结页面请求 — 统一使用侧边栏
-    showPageSummary();
+    showPageSummary({
+      showToast: (msg) => console.log('[summary]', msg),
+      openSidePanel: (params) => chrome.runtime.sendMessage({ type: 'TOGGLE_SIDE_PANEL', ...params }),
+    });
     sendResponse({ success: true });
   } else if (message.action === 'floatingIconToggle') {
     // 来自 popup 的悬浮图标开关请求
@@ -384,7 +314,7 @@ function initFloatingIcon(): void {
       const config = await getAppConfig();
       if (config.showFloatingIcon === false) return;
 
-      const { createFloatingIcon, destroyFloatingIcon, updateMenuState } = await import('./floating-icon');
+      const { createFloatingIcon, updateMenuState } = await import('./floating-icon');
       const { restoreAllTranslations } = await import('./translation/fullpage');
 
       // 检查是否已经存在
@@ -417,12 +347,15 @@ function initFloatingIcon(): void {
           }
         },
         onSummarizePage: () => {
-          // 统一使用侧边栏展示页面总结
-          showPageSummary();
+          showPageSummary({
+            showToast: (msg) => console.log('[summary]', msg),
+            openSidePanel: (params) => chrome.runtime.sendMessage({ type: 'TOGGLE_SIDE_PANEL', ...params }),
+          });
         },
         onMindMapPage: () => {
-          // 基于页面全文生成脑图
-          handleMindMapFromPage();
+          handleMindMapFromPage({
+            showToast: (msg: string) => console.log('[mindmap]', msg),
+          } as any);
         },
         onClickIcon: () => {
           // 点击图标：切换侧边栏（未打开则打开，已打开则关闭）
@@ -480,7 +413,7 @@ async function startFullPageTranslation(): Promise<void> {
  * 监听配置变更 - 实时更新悬浮图标显示/隐藏
  */
 if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
-  chrome.storage.onChanged.addListener((changes, namespace) => {
+  chrome.storage.onChanged.addListener((changes: any, namespace) => {
     if (namespace !== 'sync' || !changes.appConfig) return;
 
     const newValue = changes.newValue;

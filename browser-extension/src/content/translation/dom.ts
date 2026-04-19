@@ -33,7 +33,7 @@ export function getAllParagraphsInRange(range: Range): HTMLElement[] {
     if (node.nodeType === Node.TEXT_NODE) {
       const textNode = node;
       // 检查该文本节点是否在选区内
-      if (isTextNodeInRange(range, textNode)) {
+      if (isTextNodeInRange(range, textNode as Text)) {
         const text = textNode.textContent?.trim();
         if (text) {
           // 找到该文本节点的最近语义化父元素
@@ -85,18 +85,6 @@ function findNearestSemanticParent(node: Node, semanticTags: Set<string>): HTMLE
     current = current.parentElement;
   }
   return null;
-}
-
-/**
- * 检查元素是否在另一个元素内部（祖先关系）
- */
-function isDescendantOf(child: Node, ancestor: Node): boolean {
-  let current: Node | null = child;
-  while (current) {
-    if (current === ancestor) return true;
-    current = current.parentNode;
-  }
-  return false;
 }
 
 /**
@@ -162,7 +150,7 @@ export function generateTranslationId(text: string): string {
  */
 export function detectInlineMode(
   sourceElement: HTMLElement,
-  sourceText: string,
+  _sourceText: string,
   translatedText: string
 ): boolean {
   // 创建临时 span 测量译文宽度
@@ -210,7 +198,7 @@ export function getTextInElementRange(range: Range, element: HTMLElement): strin
   while (node) {
     if (node.nodeType === Node.TEXT_NODE) {
       const textNode = node as Text;
-      if (isTextNodeInRange(range, textNode)) {
+      if (isTextNodeInRange(range, textNode as Text)) {
         // 检查该文本节点的最近语义父元素是否就是目标元素本身
         // 如果文本被嵌套的语义元素（如子 <li>）包含，则跳过
         let current: Node | null = textNode.parentElement;
@@ -317,7 +305,7 @@ export function insertTranslation(
   }
 
   // 创建译文容器元素
-  const { translationEl, contentEl } = createTranslationElement(translationId, isInline);
+  const { translationEl, contentEl: _contentEl } = createTranslationElement(translationId, isInline);
 
   // 存储关联关系
   translationEl.dataset.translationFor = paragraph.tagName.toLowerCase();

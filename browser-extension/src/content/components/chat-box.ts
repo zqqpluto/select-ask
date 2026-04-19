@@ -1,4 +1,4 @@
-import { getDisplayMode, setDisplayMode } from '../utils/config-manager';
+import { getDisplayMode, setDisplayMode } from '../../utils/config-manager';
 import { openSidebarLayout } from '../utils/layout';
 import { showToast } from '../utils/helpers';
 
@@ -132,7 +132,8 @@ export async function toggleDisplayMode(box: HTMLElement): Promise<void> {
   }
 
   // 使用动态导入避免循环依赖（index.ts 静态导入本模块）
-  const { setupHistoryButton, setupFullscreenButton } = await import('../content/index');
+  const { setupHistoryButton } = await import('../index');
+  const { setupFullscreenButton } = await import('./fullscreen-mode');
   setupHistoryButton(newHeader, newBox);
   setupFullscreenButton(newHeader, newBox);
 

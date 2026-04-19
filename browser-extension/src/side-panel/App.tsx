@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { ModelConfig } from '../types';
 import { generateSessionId } from '../utils/history-manager';
-import { useChatStream, type ExtendedHistoryMessage, type PageInfo } from './hooks/useChatStream';
+import { useChatStream, type ExtendedHistoryMessage } from './hooks/useChatStream';
 import ChatMessageList from './components/ChatMessageList';
 import ChatInput from './components/ChatInput';
 import MindMapIntegration from './components/MindMapIntegration';
@@ -10,7 +10,7 @@ import '../components/MindMap/mind-map.css';
 export default function App() {
   const {
     messages, setMessages, inputValue, setInputValue, isLoading,
-    selectedText, setSelectedText, context, setContext,
+    selectedText: _selectedText, setSelectedText, context: _context, setContext,
     currentModel, setCurrentModel, availableModels, setAvailableModels,
     pageInfo, setPageInfo,
     selectedTextExpanded, setSelectedTextExpanded,
@@ -18,13 +18,13 @@ export default function App() {
     mindMapMarkdown, setMindMapMarkdown,
     mindMapInline, mindMapLoading,
     expandedReasoning, toggleReasoning,
-    currentPortRef, messagesCountRef,
+    currentPortRef: _currentPortRef, messagesCountRef,
     userHasScrolled, setUserHasScrolled,
-    currentSessionId, setCurrentSessionId,
+    currentSessionId: _currentSessionId, setCurrentSessionId,
     getAIResponse, getAIResponseWithMessages,
     handleSend, handleStopGeneration, handleRegenerate,
     handleReEdit, handleConvertToMindMap,
-    handleTextareaChange, handleKeyDown,
+    handleTextareaChange, handleKeyDown: _handleKeyDown,
     handleNewChat, handleSendMindMap,
     autoGenerateEnabled: _autoGenerateEnabled, setAutoGenerateEnabled,
   } = useChatStream();
@@ -78,7 +78,7 @@ export default function App() {
           const selectedIds = config.selectedChatModelIds || [];
           let modelsToUse: ModelConfig[] = [];
           if (selectedIds.length > 0) {
-            modelsToUse = selectedIds.map((id: string) => enabledModels.find((m: { id: string; enabled: boolean }) => m.id === id)).filter((m): m is ModelConfig => m !== undefined && m.enabled);
+            modelsToUse = selectedIds.map((id: string) => enabledModels.find((m: { id: string; enabled: boolean }) => m.id === id)).filter((m: ModelConfig | undefined): m is ModelConfig => m !== undefined && m.enabled);
           } else {
             modelsToUse = enabledModels;
           }

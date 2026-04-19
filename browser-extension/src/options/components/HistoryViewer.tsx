@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react';
-import type { ModelConfig, ProviderType } from '../../types';
+import type { ModelConfig } from '../../types';
 import type { HistorySession, HistoryMessage } from '../../types/history';
 import { escapeHtml, formatTime, formatDuration, formatUrlForDisplay, copyToClipboard } from '../../utils/shared';
 import { renderMarkdown } from '../../utils/markdown';
 import { generateRecommendedQuestions } from '../hooks/useGenerateQuestions';
 import { getAppConfig } from '../../utils/config-manager';
-import { addMessageToSession, getHistory } from '../../utils/history-manager';
+import { addMessageToSession } from '../../utils/history-manager';
 import { LLM_STREAM_PORT_NAME } from '../../types/messages';
 
 interface HistoryViewerProps {

@@ -3,7 +3,7 @@
  */
 
 import { ratioToPixel, pixelToRatio, loadRatio, saveRatio } from '../utils/floating-position';
-import { createSvg, appendSvgPath } from '../utils/svg-helpers';
+import { createSvg } from '../utils/svg-helpers';
 
 const ICON_Z_INDEX = 2147483646;
 

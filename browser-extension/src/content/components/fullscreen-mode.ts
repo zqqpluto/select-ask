@@ -136,7 +136,7 @@ export function toggleFullscreen(box: HTMLElement, header: HTMLElement): void {
  */
 export async function loadFullscreenHistoryData(
   historyPanel: HTMLElement,
-  box: HTMLElement
+  _box: HTMLElement
 ): Promise<void> {
   const sessions = await getHistory();
 
@@ -275,7 +275,7 @@ async function resumeSession(session: HistorySession, box: HTMLElement): Promise
 /**
  * 显示历史记录侧边栏
  */
-export async function showHistoryPanel(box: HTMLElement, triggerBtn: HTMLElement): Promise<void> {
+export async function showHistoryPanel(box: HTMLElement, _triggerBtn: HTMLElement): Promise<void> {
   if (currentHistorySidebar) {
     currentHistorySidebar.remove();
     currentHistorySidebar = null;

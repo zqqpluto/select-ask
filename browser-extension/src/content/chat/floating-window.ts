@@ -53,7 +53,6 @@ export function createFloatingTranslationWindow(
   let sourceLang = 'auto';   // 原文语言（auto=智能识别）
   let targetLang = options?.initialTargetLanguage || systemLang;
   let fullContent = '';
-  let isStreaming = false;
   let isDestroyed = false;
 
   const windowEl = document.createElement('div');
@@ -383,7 +382,6 @@ export function createFloatingTranslationWindow(
   }
 
   function setStreaming(streaming: boolean) {
-    isStreaming = streaming;
     const sourceCursor = windowEl.querySelector('.select-ask-float-source-streaming-cursor') as HTMLElement;
     const targetCursor = windowEl.querySelector('.select-ask-float-target-streaming-cursor') as HTMLElement;
     if (sourceCursor) sourceCursor.style.display = streaming ? 'inline' : 'none';

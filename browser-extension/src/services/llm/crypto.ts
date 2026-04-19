@@ -54,7 +54,7 @@ async function getOrCreateEncryptionKey(): Promise<CryptoKey> {
     const keyBuffer = base64ToArrayBuffer(keyData);
     return crypto.subtle.importKey(
       'raw',
-      keyBuffer,
+      keyBuffer as BufferSource,
       { name: 'AES-GCM', length: 256 },
       false,
       ['encrypt', 'decrypt']

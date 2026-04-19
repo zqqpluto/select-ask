@@ -4,7 +4,7 @@ import type { ModelConfig } from '../types';
 import { useI18n } from '../hooks/useI18n';
 
 export default function App() {
-  const { t } = useI18n();
+  const { t: _t } = useI18n();
   const [_models, setModels] = useState<ModelConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [floatingIconEnabled, setFloatingIconEnabled] = useState(true);
@@ -15,7 +15,7 @@ export default function App() {
   const [showModelSelector, setShowModelSelector] = useState(false);
 
   const modelButtonRef = useRef<HTMLButtonElement>(null);
-  const [dropdownPosition, setDropdownPosition] = useState<{ bottom: number; left: number } | null>(null);
+  const [_dropdownPosition, setDropdownPosition] = useState<{ bottom: number; left: number } | null>(null);
 
   useEffect(() => {
     loadConfig();

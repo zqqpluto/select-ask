@@ -260,7 +260,6 @@ export function buildModelSelectorMenuItem(
   const subMenu = document.createElement('div');
   subMenu.className = 'select-ask-floating-icon-menu select-ask-model-submenu';
 
-  let currentModelId = '';
   let modelsLoaded = false;
 
   chrome.storage.sync.get(['app_config']).then((result) => {
@@ -281,7 +280,6 @@ export function buildModelSelectorMenuItem(
       const firstModel = modelsToUse[0];
       if (firstModel) {
         label.textContent = firstModel.name;
-        currentModelId = firstModel.id;
       } else {
         label.textContent = '未配置模型';
       }
@@ -319,7 +317,6 @@ export function buildModelSelectorMenuItem(
             });
             item.classList.add('active');
             label.textContent = model.name;
-            currentModelId = model.id;
 
             chrome.runtime.sendMessage({
               type: 'SET_SELECTED_CHAT_MODEL',

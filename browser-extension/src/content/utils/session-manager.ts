@@ -132,7 +132,7 @@ export function processNestedLists(html: string): string {
   if (!firstMatch) return html;
 
   const startIndex = firstMatch.index!;
-  const { html: listHtml, nextIdx } = buildListFromIndex(0, 0);
+  const { html: listHtml, nextIdx: _nextIdx } = buildListFromIndex(0, 0);
 
   // 找到列表结束位置
   let endIndex = startIndex;
@@ -170,7 +170,7 @@ export function setFollowUpDeps(deps: FollowUpDependencies): void {
  * 启用追问功能
  */
 export function enableFollowUp(
-  messageElement: HTMLElement,
+  _messageElement: HTMLElement,
   originalText: string,
   context: any,
   floatingBox: HTMLElement,
@@ -197,6 +197,7 @@ export function enableFollowUp(
     textarea.style.height = '48px';
     sendBtn.disabled = true;
 
+    if (!followUpDeps) return;
     const newMessage = followUpDeps.createFollowUpMessage(question);
     chatContainer.insertBefore(newMessage, inputArea);
 

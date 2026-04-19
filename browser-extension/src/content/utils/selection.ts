@@ -14,6 +14,7 @@ export function saveSelectionRange(): void {
 export function restoreSelectionRange(): void {
   if (savedRange) {
     const selection = window.getSelection();
+    if (!selection) return;
     try {
       const rangeNode = savedRange.startContainer;
       if (!rangeNode || !document.contains(rangeNode)) {

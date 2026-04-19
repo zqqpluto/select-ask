@@ -32,6 +32,8 @@ export function getProviderDisplayName(provider: ProviderType): string {
     'qwen': '通义千问',
     'glm': '智谱GLM',
     'openai-compat': 'LLM',
+    'local-ollama': 'Ollama',
+    'local-lm-studio': 'LM Studio',
   };
   return names[provider] || 'LLM';
 }

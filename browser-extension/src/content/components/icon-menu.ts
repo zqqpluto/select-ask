@@ -281,7 +281,7 @@ export function createIconMenuState(): IconMenuState {
  * 处理图标点击 - 显示下拉菜单
  */
 export function handleMenuClick(
-  e: MouseEvent,
+  _e: MouseEvent,
   iconMenu: HTMLElement,
   state: IconMenuState,
   selectionText: string,

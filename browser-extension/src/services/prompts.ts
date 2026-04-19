@@ -185,7 +185,7 @@ export function createQuestionPrompt(userQuestion: string, selectedText: string,
 /**
  * 生成问题 Prompt（用于追问气泡功能）
  */
-export function createGenerateQuestionsPrompt(selectedText: string, context?: ContextData, answer?: string): string {
+export function createGenerateQuestionsPrompt(selectedText: string, context?: ContextData, _answer?: string): string {
   if (!context || !context.beforeText && !context.afterText) {
     // 无上下文时
     return `请分析以下文本，提炼出用户最可能提出的 5 个问题。

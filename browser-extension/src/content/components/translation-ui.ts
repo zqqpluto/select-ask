@@ -1,5 +1,6 @@
 import { restoreSelectionRange, clearSelection } from '../utils/selection';
 import { removeIconMenus } from '../utils/dom-utils';
+import type { TranslationEntry } from '../translation/manager';
 
 export interface TranslationDeps {
   showResponseFloatingBox?: (action: string, text: string, context: any, model: any) => Promise<void>;
@@ -9,7 +10,7 @@ export interface TranslationDeps {
  * 悬浮窗口翻译 - 在选区附近显示悬浮窗口进行翻译
  * 支持窗口内切换目标语言
  */
-export async function showFloatingTranslation(text: string, context: any): Promise<void> {
+export async function showFloatingTranslation(text: string, _context: any): Promise<void> {
   const { createFloatingTranslationWindow } = await import('../chat/floating-window');
   const { getTargetLanguage } = await import('../../utils/config-manager');
   const { streamTranslate } = await import('../../services/content-llm');
@@ -166,11 +167,12 @@ export async function showInPlaceTranslation(text: string, context: any, deps?: 
   let separatorNode: Text | undefined;
   let isInline = true; // 默认使用行内模式，等翻译完成后动态判断
 
-  const tempEntry = {
+  const tempEntry: TranslationEntry = {
     id: translationId,
     originalText: text,
     sourceElement: targetParagraph,
     translationElement: loadingEl,
+    separatorNode: undefined,
     isVisible: true,
     createdAt: Date.now(),
     streamCompleted: false,
@@ -291,7 +293,7 @@ export async function translateMultipleParagraphs(
   range: Range,
   deps: TranslateMultipleParagraphsDeps
 ): Promise<void> {
-  const { generateTranslationId, insertTranslation, insertLoadingAtEnd, TranslationManager, setupTranslationInteraction, setupSourceElementInteraction, detectInlineMode, shouldUseInlineMode, getTextInElementRange } = deps;
+  const { generateTranslationId, insertTranslation, insertLoadingAtEnd, TranslationManager, setupTranslationInteraction, setupSourceElementInteraction: _setupSourceElementInteraction, detectInlineMode, shouldUseInlineMode, getTextInElementRange } = deps;
   const { streamTranslate } = await import('../../services/content-llm');
   const { marked } = await import('marked');
 

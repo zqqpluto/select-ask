@@ -12,11 +12,8 @@ export interface OpenAICompatOptions {
 }
 
 export class OpenAICompatProvider extends LLMProvider {
-  private options: OpenAICompatOptions;
-
-  constructor(config: { apiKey: string; baseUrl: string; modelId: string }, options?: OpenAICompatOptions) {
+  constructor(config: { apiKey: string; baseUrl: string; modelId: string }, _options?: OpenAICompatOptions) {
     super(config);
-    this.options = options || {};
   }
 
   protected getChatUrl(): string {
@@ -76,7 +73,7 @@ export class OpenAICompatProvider extends LLMProvider {
 
   async *streamChat(
     messages: LLMMessage[],
-    context?: LLMContext,
+    _context?: LLMContext,
     addReasoning: boolean = false
   ): AsyncGenerator<string, void, unknown> {
     const response = await this.fetchStream(messages, addReasoning);

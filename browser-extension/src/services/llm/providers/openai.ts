@@ -56,7 +56,7 @@ export class OpenAIProvider extends LLMProvider {
 
   async *streamChat(
     messages: LLMMessage[],
-    context?: LLMContext,
+    _context?: LLMContext,
     addReasoning: boolean = false
   ): AsyncGenerator<string, void, unknown> {
     const response = await this.fetchStream(messages, addReasoning);
