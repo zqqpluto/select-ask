@@ -5,12 +5,8 @@ import {
   saveModelConfig,
   deleteModelConfig,
   testModelConnection,
-  getModelConfig,
   getModelConfigs,
   getSelectedChatModel,
-  setSelectedChatModel,
-  getFallbackLanguage,
-  setFallbackLanguage,
   getDisplayMode,
   setDisplayMode,
   getSelectedTranslationModel,
@@ -19,15 +15,20 @@ import {
   saveTranslationConfig,
   getFullPageTranslationConfig,
   saveFullPageTranslationConfig,
+  getFallbackLanguage,
+  setFallbackLanguage,
 } from '../utils/config-manager';
 import { TARGET_LANGUAGES, DEFAULT_TRANSLATION_CONFIG, DEFAULT_FULLPAGE_TRANSLATION_CONFIG } from '../types/config';
-import { getHistory, deleteSession, clearHistory, addMessageToSession } from '../utils/history-manager';
+import { getHistory } from '../utils/history-manager';
 import { MODEL_PRESETS, PROVIDER_NAMES, PROVIDER_DEFAULTS } from '../types/config';
-import { LLM_STREAM_PORT_NAME } from '../types/messages';
 import type { ModelConfig, ProviderType, TranslationConfig, FullPageTranslationConfig } from '../types';
-import type { HistorySession, HistoryMessage } from '../types/history';
-import { escapeHtml, formatTime, formatDuration, formatUrlForDisplay, copyToClipboard } from '../utils/shared';
-import { renderMarkdown } from '../utils/markdown';
+import type { HistorySession } from '../types/history';
+
+// Extracted components
+import ModelList from './components/ModelList';
+import ModelFormModal from './components/ModelFormModal';
+import TranslationSettings from './components/TranslationSettings';
+import HistoryViewer from './components/HistoryViewer';
 
 interface ModelFormData {
   id: string;
@@ -48,62 +49,6 @@ const DEFAULT_FORM_DATA: ModelFormData = {
   modelId: '',
   enabled: true,
 };
-
-// 生成推荐问题
-async function generateRecommendedQuestions(
-  selectedText: string,
-  userQuestion: string,
-  aiAnswer: string
-): Promise<string[]> {
-  try {
-    const port = chrome.runtime.connect({ name: LLM_STREAM_PORT_NAME });
-
-    return new Promise((resolve, reject) => {
-      let fullContent = '';
-
-      port.onMessage.addListener((message) => {
-        if (message.type === 'LLM_STREAM_CHUNK') {
-          fullContent += message.chunk || '';
-        } else if (message.type === 'LLM_STREAM_ERROR') {
-          reject(new Error(message.error));
-          port.disconnect();
-        } else if (message.type === 'LLM_STREAM_END') {
-          port.disconnect();
-
-          // 解析问题列表
-          const questions = fullContent
-            .split('\n')
-            .map(q => q.trim())
-            .filter(q => q && !q.match(/^[\d\-\•\*]+\.?\s*/)) // 移除序号
-            .slice(0, 3); // 只展示 3 个
-
-          resolve(questions);
-        }
-      });
-
-      port.onDisconnect.addListener(() => {
-        if (!fullContent) {
-          reject(new Error('Connection closed'));
-        }
-      });
-
-      port.postMessage({
-        type: 'LLM_STREAM_START',
-        payload: {
-          action: 'generateQuestions',
-          text: selectedText,
-          context: userQuestion,
-          answer: aiAnswer,
-        },
-      });
-    });
-  } catch (error) {
-    console.error('Failed to generate questions:', error);
-    return [];
-  }
-}
-
-// 转义 HTML 防止 XSS — now imported from ../utils/shared
 
 export default function App() {
   const [models, setModels] = useState<ModelConfig[]>([]);
@@ -129,39 +74,26 @@ export default function App() {
   const [activeSettingSection, setActiveSettingSection] = useState('model');
   const [historySessions, setHistorySessions] = useState<HistorySession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
-  const [chatInput, setChatInput] = useState('');
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [streamingContent, setStreamingContent] = useState('');
-  const [streamingReasoning, setStreamingReasoning] = useState('');
-  const chatContainerRef = useRef<HTMLDivElement>(null);
   const settingsContentRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const [showApiKeyInModal, setShowApiKeyInModal] = useState(false);
-  const [visibleApiKeys, setVisibleApiKeys] = useState<Set<string>>(new Set());
   // 历史对话相关状态
   const [currentChatModel, setCurrentChatModel] = useState<ModelConfig | null>(null);
-  const [copiedMessageId, setCopiedMessageId] = useState<number | null>(null);
-  const [recommendedQuestions, setRecommendedQuestions] = useState<string[]>([]);
-  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
-  const [historySearchQuery, setHistorySearchQuery] = useState('');
   const [selectedTranslationModelId, setSelectedTranslationModelIdState] = useState<string | null>(null);
   // 模型列表获取相关状态
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
   const [showModelDropdown, setShowModelDropdown] = useState(false);
   const [modelSearchQuery, setModelSearchQuery] = useState('');
-  const [presetFilter, setPresetFilter] = useState('all');
   const [formError, setFormError] = useState<string>('');
   const autoFetchedApiKeyRef = useRef<string>('');
-  // 历史记录页面思考过程展开/折叠状态
-  const [expandedHistoryReasoning, setExpandedHistoryReasoning] = useState<Record<number, boolean>>({});
 
   // 自动获取模型：用户输入 API Key 后延迟触发
   useEffect(() => {
     if (!showModal) return;
     const apiKey = formData.apiKey.trim();
     if (!apiKey || apiKey.length < 5) return;
-    if (apiKey === autoFetchedApiKeyRef.current) return; // 已获取过
+    if (apiKey === autoFetchedApiKeyRef.current) return;
 
     const timer = setTimeout(async () => {
       autoFetchedApiKeyRef.current = apiKey;
@@ -187,7 +119,7 @@ export default function App() {
           }
         }
       } catch {
-        // 静默失败，用户可手动点击"获取模型"
+        // 静默失败
       }
     }, 1500);
 
@@ -211,7 +143,6 @@ export default function App() {
     loadConfig();
     loadHistory();
 
-    // Listen for storage changes from Popup page
     chrome.storage.onChanged.addListener((changes, areaName) => {
       if (areaName === 'sync' && changes.app_config) {
         const newConfig = changes.app_config.newValue;
@@ -231,10 +162,9 @@ export default function App() {
     }
   }, []);
 
-  // 设置页面滚动监听 - 自动高亮侧边栏
+  // 设置页面滚动监听
   useEffect(() => {
     if (activeTab !== 'settings') return;
-
     const container = settingsContentRef.current;
     if (!container) return;
 
@@ -274,7 +204,6 @@ export default function App() {
   const loadHistory = async () => {
     const sessions = await getHistory();
     setHistorySessions(sessions);
-    // 默认选中最新的对话
     if (sessions.length > 0 && !selectedSessionId) {
       setSelectedSessionId(sessions[0].id);
     }
@@ -285,7 +214,6 @@ export default function App() {
     const models = await getModelConfigs();
     setModels(models);
 
-    // Load preferences
     if (config.preferences) {
       setPreferences({
         ...config.preferences,
@@ -293,159 +221,24 @@ export default function App() {
       });
     }
 
-    // Load fallback language
     const fbLang = await getFallbackLanguage();
     setFallbackLang(fbLang);
 
-    // Load appearance settings
     setShowFloatingIcon(config.showFloatingIcon ?? true);
     const dm = await getDisplayMode();
     setDisplayModeState(dm);
 
-    // Load translation config
     const tc = await getTranslationConfig();
     setTranslationConfig(tc);
 
-    // Load full page translation config
     const fc = await getFullPageTranslationConfig();
     setFullPageConfig(fc);
 
-    // 加载当前选择的对话模型
     const currentModel = await getSelectedChatModel();
     setCurrentChatModel(currentModel);
 
-    // 加载翻译模型
     const translationModel = await getSelectedTranslationModel();
     setSelectedTranslationModelIdState(translationModel?.id || null);
-  };
-
-  const scrollToBottom = () => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-  };
-
-  const handleSendFollowUp = async () => {
-    if (!chatInput.trim() || isStreaming || !selectedSessionId) return;
-
-    // 清除之前的推荐问题
-    setRecommendedQuestions([]);
-
-    const session = historySessions.find(s => s.id === selectedSessionId);
-    if (!session) return;
-
-    const userMessage: HistoryMessage = {
-      role: 'user',
-      content: chatInput.trim(),
-      timestamp: Date.now(),
-    };
-
-    await addMessageToSession(selectedSessionId, userMessage);
-    const updatedSessions = await getHistory();
-    setHistorySessions(updatedSessions);
-
-    setChatInput('');
-    setIsStreaming(true);
-    setStreamingContent('');
-    setStreamingReasoning('');
-
-    setTimeout(scrollToBottom, 50);
-
-    try {
-      const enabledModels = models.filter(m => m.enabled);
-      if (enabledModels.length === 0) {
-        throw new Error('请先在模型管理中启用至少一个模型');
-      }
-
-      const model = enabledModels[0];
-
-      const port = chrome.runtime.connect({ name: LLM_STREAM_PORT_NAME });
-
-      let fullContent = '';
-      let fullReasoning = '';
-      let isReasoning = false;
-
-      port.onMessage.addListener((message) => {
-        if (message.type === 'LLM_STREAM_CHUNK') {
-          const chunk = message.chunk || '';
-
-          if (chunk.includes('[REASONING]')) {
-            isReasoning = true;
-          }
-          if (chunk.includes('[REASONING_DONE]')) {
-            isReasoning = false;
-          }
-
-          const cleanChunk = chunk
-            .replace(/\[REASONING\]/g, '')
-            .replace(/\[REASONING_DONE\]/g, '');
-
-          if (isReasoning) {
-            fullReasoning += cleanChunk;
-            setStreamingReasoning(fullReasoning);
-          } else {
-            fullContent += cleanChunk;
-            setStreamingContent(fullContent);
-          }
-
-          setTimeout(scrollToBottom, 50);
-        } else if (message.type === 'LLM_STREAM_ERROR') {
-          setIsStreaming(false);
-          alert(`发送失败: ${message.error}`);
-          port.disconnect();
-        } else if (message.type === 'LLM_STREAM_END') {
-          setIsStreaming(false);
-          port.disconnect();
-
-          const assistantMessage: HistoryMessage = {
-            role: 'assistant',
-            content: fullContent,
-            reasoning: fullReasoning || undefined,
-            timestamp: Date.now(),
-          };
-          addMessageToSession(selectedSessionId, assistantMessage).then(() => {
-            getHistory().then(setHistorySessions);
-          });
-
-          // 自动生成推荐问题
-          (async () => {
-            const config = await getAppConfig();
-            if (config.preferences?.autoGenerateQuestions !== false && session.selectedText) {
-              setIsGeneratingQuestions(true);
-              try {
-                const questions = await generateRecommendedQuestions(
-                  session.selectedText,
-                  chatInput.trim(),
-                  fullContent
-                );
-                setRecommendedQuestions(questions);
-              } catch (error) {
-                console.error('Failed to generate questions:', error);
-              } finally {
-                setIsGeneratingQuestions(false);
-              }
-            }
-          })();
-        }
-      });
-
-      port.onDisconnect.addListener(() => {
-        setIsStreaming(false);
-      });
-
-      port.postMessage({
-        type: 'LLM_STREAM_START',
-        payload: {
-          action: 'question',
-          text: session.selectedText,
-          question: chatInput.trim(),
-          modelId: model.id,
-        },
-      });
-    } catch (error) {
-      setIsStreaming(false);
-      alert(`发送失败: ${error instanceof Error ? error.message : '未知错误'}`);
-    }
   };
 
   // 从 API 获取可用模型列表
@@ -630,12 +423,10 @@ export default function App() {
       return;
     }
 
-    // 重新排序
     const newModels = [...models];
     const [movedModel] = newModels.splice(fromIndex, 1);
     newModels.splice(toIndex, 0, movedModel);
 
-    // 更新配置中 models 的顺序
     const config = await getAppConfig();
     config.models = newModels;
     await saveAppConfig(config);
@@ -649,6 +440,8 @@ export default function App() {
     setDraggedModelId(null);
     setDragOverModelId(null);
   };
+
+  const providerNames: Record<ProviderType, string> = PROVIDER_NAMES;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -758,352 +551,191 @@ export default function App() {
             <div ref={settingsContentRef} className="flex-1 min-w-0 max-h-[calc(100vh-140px)] overflow-y-auto pr-2">
               <div className="space-y-8">
 
-            {/* 1. 模型管理 */}
-            <section ref={(el) => { sectionRefs.current['model'] = el; }} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">模型管理</h2>
-                  <p className="text-sm text-gray-500 mt-1">配置您的 AI 模型，启用的模型将参与问答和翻译</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setEditingModel(null);
-                    setFormData(DEFAULT_FORM_DATA);
-                    setShowApiKeyInModal(false);
-                    setTestResult(null);
-                    setShowModal(true);
-                  }}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all text-sm font-medium shadow-sm"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  添加模型
-                </button>
-              </div>
+                {/* 1. 模型管理 */}
+                <section ref={(el) => { sectionRefs.current['model'] = el; }} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900">模型管理</h2>
+                      <p className="text-sm text-gray-500 mt-1">配置您的 AI 模型，启用的模型将参与问答和翻译</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setEditingModel(null);
+                        setFormData(DEFAULT_FORM_DATA);
+                        setShowApiKeyInModal(false);
+                        setTestResult(null);
+                        setShowModal(true);
+                      }}
+                      className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all text-sm font-medium shadow-sm"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      添加模型
+                    </button>
+                  </div>
 
-              {models.length === 0 ? (
-                <div className="text-center py-16 border-2 border-dashed border-gray-200 rounded-xl">
-                  <div className="text-5xl mb-4">🤖</div>
-                  <p className="text-gray-600">还没有配置任何模型</p>
-                  <p className="text-sm text-gray-400 mt-2">点击「添加模型」开始使用</p>
-                </div>
-              ) : (
-                <div className="grid gap-3">
-                  {models.map((model, index) => {
-                    return (
-                      <div
-                        key={model.id}
-                        draggable
-                        onDragStart={() => handleModelDragStart(model.id)}
-                        onDragOver={(e) => handleModelDragOver(e, model.id)}
-                        onDrop={() => handleModelDrop(model.id)}
-                        onDragEnd={handleDragEnd}
-                        className={`group p-4 rounded-xl border transition-all duration-200 cursor-grab active:cursor-grabbing ${
-                          model.enabled
-                            ? 'border-blue-200 bg-blue-50'
-                            : 'border-gray-200 bg-gray-50 hover:bg-white hover:border-gray-300'
-                        } ${dragOverModelId === model.id ? 'border-indigo-400 ring-2 ring-indigo-100' : ''}`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            {/* 拖拽手柄 */}
-                            <div className="flex-shrink-0 cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 transition-colors" title="拖拽排序">
-                              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                                <circle cx="5" cy="3" r="1.5"/>
-                                <circle cx="11" cy="3" r="1.5"/>
-                                <circle cx="5" cy="8" r="1.5"/>
-                                <circle cx="11" cy="8" r="1.5"/>
-                                <circle cx="5" cy="13" r="1.5"/>
-                                <circle cx="11" cy="13" r="1.5"/>
-                              </svg>
-                            </div>
-                            {/* 序号 */}
-                            <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-xs text-gray-400 font-medium">{index + 1}</span>
-                            {getProviderIcon(model.provider, 'md')}
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-medium text-gray-900">{model.name}</span>
-                                <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-500 font-mono">{model.modelId}</code>
-                              </div>
-                              <div className="text-xs text-gray-400 mt-0.5">
-                                <span>{PROVIDER_NAMES[model.provider]}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {/* 启用/禁用开关 */}
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-500">{model.enabled ? '已启用' : '已禁用'}</span>
-                              <label className="relative inline-flex items-center cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={model.enabled}
-                                  onChange={() => handleToggleEnabled(model.id, !model.enabled)}
-                                  className="sr-only peer"
-                                />
-                                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500"></div>
-                              </label>
-                            </div>
-                            <button
-                              onClick={() => handleEditModel(model)}
-                              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
-                              title="编辑"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={() => handleDeleteModel(model.id)}
-                              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                              title="删除"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
+                  {models.length === 0 ? (
+                    <div className="text-center py-16 border-2 border-dashed border-gray-200 rounded-xl">
+                      <div className="text-5xl mb-4">🤖</div>
+                      <p className="text-gray-600">还没有配置任何模型</p>
+                      <p className="text-sm text-gray-400 mt-2">点击「添加模型」开始使用</p>
+                    </div>
+                  ) : (
+                    <ModelList
+                      models={models}
+                      onEdit={handleEditModel}
+                      onDelete={handleDeleteModel}
+                      onToggleEnabled={handleToggleEnabled}
+                      getProviderIcon={getProviderIcon}
+                      onDragStart={handleModelDragStart}
+                      onDragOver={handleModelDragOver}
+                      onDrop={handleModelDrop}
+                      onDragEnd={handleDragEnd}
+                      dragOverModelId={dragOverModelId}
+                    />
+                  )}
+                </section>
+
+                {/* 2. 外观设置 */}
+                <section ref={(el) => { sectionRefs.current['appearance'] = el; }} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+                  <div className="mb-6">
+                    <h2 className="text-lg font-semibold text-gray-900">外观设置</h2>
+                    <p className="text-sm text-gray-500 mt-1">控制页面中选中文本后的浮动菜单入口</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                      <div className="flex-1">
+                        <h3 className="text-sm font-medium text-gray-900">悬浮图标</h3>
+                        <p className="text-xs text-gray-500 mt-1">选中文本后显示操作菜单的快捷入口</p>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-
-            {/* 2. 外观设置 */}
-            <section ref={(el) => { sectionRefs.current['appearance'] = el; }} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-              <div className="mb-6">
-                <h2 className="text-lg font-semibold text-gray-900">外观设置</h2>
-                <p className="text-sm text-gray-500 mt-1">控制页面中选中文本后的浮动菜单入口</p>
-              </div>
-
-              <div className="space-y-4">
-                {/* 悬浮图标开关 */}
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                  <div className="flex-1">
-                    <h3 className="text-sm font-medium text-gray-900">悬浮图标</h3>
-                    <p className="text-xs text-gray-500 mt-1">选中文本后显示操作菜单的快捷入口</p>
+                      <label className="relative inline-flex items-center cursor-pointer ml-4">
+                        <input
+                          type="checkbox"
+                          checked={showFloatingIcon}
+                          onChange={() => {
+                            const newVal = !showFloatingIcon;
+                            setShowFloatingIcon(newVal);
+                            getAppConfig().then(c => {
+                              c.showFloatingIcon = newVal;
+                              saveAppConfig(c);
+                            });
+                          }}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      </label>
+                    </div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer ml-4">
-                    <input
-                      type="checkbox"
-                      checked={showFloatingIcon}
-                      onChange={() => {
-                        const newVal = !showFloatingIcon;
-                        setShowFloatingIcon(newVal);
-                        getAppConfig().then(c => {
-                          c.showFloatingIcon = newVal;
-                          saveAppConfig(c);
-                        });
-                      }}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-              </div>
-            </section>
+                </section>
 
-            {/* 3. 偏好设置 */}
-            <section ref={(el) => { sectionRefs.current['preference'] = el; }} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-              <div className="mb-6">
-                <h2 className="text-lg font-semibold text-gray-900">偏好设置</h2>
-                <p className="text-sm text-gray-500 mt-1">自定义您的使用体验</p>
-              </div>
-
-              <div className="space-y-4">
-                {/* 消息发送方式 */}
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                  <div className="flex-1">
-                    <h3 className="text-sm font-medium text-gray-900">消息发送方式</h3>
-                    <p className="text-xs text-gray-500 mt-1">
-                      当前：{preferences.sendWithEnter ? 'Enter 发送' : 'Ctrl+Enter 发送'}
-                    </p>
+                {/* 3. 偏好设置 */}
+                <section ref={(el) => { sectionRefs.current['preference'] = el; }} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+                  <div className="mb-6">
+                    <h2 className="text-lg font-semibold text-gray-900">偏好设置</h2>
+                    <p className="text-sm text-gray-500 mt-1">自定义您的使用体验</p>
                   </div>
-                  <div className="flex items-center gap-3 ml-4">
-                    <span className={`text-xs ${!preferences.sendWithEnter ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>Ctrl+Enter</span>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={preferences.sendWithEnter}
-                        onChange={async () => {
-                          const newValue = !preferences.sendWithEnter;
-                          setPreferences(prev => ({ ...prev, sendWithEnter: newValue }));
-                          const config = await getAppConfig();
-                          config.preferences = {
-                            ...config.preferences,
-                            sendWithEnter: newValue,
-                            sidebarWidth: config.preferences?.sidebarWidth ?? 420,
-                            autoGenerateQuestions: config.preferences?.autoGenerateQuestions ?? true,
-                            translation: config.preferences?.translation ?? DEFAULT_TRANSLATION_CONFIG,
-                          };
-                          await saveAppConfig(config);
-                        }}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
-                    <span className={`text-xs ${preferences.sendWithEnter ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>Enter</span>
-                  </div>
-                </div>
 
-                {/* 自动生成推荐问题 */}
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                  <div className="flex-1">
-                    <h3 className="text-sm font-medium text-gray-900">自动生成推荐问题</h3>
-                    <p className="text-xs text-gray-500 mt-1">回答后自动生成相关问题推荐</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer ml-4">
-                    <input
-                      type="checkbox"
-                      checked={preferences.autoGenerateQuestions}
-                      onChange={async () => {
-                        const newVal = !preferences.autoGenerateQuestions;
-                        setPreferences(prev => ({ ...prev, autoGenerateQuestions: newVal }));
-                        const config = await getAppConfig();
-                        config.preferences = {
-                          ...config.preferences,
-                          sendWithEnter: config.preferences?.sendWithEnter ?? false,
-                          sidebarWidth: config.preferences?.sidebarWidth ?? 420,
-                          autoGenerateQuestions: newVal,
-                          translation: config.preferences?.translation ?? DEFAULT_TRANSLATION_CONFIG,
-                        };
-                        await saveAppConfig(config);
-                      }}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-              </div>
-            </section>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                      <div className="flex-1">
+                        <h3 className="text-sm font-medium text-gray-900">消息发送方式</h3>
+                        <p className="text-xs text-gray-500 mt-1">
+                          当前：{preferences.sendWithEnter ? 'Enter 发送' : 'Ctrl+Enter 发送'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 ml-4">
+                        <span className={`text-xs ${!preferences.sendWithEnter ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>Ctrl+Enter</span>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={preferences.sendWithEnter}
+                            onChange={async () => {
+                              const newValue = !preferences.sendWithEnter;
+                              setPreferences(prev => ({ ...prev, sendWithEnter: newValue }));
+                              const config = await getAppConfig();
+                              config.preferences = {
+                                ...config.preferences,
+                                sendWithEnter: newValue,
+                                sidebarWidth: config.preferences?.sidebarWidth ?? 420,
+                                autoGenerateQuestions: config.preferences?.autoGenerateQuestions ?? true,
+                                translation: config.preferences?.translation ?? DEFAULT_TRANSLATION_CONFIG,
+                              };
+                              await saveAppConfig(config);
+                            }}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                        <span className={`text-xs ${preferences.sendWithEnter ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>Enter</span>
+                      </div>
+                    </div>
 
-            {/* 4. 翻译设置 */}
-            <section ref={(el) => { sectionRefs.current['translation'] = el; }} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-              <div className="mb-6">
-                <h2 className="text-lg font-semibold text-gray-900">翻译设置</h2>
-                <p className="text-sm text-gray-500 mt-1">划词翻译和全文翻译的配置</p>
-              </div>
-
-              <div className="space-y-4">
-                {/* 翻译模式 */}
-                <div className="p-4 bg-gray-50 rounded-xl">
-                  <h3 className="text-sm font-medium text-gray-900 mb-3">翻译模式</h3>
-                  <div className="grid grid-cols-3 gap-3">
-                    {[
-                      { value: 'inline' as const, label: '行内翻译', desc: '译文直接替换原文位置' },
-                      { value: 'floating' as const, label: '悬浮窗', desc: '译文在选中文本附近悬浮' },
-                      { value: 'sidebar' as const, label: '侧边栏', desc: '译文在侧边栏显示' },
-                    ].map((option) => (
-                      <button
-                        key={option.value}
-                        onClick={async () => {
-                          const newConfig = { ...translationConfig, mode: option.value };
-                          setTranslationConfig(newConfig);
-                          await saveTranslationConfig(newConfig);
-                        }}
-                        className={`p-3 rounded-xl border-2 text-left transition-all ${
-                          translationConfig.mode === option.value
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 bg-white hover:border-gray-300'
-                        }`}
-                      >
-                        <div className={`text-sm font-medium ${translationConfig.mode === option.value ? 'text-blue-700' : 'text-gray-900'}`}>
-                          {option.label}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-0.5">{option.desc}</div>
-                      </button>
-                    ))}
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                      <div className="flex-1">
+                        <h3 className="text-sm font-medium text-gray-900">自动生成推荐问题</h3>
+                        <p className="text-xs text-gray-500 mt-1">回答后自动生成相关问题推荐</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer ml-4">
+                        <input
+                          type="checkbox"
+                          checked={preferences.autoGenerateQuestions}
+                          onChange={async () => {
+                            const newVal = !preferences.autoGenerateQuestions;
+                            setPreferences(prev => ({ ...prev, autoGenerateQuestions: newVal }));
+                            const config = await getAppConfig();
+                            config.preferences = {
+                              ...config.preferences,
+                              sendWithEnter: config.preferences?.sendWithEnter ?? false,
+                              sidebarWidth: config.preferences?.sidebarWidth ?? 420,
+                              autoGenerateQuestions: newVal,
+                              translation: config.preferences?.translation ?? DEFAULT_TRANSLATION_CONFIG,
+                            };
+                            await saveAppConfig(config);
+                          }}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      </label>
+                    </div>
                   </div>
-                </div>
+                </section>
 
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <h3 className="text-sm font-medium text-gray-900">翻译策略</h3>
-                    <p className="text-xs text-gray-500 mt-1">
-                      系统语言翻译成：<span className="text-gray-700 font-medium">{TARGET_LANGUAGES.find(l => l.code === fallbackLang)?.label || fallbackLang}</span>
-                    </p>
+                {/* 4. 翻译设置 */}
+                <section ref={(el) => { sectionRefs.current['translation'] = el; }} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+                  <div className="mb-6">
+                    <h2 className="text-lg font-semibold text-gray-900">翻译设置</h2>
+                    <p className="text-sm text-gray-500 mt-1">划词翻译和全文翻译的配置</p>
                   </div>
-                  <select
-                    value={fallbackLang}
-                    onChange={async (e) => {
-                      const newLang = e.target.value;
-                      setFallbackLang(newLang);
-                      await setFallbackLanguage(newLang);
+
+                  <TranslationSettings
+                    translationConfig={translationConfig}
+                    fullPageConfig={fullPageConfig}
+                    selectedTranslationModelId={selectedTranslationModelId}
+                    models={models}
+                    fallbackLang={fallbackLang}
+                    providerNames={providerNames}
+                    onTranslationModeChange={async (mode) => {
+                      const newConfig = { ...translationConfig, mode };
+                      setTranslationConfig(newConfig);
+                      await saveTranslationConfig(newConfig);
                     }}
-                    className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700 cursor-pointer"
-                  >
-                    {TARGET_LANGUAGES.map(lang => (
-                      <option key={lang.code} value={lang.code}>{lang.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* 翻译模型选择 */}
-                <div className="p-4 bg-gray-50 rounded-xl">
-                  <h3 className="text-sm font-medium text-gray-900 mb-1">翻译模型</h3>
-                  <p className="text-xs text-gray-500 mb-3">选择用于划词翻译的 AI 模型，可与问答模型分开设置</p>
-                  <select
-                    value={selectedTranslationModelId || '__default__'}
-                    onChange={async (e) => {
-                      const value = e.target.value;
-                      const modelId = value === '__default__' ? null : value;
+                    onFallbackLangChange={async (lang) => {
+                      setFallbackLang(lang);
+                      await setFallbackLanguage(lang);
+                    }}
+                    onTranslationModelChange={async (modelId) => {
                       setSelectedTranslationModelIdState(modelId);
                       await setSelectedTranslationModel(modelId);
                     }}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700 cursor-pointer"
-                  >
-                    <option value="__default__">使用默认问答模型</option>
-                    {models.filter(m => m.enabled).map(model => (
-                      <option key={model.id} value={model.id}>{model.name}（{PROVIDER_NAMES[model.provider]}）</option>
-                    ))}
-                  </select>
-                  {selectedTranslationModelId && (
-                    <p className="text-xs text-green-600 mt-2">当前使用独立翻译模型：{models.find(m => m.id === selectedTranslationModelId)?.name || ''}</p>
-                  )}
-                  {!selectedTranslationModelId && (
-                    <p className="text-xs text-gray-400 mt-2">当前使用默认问答模型进行翻译</p>
-                  )}
-                </div>
-
-                {/* 分隔线 */}
-                <div className="border-t border-gray-200 my-2"></div>
-
-                {/* 全文翻译设置 */}
-                <div>
-                  <h3 className="text-sm font-medium text-gray-900 mb-3">全文翻译</h3>
-
-                  <div className="space-y-3">
-                    {/* 全文翻译目标语言 */}
-                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                      <div className="flex-1">
-                        <h3 className="text-sm font-medium text-gray-900">目标语言</h3>
-                        <p className="text-xs text-gray-500 mt-1">
-                          全文翻译的目标语言：<span className="text-gray-700 font-medium">{fullPageConfig.targetLanguage === 'auto' ? '跟随浏览器语言' : TARGET_LANGUAGES.find(l => l.code === fullPageConfig.targetLanguage)?.label || fullPageConfig.targetLanguage}</span>
-                        </p>
-                      </div>
-                      <select
-                        value={fullPageConfig.targetLanguage}
-                        onChange={async (e) => {
-                          const newConfig = { ...fullPageConfig, targetLanguage: e.target.value };
-                          setFullPageConfig(newConfig);
-                          await saveFullPageTranslationConfig(newConfig);
-                        }}
-                        className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700 cursor-pointer"
-                      >
-                        <option value="auto">跟随浏览器语言</option>
-                        {TARGET_LANGUAGES.map(lang => (
-                          <option key={lang.code} value={lang.code}>{lang.label}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                  </div>
-                </div>
-              </div>
-            </section>
+                    onFullPageTargetLangChange={async (lang) => {
+                      const newConfig = { ...fullPageConfig, targetLanguage: lang };
+                      setFullPageConfig(newConfig);
+                      await saveFullPageTranslationConfig(newConfig);
+                    }}
+                  />
+                </section>
 
               </div>
             </div>
@@ -1111,378 +743,25 @@ export default function App() {
         )}
 
         {activeTab === 'history' && (
-          <section className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm h-[calc(100vh-120px)] min-h-[500px]">
-            <div className="flex h-full">
-              {/* 左侧历史列表 - 复用全屏模式样式 */}
-              <div className="w-[280px] min-w-[280px] h-full bg-[#fafbfc] border-r border-[rgba(59,130,246,0.08)] flex flex-col flex-shrink-0">
-                {/* 搜索框 */}
-                <div className="p-3 border-b border-[rgba(59,130,246,0.08)]">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="搜索历史记录..."
-                      value={historySearchQuery}
-                      onChange={(e) => setHistorySearchQuery(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 text-[13px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    />
-                    <svg className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  </div>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-3">
-                  {(() => {
-                    // 搜索过滤
-                    const filteredSessions = historySearchQuery.trim()
-                      ? historySessions.filter(session => {
-                          const query = historySearchQuery.toLowerCase();
-                          const matchTitle = session.title?.toLowerCase().includes(query);
-                          const matchSelectedText = session.selectedText?.toLowerCase().includes(query);
-                          const matchMessages = session.messages.some(msg =>
-                            msg.content.toLowerCase().includes(query)
-                          );
-                          return matchTitle || matchSelectedText || matchMessages;
-                        })
-                      : historySessions;
-
-                    return filteredSessions.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center h-[200px] text-[#c9cdd4]">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-3 opacity-50">
-                          <circle cx="12" cy="12" r="10"></circle>
-                          <polyline points="12 6 12 12 16 14"></polyline>
-                        </svg>
-                        <p className="m-0 text-sm">{historySearchQuery.trim() ? '未找到匹配的记录' : '暂无历史记录'}</p>
-                      </div>
-                    ) : (
-                      filteredSessions.map((session) => {
-                      const firstUserMessage = session.messages.find(m => m.role === 'user');
-                      const displayContent = firstUserMessage?.content || session.selectedText;
-                      const truncatedContent = displayContent.length > 50
-                        ? displayContent.slice(0, 50) + '...'
-                        : displayContent;
-
-                      return (
-                        <div
-                          key={session.id}
-                          onClick={() => setSelectedSessionId(session.id)}
-                          className={`py-3 px-[14px] rounded-[10px] mb-2 cursor-pointer transition-all duration-150 ${
-                            selectedSessionId === session.id
-                              ? 'bg-[#f7f8fa] border border-[rgba(59,130,246,0.15)]'
-                              : 'bg-white border border-[rgba(59,130,246,0.06)] hover:bg-[#f7f8fa] hover:border-[rgba(59,130,246,0.15)] hover:translate-x-[2px]'
-                          }`}
-                        >
-                          <div className="flex items-center mb-[6px]">
-                            <span className="text-[11px] text-[#86909c] font-normal">
-                              {formatTime(session.createdAt)}
-                            </span>
-                          </div>
-                          <div className="text-[13px] font-medium text-[#1d2129] leading-[1.5] overflow-hidden text-ellipsis whitespace-nowrap">
-                            {truncatedContent}
-                          </div>
-                        </div>
-                      );
-                    })
-                    );
-                  })()}
-                </div>
-              </div>
-
-              {/* 右侧对话区域 */}
-              <div className="flex-1 flex flex-col min-w-0 bg-gradient-to-b from-white to-[#f8fafc]">
-                {selectedSessionId ? (() => {
-                  const session = historySessions.find(s => s.id === selectedSessionId);
-                  if (!session) return null;
-
-                  // 获取可用于对话的模型
-                  const chatEnabledModels = models.filter(m => m.enabled);
-
-                  return (
-                    <>
-                      {/* 消息列表 - 与侧边栏一致的样式 */}
-                      <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-[16px]">
-                        {session.messages.map((msg, idx) => (
-                          <div
-                            key={idx}
-                            className={`history-message history-message-${msg.role}`}
-                          >
-                            {msg.role === 'user' ? (
-                              <div className="history-message-wrapper history-message-user-wrapper">
-                                <div className="history-message-content">
-                                  {/* 第一条用户消息：显示操作类型和选中文本引用 */}
-                                  {idx === 0 && session.selectedText ? (
-                                    <>
-                                      {/* 操作类型标签 */}
-                                      <span className="history-action-type-label">{msg.content}</span>
-                                      {/* Markdown 引用格式显示选中的文本 */}
-                                      <blockquote className="history-selected-text-quote">
-                                        {escapeHtml(session.selectedText)}
-                                      </blockquote>
-                                      {/* 页面 URL */}
-                                      {session.pageUrl && (() => {
-                                        const { displayText, faviconUrl } = formatUrlForDisplay(session.pageUrl);
-                                        return (
-                                          <a
-                                            href={session.pageUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="history-page-url"
-                                            title={session.pageUrl}
-                                          >
-                                            {faviconUrl && (
-                                              <img
-                                                src={faviconUrl}
-                                                alt=""
-                                                className="history-page-url-favicon"
-                                                onError={(e) => {
-                                                  (e.target as HTMLImageElement).style.display = 'none';
-                                                }}
-                                              />
-                                            )}
-                                            <span>{displayText}</span>
-                                          </a>
-                                        );
-                                      })()}
-                                    </>
-                                  ) : (
-                                    /* 后续消息正常显示 */
-                                    escapeHtml(msg.content)
-                                  )}
-                                </div>
-                                <div className="history-message-actions">
-                                  <button
-                                    className="history-action-btn"
-                                    onClick={() => copyToClipboard(msg.content)}
-                                    title="复制"
-                                  >
-                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                                    </svg>
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="history-message-wrapper history-message-ai-wrapper">
-                                <div className="history-ai-content-flat">
-                                  {/* 思考过程 */}
-                                  {msg.reasoning && (
-                                    <div className="history-reasoning-quote">
-                                      <div
-                                        className="history-reasoning-header"
-                                        onClick={() => {
-                                          setExpandedHistoryReasoning(prev => ({
-                                            ...prev,
-                                            [idx]: prev[idx] === false ? true : false,
-                                          }));
-                                        }}
-                                      >
-                                        <div className="history-reasoning-status">
-                                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <polyline points="20 6 9 17 4 12"/>
-                                          </svg>
-                                          <span className="history-reasoning-model">{msg.modelName || 'AI'}</span>
-                                          {msg.duration ? (
-                                            <span>已思考（用时{formatDuration(msg.duration)}）</span>
-                                          ) : (
-                                            <span>思考过程</span>
-                                          )}
-                                        </div>
-                                        <svg
-                                          className={`history-reasoning-chevron ${expandedHistoryReasoning[idx] === false ? 'collapsed' : ''}`}
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <path d="M6 9l6 6 6-6"/>
-                                        </svg>
-                                      </div>
-                                      <div
-                                        className={`history-reasoning-content ${expandedHistoryReasoning[idx] === false ? 'collapsed' : ''}`}
-                                        style={expandedHistoryReasoning[idx] !== false ? { maxHeight: '2000px', opacity: 1 } : {}}
-                                      >
-                                        <div
-                                          className="history-reasoning-quote-text"
-                                          dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.reasoning) }}
-                                        />
-                                      </div>
-                                    </div>
-                                  )}
-                                  {/* 回答正文 */}
-                                  <div
-                                    dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
-                                  />
-                                </div>
-                                <div className="history-message-actions">
-                                  <button
-                                    className="history-action-btn"
-                                    onClick={() => copyToClipboard(msg.content)}
-                                    title="复制正文"
-                                  >
-                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                                    </svg>
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-
-                        {/* 流式输出 */}
-                        {isStreaming && (
-                          <div className="history-message history-message-assistant">
-                            <div className="history-message-wrapper history-message-ai-wrapper">
-                              <div className="history-ai-content-flat">
-                                {streamingReasoning && (
-                                  <div className="history-reasoning-quote">
-                                    <div className="history-reasoning-header">
-                                      <div className="history-reasoning-status">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                          <circle cx="12" cy="12" r="10"/>
-                                          <path d="M12 6v6l4 2"/>
-                                        </svg>
-                                        <span className="history-reasoning-model">{currentChatModel?.name || 'AI'}</span>
-                                        <span>思考中...</span>
-                                      </div>
-                                    </div>
-                                    <div className="history-reasoning-content" style={{ maxHeight: '2000px', opacity: 1 }}>
-                                      <div
-                                        className="history-reasoning-quote-text"
-                                        dangerouslySetInnerHTML={{ __html: renderMarkdown(streamingReasoning) }}
-                                      />
-                                    </div>
-                                  </div>
-                                )}
-                                <div dangerouslySetInnerHTML={{ __html: renderMarkdown(streamingContent) }} />
-                                <span className="inline-block w-1.5 h-4 bg-[#165dff] animate-pulse ml-0.5"></span>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* 推荐问题 */}
-                      {!isStreaming && recommendedQuestions.length > 0 && (
-                        <div className="px-4 py-3 border-t border-gray-100">
-                          <div className="text-[12px] text-gray-500 mb-2 flex items-center gap-1">
-                            <span>💡</span>
-                            <span>推荐问题</span>
-                          </div>
-                          <div className="space-y-2">
-                            {recommendedQuestions.map((question, idx) => (
-                              <button
-                                key={idx}
-                                onClick={() => {
-                                  setChatInput(question);
-                                  setRecommendedQuestions([]);
-                                }}
-                                className="w-full text-left px-3 py-2 text-[13px] text-gray-700 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors border border-gray-200 hover:border-blue-200"
-                              >
-                                {question}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* 生成问题中提示 */}
-                      {isGeneratingQuestions && (
-                        <div className="px-4 py-3 border-t border-gray-100">
-                          <div className="flex items-center gap-2 text-[12px] text-gray-400">
-                            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span>正在生成推荐问题...</span>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* 输入区域 */}
-                      <div className="px-4 py-3 pt-3 pb-4 bg-gradient-to-b from-[#fafbfc] to-white border-t border-[rgba(59,130,246,0.06)]">
-                        {/* 输入框容器 - 圆角卡片式设计 */}
-                        <div className="flex flex-col bg-[#f8fafc] border border-[rgba(59,130,246,0.12)] rounded-[20px] overflow-hidden transition-all focus-within:border-[rgba(59,130,246,0.35)] focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(59,130,246,0.08),0_4px_12px_rgba(59,130,246,0.1)]">
-                          {/* 输入行：文本框 */}
-                          <div className="flex gap-2 items-end p-2 pb-0">
-                            <textarea
-                              value={chatInput}
-                              onChange={(e) => setChatInput(e.target.value)}
-                              onKeyDown={async (e) => {
-                                if (e.key === 'Enter') {
-                                  const config = await getAppConfig();
-                                  const sendWithEnter = config.preferences?.sendWithEnter ?? false;
-
-                                  if (sendWithEnter) {
-                                    // Enter发送,Shift+Enter换行
-                                    if (!e.shiftKey) {
-                                      e.preventDefault();
-                                      handleSendFollowUp();
-                                    }
-                                  } else {
-                                    // Ctrl+Enter发送
-                                    if (e.ctrlKey) {
-                                      e.preventDefault();
-                                      handleSendFollowUp();
-                                    }
-                                  }
-                                }
-                              }}
-                              placeholder="追问或提出新问题..."
-                              disabled={isStreaming}
-                              rows={1}
-                              className="flex-1 px-0 py-2 border-none rounded-none bg-transparent text-[14px] text-[#1d2129] placeholder-[#c9cdd4] resize-none outline-none min-h-[24px] max-h-[120px] disabled:cursor-not-allowed disabled:text-[#c9cdd4]"
-                            />
-                          </div>
-
-                          {/* 底部控制栏：发送按钮（右对齐） */}
-                          <div className="flex items-center justify-end px-3 pb-2">
-                            <button
-                              onClick={handleSendFollowUp}
-                              disabled={isStreaming || !chatInput.trim()}
-                              className="history-send-btn"
-                            >
-                              {isStreaming ? (
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                                  <rect x="7" y="7" width="10" height="10" rx="2.5"/>
-                                </svg>
-                              ) : (
-                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                                  <path d="M12 4L4 14h5v6h6v-6h5L12 4z"/>
-                                </svg>
-                              )}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  );
-                })() : (
-                  <div className="flex-1 flex flex-col items-center justify-center text-[#86909c]">
-                    <span className="text-6xl mb-4">💬</span>
-                    <p className="text-[16px]">选择一个历史对话</p>
-                    <p className="text-[13px] mt-2 text-[#c9cdd4]">或开始新的对话</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
+          <HistoryViewer
+            historySessions={historySessions}
+            selectedSessionId={selectedSessionId}
+            models={models}
+            currentChatModel={currentChatModel}
+            onSelectSession={setSelectedSessionId}
+            onSessionsRefresh={loadHistory}
+          />
         )}
 
         {activeTab === 'about' && (
           <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
             {/* Hero 区域 */}
             <div className="relative overflow-hidden px-8 py-8" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 40%, #312e81 70%, #4338ca 100%)' }}>
-              {/* 装饰网格点 */}
               <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
-              {/* 装饰光晕 */}
               <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-violet-400/20 rounded-full blur-[80px] translate-x-1/4 -translate-y-1/4" />
               <div className="absolute bottom-0 left-1/4 w-[300px] h-[300px] bg-indigo-400/15 rounded-full blur-[60px] translate-y-1/3" />
               <div className="relative">
                 <div className="flex items-start gap-5">
-                  {/* Logo */}
                   <div className="relative flex-shrink-0">
                     <div className="w-14 h-14 rounded-xl bg-white shadow-2xl flex items-center justify-center">
                       <img
@@ -1493,14 +772,12 @@ export default function App() {
                     </div>
                     <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-indigo-900" />
                   </div>
-                  {/* 文字 + 操作区 */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-1.5">
                       <h2 className="text-xl font-bold text-white tracking-tight">Select Ask</h2>
                       <span className="px-2 py-0.5 bg-white/10 text-white/70 text-[10px] font-medium rounded-full border border-white/10 backdrop-blur-sm font-mono">v1.0.0</span>
                     </div>
                     <p className="text-indigo-200/70 text-sm mb-3">选中即问，知识自来 — 一款现代浏览器扩展，让 AI 触手可及</p>
-                    {/* GitHub 操作区 */}
                     <div className="flex items-center gap-2 flex-wrap">
                       <a
                         href="https://github.com/zqqpluto/select-ask"
@@ -1533,7 +810,7 @@ export default function App() {
             </div>
 
             <div className="p-6">
-              {/* 功能特性 - 3 列网格 */}
+              {/* 功能特性 */}
               <div className="mb-6">
                 <h3 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   <svg className="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1561,7 +838,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* 支持的供应商 — 与添加模型页面保持一致 */}
+              {/* 支持的供应商 */}
               <div className="mb-6">
                 <h3 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   <svg className="w-4 h-4 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1569,7 +846,6 @@ export default function App() {
                   </svg>
                   AI 模型供应商
                 </h3>
-                {/* 主流模型 */}
                 <div className="mb-3">
                   <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">主流模型</p>
                   <div className="flex flex-wrap gap-2">
@@ -1597,7 +873,6 @@ export default function App() {
                     })}
                   </div>
                 </div>
-                {/* OpenAI 兼容 */}
                 <div className="mb-3">
                   <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">OpenAI 兼容</p>
                   <div className="flex flex-wrap gap-2">
@@ -1612,7 +887,6 @@ export default function App() {
                     ))}
                   </div>
                 </div>
-                {/* 本地部署 */}
                 <div>
                   <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">本地部署</p>
                   <div className="flex flex-wrap gap-2">
@@ -1701,365 +975,37 @@ export default function App() {
         )}
       </main>
 
-      {/* Modal */}
+      {/* Model Form Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl border border-gray-200 max-h-[90vh] overflow-y-auto overscroll-contain">
-            <div className="px-5 py-3 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-semibold text-gray-900">
-                  {editingModel ? '编辑模型' : '添加模型'}
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowModal(false);
-                    setFormData(DEFAULT_FORM_DATA);
-                    setEditingModel(null);
-                    setTestResult(null);
-                  }}
-                  className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* 选择供应商 — 添加和编辑模式都显示 */}
-            <div className="px-5 py-3 border-b border-gray-200">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  选择供应商
-                  <span className="ml-1 text-xs text-gray-400 font-normal">（自动填充 API 地址）</span>
-                </label>
-                {/* 主流模型 */}
-                <div className="mb-2">
-                  <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider mb-1.5">主流模型</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {([
-                      { label: 'OpenAI', provider: 'openai' as ProviderType },
-                      { label: 'Anthropic', provider: 'anthropic' as ProviderType },
-                      { label: 'DeepSeek', provider: 'deepseek' as ProviderType },
-                      { label: '通义千问', provider: 'qwen' as ProviderType },
-                      { label: '智谱 AI', provider: 'glm' as ProviderType },
-                    ]).map(({ label, provider }) => {
-                      const isSelected = formData.provider === provider;
-                      const defaults = PROVIDER_DEFAULTS[provider];
-                      return (
-                        <button
-                          key={provider}
-                          type="button"
-                          onClick={() => {
-                            setAvailableModels([]);
-                            setShowModelDropdown(false);
-                            setFormData({
-                              ...DEFAULT_FORM_DATA,
-                              id: editingModel?.id || `custom-${Date.now()}`,
-                              name: editingModel?.name || '',
-                              provider,
-                              baseUrl: defaults.baseUrl,
-                              modelId: '',
-                            });
-                          }}
-                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-sm transition-all whitespace-nowrap ${
-                            isSelected
-                              ? 'border-blue-400 bg-blue-50 text-blue-700 shadow-sm'
-                              : 'border-gray-200 text-gray-600 hover:border-blue-300 hover:bg-blue-50/50'
-                          }`}
-                        >
-                          {getProviderIcon(provider)}
-                          <span>{label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                {/* OpenAI 兼容 */}
-                <div className="mb-2">
-                  <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider mb-1.5">OpenAI 兼容</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {([
-                      { label: 'Moonshot · Kimi', provider: 'openai-compat' as ProviderType, baseUrl: 'https://api.moonshot.cn/v1', icon: '🌙', iconColor: 'bg-indigo-500' },
-                      { label: '字节豆包', provider: 'openai-compat' as ProviderType, baseUrl: 'https://ark.cn-beijing.volces.com/api/v3', icon: '🫘', iconColor: 'bg-red-500' },
-                      { label: '百度文心', provider: 'openai-compat' as ProviderType, baseUrl: 'https://qianfan.baidubce.com/v2', icon: '🔵', iconColor: 'bg-blue-600' },
-                      { label: 'MiniMax', provider: 'openai-compat' as ProviderType, baseUrl: 'https://api.minimax.chat/v1', icon: 'M', iconColor: 'bg-violet-500' },
-                      { label: '硅基流动', provider: 'openai-compat' as ProviderType, baseUrl: 'https://api.siliconflow.cn/v1', icon: 'S', iconColor: 'bg-teal-500' },
-                      { label: 'Google Gemini', provider: 'openai-compat' as ProviderType, baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', icon: 'G', iconColor: 'bg-green-500' },
-                      { label: 'Groq', provider: 'openai-compat' as ProviderType, baseUrl: 'https://api.groq.com/openai/v1', icon: '⚡', iconColor: 'bg-yellow-600' },
-                      { label: 'Mistral AI', provider: 'openai-compat' as ProviderType, baseUrl: 'https://api.mistral.ai/v1', icon: '🌬', iconColor: 'bg-sky-500' },
-                    ]).map(({ label, provider, baseUrl, icon, iconColor }) => {
-                      const isSelected = formData.provider === provider && formData.baseUrl === baseUrl;
-                      return (
-                        <button
-                          key={label}
-                          type="button"
-                          onClick={() => {
-                            setAvailableModels([]);
-                            setShowModelDropdown(false);
-                            setFormData({
-                              ...DEFAULT_FORM_DATA,
-                              id: editingModel?.id || `custom-${Date.now()}`,
-                              name: editingModel?.name || '',
-                              provider,
-                              baseUrl,
-                              modelId: '',
-                            });
-                          }}
-                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-sm transition-all whitespace-nowrap ${
-                            isSelected
-                              ? 'border-blue-400 bg-blue-50 text-blue-700 shadow-sm'
-                              : 'border-gray-200 text-gray-600 hover:border-blue-300 hover:bg-blue-50/50'
-                          }`}
-                        >
-                          <div className={`w-4 h-4 ${iconColor} rounded flex items-center justify-center text-white text-[9px] font-semibold`}>
-                            {icon}
-                          </div>
-                          <span>{label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                {/* 本地部署 */}
-                <div>
-                  <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider mb-1.5">本地部署</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {([
-                      { label: 'Ollama 本地', provider: 'local-ollama' as ProviderType },
-                      { label: 'LM Studio', provider: 'local-lm-studio' as ProviderType },
-                    ]).map(({ label, provider }) => {
-                      const isSelected = formData.provider === provider;
-                      const defaults = PROVIDER_DEFAULTS[provider];
-                      return (
-                        <button
-                          key={provider}
-                          type="button"
-                          onClick={() => {
-                            setAvailableModels([]);
-                            setShowModelDropdown(false);
-                            setFormData({
-                              ...DEFAULT_FORM_DATA,
-                              id: editingModel?.id || `custom-${Date.now()}`,
-                              name: editingModel?.name || '',
-                              provider,
-                              baseUrl: defaults.baseUrl,
-                              modelId: defaults.modelId,
-                            });
-                          }}
-                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-sm transition-all whitespace-nowrap ${
-                            isSelected
-                              ? 'border-blue-400 bg-blue-50 text-blue-700 shadow-sm'
-                              : 'border-gray-200 text-gray-600 hover:border-blue-300 hover:bg-blue-50/50'
-                          }`}
-                        >
-                          {getProviderIcon(provider)}
-                          <span>{label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-            {/* Form */}
-            <div className="px-5 py-4 space-y-4">
-              {/* API 地址 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  API 地址
-                </label>
-                <input
-                  type="text"
-                  value={formData.baseUrl}
-                  onChange={(e) => setFormData({ ...formData, baseUrl: e.target.value })}
-                  placeholder="https://api.openai.com/v1"
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
-                />
-              </div>
-
-              {/* API Key */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  API Key <span className="text-red-500">*</span>
-                  {formData.provider && formData.provider !== 'local-ollama' && formData.provider !== 'local-lm-studio' && (
-                    <span className="ml-2 text-xs text-gray-400 font-normal">— 输入后自动获取模型列表</span>
-                  )}
-                </label>
-                <div className="relative">
-                  <input
-                    type={showApiKeyInModal ? 'text' : 'password'}
-                    value={formData.apiKey}
-                    onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
-                    placeholder="sk-..."
-                    className="w-full px-3 py-2 pr-10 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 font-mono"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowApiKeyInModal(!showApiKeyInModal)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    {showApiKeyInModal ? (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                      </svg>
-                    ) : (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* 模型 ID */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  模型名
-                </label>
-                <div className="relative">
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <input
-                        type="text"
-                        value={formData.modelId}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setFormData(prev => ({ ...prev, modelId: val, name: val }));
-                          setModelSearchQuery(val);
-                        }}
-                        onFocus={() => {
-                          if (availableModels.length > 0) setShowModelDropdown(true);
-                        }}
-                        placeholder={availableModels.length > 0 ? '选择或输入模型名称' : 'gpt-4o'}
-                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
-                      />
-                      {/* 模型下拉列表 */}
-                      {showModelDropdown && availableModels.length > 0 && (
-                        <div className="model-dropdown-wrapper absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                          {availableModels
-                            .filter(m => !modelSearchQuery || m.toLowerCase().includes(modelSearchQuery.toLowerCase()))
-                            .slice(0, 50)
-                            .map((model) => (
-                              <button
-                                key={model}
-                                type="button"
-                                onClick={() => {
-                                  setFormData(prev => ({ ...prev, modelId: model, name: model }));
-                                  setShowModelDropdown(false);
-                                }}
-                                className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${
-                                  formData.modelId === model ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                                }`}
-                              >
-                                {model}
-                              </button>
-                            ))}
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={fetchAvailableModels}
-                      disabled={loadingModels || !formData.apiKey.trim()}
-                      className="px-3 py-2 text-sm font-medium text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center gap-1.5"
-                      title="获取模型列表"
-                    >
-                      {loadingModels ? (
-                        <>
-                          <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                          </svg>
-                          获取中
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                          </svg>
-                          获取模型
-                        </>
-                      )}
-                    </button>
-                  </div>
-                  {availableModels.length > 0 && (
-                    <p className="text-xs text-green-600 mt-1">✓ 已获取 {availableModels.length} 个可用模型，可从下拉列表选择</p>
-                  )}
-                  {availableModels.length === 0 && !loadingModels && formData.apiKey.length > 0 && (
-                    <p className="text-xs text-gray-400 mt-1">点击"获取模型"按钮获取可用模型列表，或手动输入模型名称</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Form Error */}
-              {formError && (
-                <div className="p-2.5 rounded-lg text-sm bg-red-50 text-red-700 border border-red-200">
-                  {formError}
-                </div>
-              )}
-
-              {/* Test Result */}
-              {testResult && (
-                <div className={`p-2.5 rounded-lg text-sm ${testResult.success ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-                  {testResult.success ? '✓ 连接成功' : `✗ ${testResult.error}`}
-                </div>
-              )}
-
-              {/* Model Status Toggle */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  模型状态
-                </label>
-                <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                  <button
-                    onClick={() => setFormData({ ...formData, enabled: !formData.enabled })}
-                    className={`relative w-11 h-6 rounded-full transition-colors ${
-                      formData.enabled ? 'bg-blue-500' : 'bg-gray-300'
-                    }`}
-                  >
-                    <span
-                      className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform shadow-sm ${
-                        formData.enabled ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                  <span className="text-sm text-gray-600">{formData.enabled ? '启用' : '禁用'}</span>
-                  <span className="text-xs text-gray-400">禁用后模型不参与问答和翻译</span>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 pt-3 mt-1 border-t border-gray-100">
-                <button
-                  onClick={handleTestConnection}
-                  disabled={testing}
-                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300 rounded-lg transition-all disabled:opacity-50"
-                >
-                  {testing ? '测试中...' : '测试连接'}
-                </button>
-                <div className="flex-1" />
-                <button
-                  onClick={() => {
-                    setShowModal(false);
-                    setFormData(DEFAULT_FORM_DATA);
-                    setEditingModel(null);
-                    setTestResult(null);
-                  }}
-                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300 rounded-lg transition-all"
-                >
-                  取消
-                </button>
-                <button
-                  onClick={handleSaveModel}
-                  className="px-6 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
-                >
-                  保存
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ModelFormModal
+          editingModel={editingModel}
+          formData={formData}
+          testing={testing}
+          testResult={testResult}
+          formError={formError}
+          availableModels={availableModels}
+          loadingModels={loadingModels}
+          showModelDropdown={showModelDropdown}
+          modelSearchQuery={modelSearchQuery}
+          showApiKey={showApiKeyInModal}
+          onClose={() => {
+            setShowModal(false);
+            setFormData(DEFAULT_FORM_DATA);
+            setEditingModel(null);
+            setTestResult(null);
+          }}
+          onSave={handleSaveModel}
+          onTestConnection={handleTestConnection}
+          onFormDataChange={(updates) => setFormData(prev => ({ ...prev, ...updates }))}
+          onToggleApiKey={() => setShowApiKeyInModal(!showApiKeyInModal)}
+          onFetchModels={fetchAvailableModels}
+          onSelectModel={(modelId) => {
+            setFormData(prev => ({ ...prev, modelId, name: modelId }));
+          }}
+          setShowModelDropdown={setShowModelDropdown}
+          setModelSearchQuery={setModelSearchQuery}
+          getProviderIcon={getProviderIcon}
+        />
       )}
     </div>
   );
