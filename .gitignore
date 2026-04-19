@@ -78,3 +78,12 @@ Thumbs.db
 
 # macOS
 .DS_Store
+
+# Claude Code local settings
+.claude/settings.json
+
+# Playwright MCP data
+.playwright-mcp/
+
+# Playwright test results
+test-results/
