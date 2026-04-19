@@ -32,24 +32,12 @@ interface UseChatStreamReturn {
   setCurrentModel: React.Dispatch<React.SetStateAction<ModelConfig | null>>;
   availableModels: ModelConfig[];
   setAvailableModels: React.Dispatch<React.SetStateAction<ModelConfig[]>>;
-  showModelSelector: boolean;
-  setShowModelSelector: React.Dispatch<React.SetStateAction<boolean>>;
   pageInfo: PageInfo | null;
   setPageInfo: React.Dispatch<React.SetStateAction<PageInfo | null>>;
   selectedTextExpanded: boolean;
   setSelectedTextExpanded: React.Dispatch<React.SetStateAction<boolean>>;
   selectedTextNeedsExpand: boolean;
   setSelectedTextNeedsExpand: React.Dispatch<React.SetStateAction<boolean>>;
-  recommendedQuestions: string[];
-  setRecommendedQuestions: React.Dispatch<React.SetStateAction<string[]>>;
-  isGeneratingQuestions: boolean;
-  setIsGeneratingQuestions: React.Dispatch<React.SetStateAction<boolean>>;
-  autoGenerateEnabled: boolean;
-  setAutoGenerateEnabled: React.Dispatch<React.SetStateAction<boolean>>;
-  hasGeneratedQuestions: boolean;
-  setHasGeneratedQuestions: React.Dispatch<React.SetStateAction<boolean>>;
-  currentSessionId: string | null;
-  setCurrentSessionId: React.Dispatch<React.SetStateAction<string | null>>;
   mindMapMarkdown: string | null;
   setMindMapMarkdown: React.Dispatch<React.SetStateAction<string | null>>;
   mindMapInline: string | null;
@@ -60,11 +48,6 @@ interface UseChatStreamReturn {
   setExpandedReasoning: React.Dispatch<React.SetStateAction<Record<number, boolean>>>;
   currentPortRef: React.MutableRefObject<chrome.runtime.Port | null>;
   messagesCountRef: React.MutableRefObject<number>;
-  dropdownPosition: { top: number; left: number } | null;
-  setDropdownPosition: React.Dispatch<React.SetStateAction<{ top: number; left: number } | null>>;
-  modelButtonRef: React.RefObject<HTMLButtonElement | null>;
-  shouldAutoScroll: boolean;
-  setShouldAutoScroll: React.Dispatch<React.SetStateAction<boolean>>;
   userHasScrolled: boolean;
   setUserHasScrolled: React.Dispatch<React.SetStateAction<boolean>>;
   getAIResponse: (question: string, model?: ModelConfig, initSelectedText?: string, initContext?: { before: string; after: string } | null) => Promise<void>;
@@ -77,8 +60,6 @@ interface UseChatStreamReturn {
   handleSendSummary: () => Promise<void>;
   handleSendMindMap: () => Promise<void>;
   handleConvertToMindMap: (content: string) => Promise<void>;
-  handleModelSelect: (modelId: string) => Promise<void>;
-  toggleModelSelector: () => void;
   handleTextareaChange: () => void;
   handleKeyDown: (e: React.KeyboardEvent) => void;
   toggleReasoning: (index: number) => void;
@@ -93,26 +74,18 @@ export function useChatStream(): UseChatStreamReturn {
   const [context, setContext] = useState<{ before: string; after: string } | null>(null);
   const [currentModel, setCurrentModel] = useState<ModelConfig | null>(null);
   const [availableModels, setAvailableModels] = useState<ModelConfig[]>([]);
-  const [showModelSelector, setShowModelSelector] = useState(false);
   const [pageInfo, setPageInfo] = useState<PageInfo | null>(null);
   const [selectedTextExpanded, setSelectedTextExpanded] = useState(false);
   const [selectedTextNeedsExpand, setSelectedTextNeedsExpand] = useState(false);
-  const [recommendedQuestions, setRecommendedQuestions] = useState<string[]>([]);
-  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
-  const [autoGenerateEnabled, setAutoGenerateEnabled] = useState(true);
-  const [hasGeneratedQuestions, setHasGeneratedQuestions] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [mindMapMarkdown, setMindMapMarkdown] = useState<string | null>(null);
   const [mindMapInline, setMindMapInline] = useState<string | null>(null);
   const [mindMapLoading, setMindMapLoading] = useState(false);
   const [expandedReasoning, setExpandedReasoning] = useState<Record<number, boolean>>({});
-  const [shouldAutoScroll, setShouldAutoScroll] = useState(false);
   const [userHasScrolled, setUserHasScrolled] = useState(false);
-  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
 
   const currentPortRef = useRef<chrome.runtime.Port | null>(null);
   const messagesCountRef = useRef(0);
-  const modelButtonRef = useRef<HTMLButtonElement>(null);
 
   // Keep messagesCountRef in sync
   useEffect(() => {
@@ -548,34 +521,6 @@ ${content}`;
     await getAIResponse(message, currentModel);
   }, [inputValue, isLoading, currentModel, getAIResponse]);
 
-  const handleModelSelect = useCallback(async (modelId: string) => {
-    try {
-      await chrome.runtime.sendMessage({ type: 'SET_SELECTED_CHAT_MODEL', modelId });
-      const result = await chrome.storage.sync.get(['app_config']);
-      const config = result.app_config;
-      if (config && config.models) {
-        const enabled = config.models.filter((m: ModelConfig) => m.enabled);
-        const selectedIds = config.selectedChatModelIds || [];
-        let modelsToUse: ModelConfig[] = selectedIds.length > 0
-          ? selectedIds.map(id => enabled.find(m => m.id === id)).filter((m): m is ModelConfig => m !== undefined && m.enabled)
-          : enabled;
-        setAvailableModels(modelsToUse);
-        const model = modelsToUse.find(m => m.id === modelId);
-        if (model) setCurrentModel(model);
-      }
-      setShowModelSelector(false); setDropdownPosition(null);
-    } catch (error) { console.error('Failed to select model:', error); }
-  }, []);
-
-  const toggleModelSelector = useCallback(() => {
-    if (showModelSelector) { setShowModelSelector(false); setDropdownPosition(null); }
-    else if (modelButtonRef.current) {
-      const rect = modelButtonRef.current.getBoundingClientRect();
-      setDropdownPosition({ bottom: rect.height + 6, left: 0 });
-      setShowModelSelector(true);
-    }
-  }, [showModelSelector]);
-
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -587,19 +532,16 @@ ${content}`;
     messages, setMessages, inputValue, setInputValue, isLoading, setIsLoading,
     selectedText, setSelectedText, context, setContext,
     currentModel, setCurrentModel, availableModels, setAvailableModels,
-    showModelSelector, setShowModelSelector, pageInfo, setPageInfo,
+    pageInfo, setPageInfo,
     selectedTextExpanded, setSelectedTextExpanded, selectedTextNeedsExpand, setSelectedTextNeedsExpand,
-    recommendedQuestions, setRecommendedQuestions, isGeneratingQuestions, setIsGeneratingQuestions,
-    autoGenerateEnabled, setAutoGenerateEnabled, hasGeneratedQuestions, setHasGeneratedQuestions,
     currentSessionId, setCurrentSessionId,
     mindMapMarkdown, setMindMapMarkdown, mindMapInline, setMindMapInline, mindMapLoading, setMindMapLoading,
     expandedReasoning, setExpandedReasoning,
-    currentPortRef, messagesCountRef, dropdownPosition, setDropdownPosition,
-    modelButtonRef, shouldAutoScroll, setShouldAutoScroll, userHasScrolled, setUserHasScrolled,
+    currentPortRef, messagesCountRef, userHasScrolled, setUserHasScrolled,
     getAIResponse, getAIResponseWithMessages,
     handleSend, handleStopGeneration, handleRegenerate, handleReEdit,
     handleSendWithQuestion, handleSendSummary, handleSendMindMap, handleConvertToMindMap,
-    handleModelSelect, toggleModelSelector, handleTextareaChange, handleKeyDown,
+    handleTextareaChange, handleKeyDown,
     toggleReasoning, handleNewChat,
   };
 }

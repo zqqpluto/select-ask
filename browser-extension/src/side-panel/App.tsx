@@ -4,7 +4,6 @@ import { generateSessionId } from '../utils/history-manager';
 import { useChatStream, type ExtendedHistoryMessage, type PageInfo } from './hooks/useChatStream';
 import ChatMessageList from './components/ChatMessageList';
 import ChatInput from './components/ChatInput';
-import ModelSelector from './components/ModelSelector';
 import MindMapIntegration from './components/MindMapIntegration';
 import '../components/MindMap/mind-map.css';
 
@@ -13,7 +12,6 @@ export default function App() {
     messages, setMessages, inputValue, setInputValue, isLoading,
     selectedText, setSelectedText, context, setContext,
     currentModel, setCurrentModel, availableModels, setAvailableModels,
-    showModelSelector, setShowModelSelector,
     pageInfo, setPageInfo,
     selectedTextExpanded, setSelectedTextExpanded,
     selectedTextNeedsExpand, setSelectedTextNeedsExpand,
@@ -21,14 +19,11 @@ export default function App() {
     mindMapInline, mindMapLoading,
     expandedReasoning, toggleReasoning,
     currentPortRef, messagesCountRef,
-    dropdownPosition, setDropdownPosition,
-    modelButtonRef,
     userHasScrolled, setUserHasScrolled,
     currentSessionId, setCurrentSessionId,
     getAIResponse, getAIResponseWithMessages,
     handleSend, handleStopGeneration, handleRegenerate,
     handleReEdit, handleConvertToMindMap,
-    handleModelSelect, toggleModelSelector,
     handleTextareaChange, handleKeyDown,
     handleNewChat, handleSendMindMap,
   } = useChatStream();
@@ -190,22 +185,6 @@ export default function App() {
     }
   }, [currentModel?.id, availableModels.length, setSelectedText, setContext, setPageInfo, setMessages, setCurrentSessionId, getAIResponse, getAIResponseWithMessages]);
 
-  // Click outside to close model dropdown
-  useEffect(() => {
-    if (!showModelSelector) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (modelButtonRef.current && !modelButtonRef.current.contains(e.target as Node)) {
-        const dropdown = document.querySelector('.side-panel-model-dropdown');
-        if (dropdown && !dropdown.contains(e.target as Node)) {
-          setShowModelSelector(false);
-          setDropdownPosition(null);
-        }
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showModelSelector, modelButtonRef, setShowModelSelector, setDropdownPosition]);
-
   // Re-edit with focus
   const handleReEditWithFocus = (content: string) => {
     handleReEdit(content);
@@ -256,27 +235,6 @@ export default function App() {
         }}
         onMindMap={handleSendMindMap}
         onNewChat={handleNewChat}
-      />
-
-      {availableModels.length > 0 && (
-        <button
-          ref={modelButtonRef}
-          className="side-panel-model-button"
-          onClick={toggleModelSelector}
-        >
-          <span>{currentModel?.name || '选择模型'}</span>
-          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </button>
-      )}
-
-      <ModelSelector
-        currentModel={currentModel}
-        availableModels={availableModels}
-        show={showModelSelector}
-        dropdownPosition={dropdownPosition}
-        onSelect={handleModelSelect}
       />
 
       <MindMapIntegration
