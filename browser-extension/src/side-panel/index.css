@@ -245,7 +245,6 @@ body {
 
 .side-panel-message {
   display: flex;
-  gap: 0;
   max-width: 100%;
 }
 
@@ -258,17 +257,19 @@ body {
   justify-content: flex-end;
 }
 
-/* AI 消息 - 左对齐 */
+/* AI 消息 - 左对齐，移除 align-items 避免子元素对齐冲突 */
 .side-panel-message.side-panel-message-assistant {
-  align-items: flex-start;
+  /* alignment handled by wrapper */
 }
 
-/* 消息包装器 */
+/* 消息包装器 - 实际对齐控制在此 */
 .side-panel-message-wrapper {
   display: flex;
   flex-direction: column;
   gap: 6px;
   max-width: 100%;
+  flex: 1;
+  min-width: 0; /* 防止内容溢出导致 flex 项不收缩 */
 }
 
 .side-panel-message-user-wrapper {
@@ -943,7 +944,11 @@ body {
   fill-opacity: 0.9;
 }
 
-/* 滚动条样式 */
+/* 滚动条样式 - 悬浮式，不占用空间 */
+.side-panel-content {
+  overflow-y: overlay; /* 滚动条悬浮在内容上方 */
+}
+
 .side-panel-content::-webkit-scrollbar {
   width: 6px;
 }
@@ -953,11 +958,20 @@ body {
 }
 
 .side-panel-content::-webkit-scrollbar-thumb {
-  background: #e5e6eb;
+  background: transparent;
   border-radius: 3px;
+  transition: background 0.2s;
 }
 
 .side-panel-content::-webkit-scrollbar-thumb:hover {
+  background: #c9cdd4;
+}
+
+/* 滚动时显示滚动条 */
+.side-panel-content::-webkit-scrollbar-thumb:vertical {
+  background: rgba(201, 205, 212, 0.4);
+}
+.side-panel-content::-webkit-scrollbar-thumb:vertical:hover {
   background: #c9cdd4;
 }
 

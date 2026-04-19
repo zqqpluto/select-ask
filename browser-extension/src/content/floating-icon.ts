@@ -22,8 +22,6 @@ import {
   buildSummarizeMenuItem,
   buildMindMapMenuItem,
   buildHistoryMenuItem,
-  buildModelSelectorMenuItem,
-  buildAskInputMenuItem,
   buildTranslateIcon,
   type FloatingMenuOptions,
 } from './components/floating-menu';
@@ -37,7 +35,6 @@ export interface FloatingIconOptions {
   onClickIcon?: () => void;
   isTranslating?: boolean;
   onHideMenu?: () => void;
-  onModelSelect?: (modelId: string) => void;
 }
 
 // ========== 实例级状态 ==========
@@ -76,15 +73,11 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
   const summarizeItem = buildSummarizeMenuItem(options as FloatingMenuOptions, hideMenu);
   const mindMapItem = buildMindMapMenuItem(options as FloatingMenuOptions, hideMenu);
   const historyItem = buildHistoryMenuItem(hideMenu);
-  const modelSelectorItem = buildModelSelectorMenuItem(hideMenu, options.onModelSelect);
-  const askItem = buildAskInputMenuItem(hideMenu);
 
   menu.appendChild(translateItem);
   menu.appendChild(summarizeItem);
   menu.appendChild(mindMapItem);
   menu.appendChild(historyItem);
-  menu.appendChild(modelSelectorItem);
-  menu.appendChild(askItem);
 
   // 点击图标打开侧边栏 — 在 setupDrag 的 onPointerUp 中通过回调触发
 

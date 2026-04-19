@@ -388,45 +388,51 @@ docs(readme): update installation instructions
 ### 内容脚本 UI 组件
 | 文件 | 改动场景 |
 |---|---|
-| `content/floating-icon.ts` | 悬浮图标菜单、二级下拉菜单、拖拽 |
+| `content/floating-icon.ts` | 悬浮图标入口、事件绑定 |
 | `content/floating-window.ts` | 悬浮翻译窗口、双面板布局 |
 | `content/mindmap.ts` | 页面内脑图面板渲染 |
-| `content/components/action-buttons.ts` | 操作按钮组件（解释/翻译/搜索） |
-| `content/components/icon-menu.ts` | 图标菜单 DOM 组件 |
+| `content/components/action-buttons.ts` | 操作按钮组件 |
+| `content/components/chat-box.ts` | 聊天窗口 DOM、拖拽、模式切换 |
+| `content/components/fullscreen-mode.ts` | 全屏模式、历史面板 |
+| `content/components/icon-menu.ts` | 图标菜单 DOM |
 | `content/components/model-selector.ts` | 模型选择下拉框 |
 | `content/components/sidebar.ts` | 侧边栏 DOM 组件 |
-| `content/components/translation-ui.ts` | 翻译窗口 UI 组件 |
+| `content/components/translation-ui.ts` | 翻译窗口 UI |
 
-### 内容脚本 Handlers（事件处理）
+### 内容脚本 Handlers
 | 文件 | 改动场景 |
 |---|---|
-| `content/handlers/menu-handler.ts` | 菜单点击处理（解释/翻译/搜索） |
-| `content/handlers/mindmap-handler.ts` | 脑图生成与展示逻辑 |
-| `content/handlers/summary-handler.ts` | 页面摘要处理 |
+| `content/handlers/menu-handler.ts` | 菜单点击处理 |
+| `content/handlers/mindmap-handler.ts` | 脑图生成 |
+| `content/handlers/summary-handler.ts` | 页面摘要 |
 
 ### 内容脚本工具
 | 文件 | 改动场景 |
 |---|---|
-| `content/utils/selection.ts` | 文本选中检测 |
-| `content/utils/layout.ts` | UI 定位计算 |
+| `content/utils/dom-utils.ts` | 选择/定位/图标移除 |
+| `content/utils/helpers.ts` | 通用 DOM 工具 |
+| `content/utils/layout.ts` | UI 定位计算、侧边栏布局 |
 | `content/utils/response-cache.ts` | 响应缓存 |
-| `content/utils/helpers.ts` | 通用 DOM/CSS 工具 |
+| `content/utils/selection.ts` | 文本选中检测 |
+| `content/utils/session-manager.ts` | 会话管理、菜单分发、后续对话 |
+| `content/utils/floating-position.ts` | 悬浮窗口位置 |
+| `content/utils/svg-helpers.ts` | SVG 创建工具 |
 
 ### 翻译系统
 | 文件 | 改动场景 |
 |---|---|
-| `content/translation-dom.ts` | 翻译 DOM 操作 |
-| `content/translation-fullpage.ts` | 整页翻译功能 |
-| `content/translation-interaction.ts` | 翻译交互逻辑 |
-| `content/translation-manager.ts` | 翻译管理器 |
+| `content/translation/dom.ts` | 翻译 DOM 操作 |
+| `content/translation/fullpage.ts` | 整页翻译 |
+| `content/translation/interaction.ts` | 翻译交互 |
+| `content/translation/manager.ts` | 翻译管理 |
+| `content/translation/style.css` | 翻译样式 |
 
 ### 内容脚本样式
 | 文件 | 作用域 |
 |---|---|
-| `content/style.css` | 全局内容脚本基础样式 |
-| `content/chat-style.css` | 聊天对话样式 |
-| `content/mindmap-style.css` | 脑图面板样式 |
-| `content/translation-style.css` | 翻译窗口样式 |
+| `content/styles/base.css` | 全局基础样式 |
+| `content/chat/style.css` | 聊天对话样式 |
+| `content/styles/mindmap.css` | 脑图样式 |
 
 ### LLM 服务
 | 文件 | 改动场景 |
