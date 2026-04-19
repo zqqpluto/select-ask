@@ -83,6 +83,7 @@ export function useChatStream(): UseChatStreamReturn {
   const [mindMapLoading, setMindMapLoading] = useState(false);
   const [expandedReasoning, setExpandedReasoning] = useState<Record<number, boolean>>({});
   const [userHasScrolled, setUserHasScrolled] = useState(false);
+  const [hasGeneratedQuestions, setHasGeneratedQuestions] = useState(false);
 
   const currentPortRef = useRef<chrome.runtime.Port | null>(null);
   const messagesCountRef = useRef(0);
