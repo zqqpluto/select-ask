@@ -1126,7 +1126,6 @@ body {
 
 /* ===== 推荐问题区域（独立消息） ===== */
 .side-panel-recommended-questions {
-  margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid #f0f0f0;
 }
