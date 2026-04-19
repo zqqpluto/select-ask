@@ -1,4 +1,4 @@
-import { removeIconMenus } from '../utils';
+import { removeIconMenus } from '../utils/dom-utils';
 import { saveSelectionRange, restoreSelectionRange } from '../utils/selection';
 
 /**

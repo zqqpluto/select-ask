@@ -1,5 +1,5 @@
 import { restoreSelectionRange, clearSelection } from '../utils/selection';
-import { removeIconMenus } from '../utils';
+import { removeIconMenus } from '../utils/dom-utils';
 
 export interface TranslationDeps {
   showResponseFloatingBox?: (action: string, text: string, context: any, model: any) => Promise<void>;

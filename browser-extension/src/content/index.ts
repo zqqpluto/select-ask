@@ -1,5 +1,5 @@
 import { getContextData } from './utils/context';
-import { isValidSelection, getSelectionPosition, removeIconMenus } from './utils';
+import { isValidSelection, getSelectionPosition, removeIconMenus } from './utils/dom-utils';
 import { streamExplain, streamTranslate, streamQuestion, streamSearch } from '../services/content-llm';
 import {
   addSession,
