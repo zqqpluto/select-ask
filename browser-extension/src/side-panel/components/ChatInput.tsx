@@ -5,7 +5,7 @@ interface Props {
   inputValue: string;
   isLoading: boolean;
   pageInfo: PageInfo | null;
-  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  textareaRef: React.RefObject<HTMLTextAreaElement>;
   onInputChange: (value: string) => void;
   onSend: () => void;
   onStop: () => void;

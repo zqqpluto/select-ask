@@ -1,4 +1,3 @@
-import { useCallback } from 'react';
 import { escapeHtml, formatUrlForDisplay, formatDuration, copyToClipboard } from '../../utils/shared';
 import { renderMarkdown } from '../../utils/markdown';
 import { MindMap } from '../../components/MindMap';
@@ -19,7 +18,7 @@ interface Props {
   onConvertToMindMap: (content: string) => void;
   onQuestionClick: (question: string) => void;
   onSetMindMapMarkdown: (value: string | null) => void;
-  selectedTextRef: React.RefObject<HTMLQuoteElement | null>;
+  selectedTextRef: React.RefObject<HTMLQuoteElement>;
 }
 
 export default function ChatMessageList({

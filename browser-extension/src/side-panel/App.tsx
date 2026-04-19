@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import type { ModelConfig } from '../types';
 import { generateSessionId } from '../utils/history-manager';
 import { useChatStream, type ExtendedHistoryMessage, type PageInfo } from './hooks/useChatStream';
@@ -26,9 +26,9 @@ export default function App() {
     handleReEdit, handleConvertToMindMap,
     handleTextareaChange, handleKeyDown,
     handleNewChat, handleSendMindMap,
+    autoGenerateEnabled: _autoGenerateEnabled, setAutoGenerateEnabled,
   } = useChatStream();
 
-  const [autoGenerateEnabled, setAutoGenerateEnabled] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -78,7 +78,7 @@ export default function App() {
           const selectedIds = config.selectedChatModelIds || [];
           let modelsToUse: ModelConfig[] = [];
           if (selectedIds.length > 0) {
-            modelsToUse = selectedIds.map((id: string) => enabledModels.find((m: ModelConfig) => m.id === id)).filter((m): m is ModelConfig => m !== undefined && m.enabled);
+            modelsToUse = selectedIds.map((id: string) => enabledModels.find((m: { id: string; enabled: boolean }) => m.id === id)).filter((m): m is ModelConfig => m !== undefined && m.enabled);
           } else {
             modelsToUse = enabledModels;
           }
@@ -103,7 +103,7 @@ export default function App() {
       chrome.storage.local.remove('pending_sidebar_init').catch(() => {});
     });
 
-    const messageListener = (message: any, sender: chrome.runtime.MessageSender, sendResponse: (response: any) => void) => {
+    const messageListener = (message: any, _sender: chrome.runtime.MessageSender, sendResponse: (response: any) => void) => {
       if (message.type === 'SIDEBAR_INIT') {
         chrome.storage.local.set({
           pending_sidebar_init: {
@@ -212,7 +212,7 @@ export default function App() {
           onConvertToMindMap={handleConvertToMindMap}
           onQuestionClick={async (q) => {
             setMessages(prev => [...prev, { role: 'user', content: q, timestamp: Date.now() }]);
-            await getAIResponse(q, currentModel);
+            await getAIResponse(q, currentModel || undefined);
           }}
           onSetMindMapMarkdown={setMindMapMarkdown}
           selectedTextRef={selectedTextRef}

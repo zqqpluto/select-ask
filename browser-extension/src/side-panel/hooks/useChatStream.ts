@@ -50,6 +50,8 @@ interface UseChatStreamReturn {
   messagesCountRef: React.MutableRefObject<number>;
   userHasScrolled: boolean;
   setUserHasScrolled: React.Dispatch<React.SetStateAction<boolean>>;
+  currentSessionId: string | null;
+  setCurrentSessionId: React.Dispatch<React.SetStateAction<string | null>>;
   getAIResponse: (question: string, model?: ModelConfig, initSelectedText?: string, initContext?: { before: string; after: string } | null) => Promise<void>;
   getAIResponseWithMessages: (prompt: string, model?: ModelConfig) => Promise<void>;
   handleSend: () => Promise<void>;
@@ -64,6 +66,8 @@ interface UseChatStreamReturn {
   handleKeyDown: (e: React.KeyboardEvent) => void;
   toggleReasoning: (index: number) => void;
   handleNewChat: () => void;
+  autoGenerateEnabled: boolean;
+  setAutoGenerateEnabled: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export function useChatStream(): UseChatStreamReturn {
@@ -84,6 +88,7 @@ export function useChatStream(): UseChatStreamReturn {
   const [expandedReasoning, setExpandedReasoning] = useState<Record<number, boolean>>({});
   const [userHasScrolled, setUserHasScrolled] = useState(false);
   const [hasGeneratedQuestions, setHasGeneratedQuestions] = useState(false);
+  const [autoGenerateEnabled, setAutoGenerateEnabled] = useState(true);
 
   const currentPortRef = useRef<chrome.runtime.Port | null>(null);
   const messagesCountRef = useRef(0);
@@ -106,7 +111,6 @@ export function useChatStream(): UseChatStreamReturn {
     setMessages(prev => {
       const lastAiIndex = prev.map((m, i) => m.role === 'assistant' ? i : -1).filter(i => i !== -1).pop();
       if (lastAiIndex !== undefined && lastAiIndex >= 0) {
-        const lastMsg = prev[lastAiIndex];
         return prev.map((msg, index) =>
           index === lastAiIndex ? { ...msg, isStopped: true, duration: msg.startTime ? Date.now() - msg.startTime : undefined } : msg
         );
@@ -128,7 +132,7 @@ export function useChatStream(): UseChatStreamReturn {
     setMessages([]);
     setSelectedText('');
     setContext(null);
-    setRecommendedQuestions([]);
+    setHasGeneratedQuestions(false);
     setCurrentSessionId(generateSessionId());
     setExpandedReasoning({});
     setMindMapMarkdown(null);
@@ -156,7 +160,7 @@ export function useChatStream(): UseChatStreamReturn {
   const hasGeneratedQuestionsRef = useRef(hasGeneratedQuestions);
   hasGeneratedQuestionsRef.current = hasGeneratedQuestions;
 
-  const saveToHistory = useCallback(async (modelToUse: ModelConfig, textForTitle: string, contextForSession: { before: string; after: string } | null, currentPageInfo: PageInfo | null) => {
+  const saveToHistory = useCallback(async (modelToUse: ModelConfig, textForTitle: string, _contextForSession: { before: string; after: string } | null, currentPageInfo: PageInfo | null) => {
     let sessionId = currentSessionIdRef.current;
     if (!sessionId) {
       sessionId = generateSessionId();
@@ -364,19 +368,8 @@ export function useChatStream(): UseChatStreamReturn {
       if (next?.questions) return prev.slice(0, targetIndex);
       return prev.slice(0, targetIndex);
     });
-    await getAIResponse(userMessage, currentModel);
+    await getAIResponse(userMessage, currentModel || undefined);
   }, [messages, currentModel, getAIResponse]);
-
-  const handleFollowUpClick = useCallback(async (question: string) => {
-    setRecommendedQuestions([]);
-    setMessages(prev => [...prev, { role: 'user', content: question, timestamp: Date.now() }]);
-    await getAIResponse(question, currentModel);
-  }, [currentModel, getAIResponse]);
-
-  const handleQuestionClick = useCallback(async (question: string) => {
-    setMessages(prev => [...prev, { role: 'user', content: question, timestamp: Date.now() }]);
-    await getAIResponse(question, currentModel);
-  }, [currentModel, getAIResponse]);
 
   const handleSendWithQuestion = useCallback(async (question: string) => {
     if (isLoading) return;
@@ -395,7 +388,7 @@ export function useChatStream(): UseChatStreamReturn {
       return;
     }
     setMessages(prev => [...prev, { role: 'user', content: '总结页面', timestamp: Date.now() }]);
-    await getAIResponseWithMessages(`请总结当前页面内容：${pageInfo?.pageTitle || '当前网页'}`, currentModel);
+    await getAIResponseWithMessages(`请总结当前页面内容：${pageInfo?.pageTitle || '当前网页'}`, currentModel || undefined);
   }, [isLoading, currentModel, pageInfo, getAIResponseWithMessages]);
 
   async function getPageMindMapPrompt(): Promise<string | null> {
@@ -519,7 +512,7 @@ ${content}`;
     setMessages(prev => [...prev, { role: 'user', content: message, timestamp: Date.now() }]);
     setInputValue('');
     setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: Date.now(), modelName: currentModel?.name, startTime: Date.now() }]);
-    await getAIResponse(message, currentModel);
+    await getAIResponse(message, currentModel || undefined);
   }, [inputValue, isLoading, currentModel, getAIResponse]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -544,5 +537,6 @@ ${content}`;
     handleSendWithQuestion, handleSendSummary, handleSendMindMap, handleConvertToMindMap,
     handleTextareaChange, handleKeyDown,
     toggleReasoning, handleNewChat,
+    autoGenerateEnabled, setAutoGenerateEnabled,
   };
 }
