@@ -106,3 +106,5 @@ browser-extension/tests/extension-real.spec.ts
 
 # Python linting cache
 .ruff_cache/
+# Added by code-review-graph
+.code-review-graph/

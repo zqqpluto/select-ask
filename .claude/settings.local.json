@@ -70,9 +70,24 @@
       "mcp__plugin_playwright_playwright__browser_wait_for",
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('hooks',{}\\), indent=2\\)\\)\")",
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(d.get\\('version','no version'\\), d.get\\('name',''\\)\\)\")",
-      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('name:', d.get\\('name',''\\)\\); print\\('version:', d.get\\('version',''\\)\\)\")"
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('name:', d.get\\('name',''\\)\\); print\\('version:', d.get\\('version',''\\)\\)\")",
+      "Bash(npm search *)",
+      "mcp__code-review-graph__get_architecture_overview_tool",
+      "Bash(code-review-graph --version)",
+      "Bash(code-review-graph install *)",
+      "Bash(uvx code-review-graph *)",
+      "mcp__code-review-graph__build_or_update_graph_tool",
+      "mcp__code-review-graph__list_communities_tool",
+      "mcp__code-review-graph__list_flows_tool",
+      "Bash(gh search *)",
+      "Bash(gh auth *)",
+      "Bash(gh api *)",
+      "Bash(pip show *)"
     ]
   },
+  "enabledMcpjsonServers": [
+    "code-review-graph"
+  ],
   "hooks": {
     "PostToolUse": [
       {
