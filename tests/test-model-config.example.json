@@ -1,0 +1,11 @@
+{
+  "id": "your-model-id",
+  "name": "Your Model",
+  "provider": "deepseek",
+  "apiKey": "sk-your-key-here",
+  "baseUrl": "https://api.deepseek.com",
+  "modelId": "deepseek-chat",
+  "enabled": true,
+  "enableChat": true,
+  "enableQuestion": true
+}

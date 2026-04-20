@@ -114,3 +114,6 @@ tests/extension-real.spec.ts
 .claude/settings.local.json
 .claude/skills/
 .mcp.json
+
+# Test model config (contains API keys)
+tests/test-model-config.json
