@@ -167,7 +167,8 @@ export function createFloatingIconDOM(
   isDraggingRef: { current: boolean },
   hoverTimerRef: { current: ReturnType<typeof setTimeout> | null },
   leaveTimerRef: { current: ReturnType<typeof setTimeout> | null },
-  onContainerClose?: () => void
+  onContainerClose?: () => void,
+  onClickIcon?: () => void
 ): FloatingIconDOM {
   const savedRatio = loadRatio();
 
@@ -228,7 +229,7 @@ export function createFloatingIconDOM(
   container.appendChild(closeBtn);
 
   // 拖拽
-  setupDrag(container, btn, logoWrap, closeBtn);
+  setupDrag(container, btn, logoWrap, closeBtn, onClickIcon);
 
   // 关闭按钮 hover
   closeBtn.addEventListener('mouseenter', () => {

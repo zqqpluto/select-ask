@@ -63,7 +63,8 @@ export function createFloatingIcon(options: FloatingIconOptions): HTMLElement {
     () => {
       floatingIconEl = null;
       dom = null;
-    }
+    },
+    options.onClickIcon
   );
 
   const { container, btn, menu, closeBtn, showMenu, hideMenu } = dom;

@@ -355,7 +355,9 @@ function initFloatingIcon(): void {
         onMindMapPage: () => {
           handleMindMapFromPage({
             showToast: (msg: string) => console.log('[mindmap]', msg),
-          } as any);
+            openSidePanel: (params) => chrome.runtime.sendMessage({ type: 'TOGGLE_SIDE_PANEL', ...params }),
+            selectionData: null,
+          });
         },
         onClickIcon: () => {
           // 点击图标：切换侧边栏（未打开则打开，已打开则关闭）
