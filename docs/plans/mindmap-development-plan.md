@@ -14,7 +14,7 @@
 
 安装命令：
 ```bash
-cd browser-extension
+
 npm install markmap-lib markmap-view html-to-image
 ```
 

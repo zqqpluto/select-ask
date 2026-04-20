@@ -170,7 +170,7 @@ npm run test:debug   # 调试测试
 
 测试使用 Playwright 搭配 Chromium 浏览器：
 
-- **测试文件**: 位于 `browser-extension/tests/`
+- **测试文件**: 位于 `tests/`
 - **测试页面**: 测试使用真实网页模拟真实场景
 - **扩展加载**: 测试自动加载未打包的扩展
 - **测试分类**:
@@ -192,7 +192,7 @@ npm run test:debug   # 调试测试
 - 先构建扩展：`npm run build`
 - 测试需要 dist/ 目录存在
 - 对于真实 API 测试，需在扩展中配置 API 密钥
-- E2E 测试指南详见 `browser-extension/docs/E2E_TESTING.md`
+- E2E 测试指南详见 `docs/E2E_TESTING.md`
 
 ## 重要技术细节
 
@@ -219,7 +219,7 @@ npm run test:debug   # 调试测试
   - `en`（英语）
   - `zh_CN`（简体中文）
 - 自动跟随浏览器语言设置
-- 详见 `browser-extension/I18N.md`
+- 详见 `I18N.md`
 
 ### LLM 响应处理
 
@@ -316,11 +316,11 @@ docs(readme): update installation instructions
 
 ## 开发时加载扩展
 
-1. 在 `browser-extension/` 中运行 `npm run dev` 或 `npm run build`
+1. 在 `` 中运行 `npm run dev` 或 `npm run build`
 2. 打开 Chrome 并导航到 `chrome://extensions/`
 3. 启用"开发者模式"（右上角的开关）
 4. 点击"加载已解压的扩展程序"
-5. 选择 `browser-extension/` 目录
+5. 选择 `` 目录
 6. 扩展应该会出现在你的工具栏中
 
 使用 HMR 开发模式时，运行 `npm run dev`，扩展会在你修改时热重载。
@@ -360,11 +360,11 @@ docs(readme): update installation instructions
 - **永远不要对未消毒的内容使用 `eval()` 或 `innerHTML`** — 内容脚本运行在用户页面上下文中，XSS 是关键安全问题
 - **Service Worker 生命周期** — 后台脚本是短生命周期的 service worker；不要依赖事件之间的全局状态持久性
 - **永远不要以明文形式记录或暴露 API 密钥** — 存储前始终使用 `encryptApiKey()`，仅在发起 API 调用时解密
-- **测试前先构建** — 测试需要 `dist/` 目录；在 `npm test` 之前在 `browser-extension/` 中运行 `npm run build`
+- **测试前先构建** — 测试需要 `dist/` 目录；在 `npm test` 之前在 `` 中运行 `npm run build`
 
 ## 项目代码地图
 
-> 快速定位文件，按功能分组。所有路径相对 `browser-extension/src/`。
+> 快速定位文件，按功能分组。所有路径相对 `src/`。
 
 ### 入口文件
 | 文件 | 用途 |

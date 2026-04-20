@@ -56,7 +56,7 @@ git clone https://github.com/your-username/select-ask.git
 cd select-ask
 
 # 前端设置
-cd browser-extension
+
 npm install
 
 # 后端设置（可选）
@@ -68,7 +68,7 @@ npm install
 
 ```bash
 # 前端测试
-cd browser-extension
+
 npm test
 
 # 后端测试

@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test('全文翻译 - 点击 popup 翻译全文按钮', async ({ page, context }) => {
   // 加载扩展
-  const extensionPath = '/Users/zhaoqiqiang/code/select-ask/select-ask/browser-extension/dist';
+  const extensionPath = '/Users/zhaoqiqiang/code/select-ask/select-ask/dist';
   
   // 打开一个简单页面
   await page.goto('https://example.com');

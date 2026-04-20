@@ -43,10 +43,11 @@ coverage/
 .DS_Store
 
 # Chrome Extension
-browser-extension/dist/
-browser-extension/.crx
-browser-extension/.pem
-browser-extension/*.zip
+dist/
+.crx
+*.crx
+.pem
+*.zip
 
 # Temporary files
 tmp/
@@ -87,13 +88,13 @@ Thumbs.db
 
 # Playwright test results
 test-results/
-browser-extension/playwright-report/
+playwright-report/
 
-# Browser Extension local files
-browser-extension/dist-ssr
-browser-extension/*.local
-browser-extension/.vscode/*
-!browser-extension/.vscode/extensions.json
+# Local files
+dist-ssr
+*.local
+.vscode/*
+!.vscode/extensions.json
 
 # Test config (API keys, secrets)
 test-api-config.json
@@ -101,8 +102,8 @@ test-api-config.json
 TEST_CONFIG.md
 
 # Playwright tests with secrets (not tracked)
-browser-extension/tests/extension-features.spec.ts
-browser-extension/tests/extension-real.spec.ts
+tests/extension-features.spec.ts
+tests/extension-real.spec.ts
 
 # Python linting cache
 .ruff_cache/

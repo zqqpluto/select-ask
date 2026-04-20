@@ -47,15 +47,14 @@
 ### 手动安装
 
 1. 克隆或下载本仓库
-2. 进入 `browser-extension` 目录并安装依赖：
+2. 安装依赖并构建：
    ```bash
-   cd browser-extension
    npm install
    npm run build
    ```
 3. 打开 Chrome，进入 `chrome://extensions/`
 4. 开启右上角的「开发者模式」
-5. 点击「加载已解压的扩展程序」，选择 `browser-extension` 目录
+5. 点击「加载已解压的扩展程序」，选择项目根目录
 6. 完成
 
 ## 快速开始
@@ -93,7 +92,6 @@
 ### 本地开发
 
 ```bash
-cd browser-extension
 npm install
 
 # 开发模式 (热重载)
@@ -112,7 +110,7 @@ npm test
 2. 打开 Chrome，进入 `chrome://extensions/`
 3. 开启「开发者模式」
 4. 点击「加载已解压的扩展程序」
-5. 选择 `browser-extension` 目录
+5. 选择 项目根目录 目录
 
 ## 获取 API Key
 

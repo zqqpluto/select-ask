@@ -95,7 +95,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd /Users/zhaoqiqiang/code/select-ask/select-ask/browser-extension && npm run build"
+            "command": "cd /Users/zhaoqiqiang/code/select-ask/select-ask && npm run build"
           }
         ]
       }
@@ -106,7 +106,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd /Users/zhaoqiqiang/code/select-ask/select-ask/browser-extension && npm run build"
+            "command": "cd /Users/zhaoqiqiang/code/select-ask/select-ask && npm run build"
           }
         ]
       }

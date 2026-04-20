@@ -46,7 +46,7 @@ A smart browser extension that enables AI-powered explain, translate, ask, and s
 
 ```
 select-ask/
-├── browser-extension/          # Browser extension (frontend)
+├──           # Browser extension (frontend)
 │   ├── src/
 │   │   ├── background/         # Background script (Service Worker)
 │   │   │   ├── index.ts        # Main entry, message routing + state persistence
@@ -92,15 +92,15 @@ select-ask/
 ### Manual Installation
 
 1. Clone or download this repository
-2. Enter the `browser-extension` directory and install dependencies:
+2. Enter the 项目根目录 directory and install dependencies:
    ```bash
-   cd browser-extension
+   
    npm install
    npm run build
    ```
 3. Open Chrome and navigate to `chrome://extensions/`
 4. Enable "Developer mode" in the top-right corner
-5. Click "Load unpacked" and select the `browser-extension` directory
+5. Click "Load unpacked" and select the 项目根目录 directory
 6. Done!
 
 ## Quick Start
@@ -138,7 +138,7 @@ Via the floating icon menu in the bottom-right corner:
 ### Local Development
 
 ```bash
-cd browser-extension
+
 npm install
 
 # Development mode (HMR)
@@ -157,7 +157,7 @@ npm test
 2. Open Chrome and navigate to `chrome://extensions/`
 3. Enable "Developer mode"
 4. Click "Load unpacked"
-5. Select the `browser-extension` directory
+5. Select the 项目根目录 directory
 
 ## Get API Keys
 

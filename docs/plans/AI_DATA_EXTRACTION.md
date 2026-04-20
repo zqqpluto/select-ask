@@ -284,7 +284,7 @@ interface DetectedData {
 ## 新增文件清单
 
 ```
-browser-extension/
+
 ├── src/
 │   ├── types/
 │   │   └── data-extraction.ts
