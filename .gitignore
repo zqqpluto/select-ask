@@ -109,3 +109,8 @@ tests/extension-real.spec.ts
 .ruff_cache/
 # Added by code-review-graph
 .code-review-graph/
+
+# Claude Code local files
+.claude/settings.local.json
+.claude/skills/
+.mcp.json
