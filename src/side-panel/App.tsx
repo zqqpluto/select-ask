@@ -144,6 +144,11 @@ export default function App() {
           const userMsg: ExtendedHistoryMessage = { role: 'user', content: userMessage, timestamp: Date.now() };
           if (summaryPrompt) {
             setMessages([userMsg]);
+            const isMindMap = userMessage?.includes('脑图');
+            if (isMindMap) {
+              setMindMapLoading(true);
+              setMindMapInline(null);
+            }
             getAIResponseWithMessages(summaryPrompt, currentModel);
           } else {
             setMessages(prev => [...prev, userMsg]);
@@ -155,7 +160,7 @@ export default function App() {
     };
     chrome.storage.onChanged.addListener(storageListener);
     return () => { chrome.storage.onChanged.removeListener(storageListener); };
-  }, [currentModel, setSelectedText, setContext, setPageInfo, setMessages, getAIResponse, getAIResponseWithMessages]);
+  }, [currentModel, setSelectedText, setContext, setPageInfo, setMessages, getAIResponse, getAIResponseWithMessages, setMindMapLoading, setMindMapInline]);
 
   // Handle pending init message when models are loaded
   useEffect(() => {
@@ -174,6 +179,11 @@ export default function App() {
             setCurrentSessionId(sessionId);
             await chrome.storage.local.remove(['pending_sidebar_init']);
             if (summaryPrompt) {
+              const isMindMap = userMessage?.includes('脑图');
+              if (isMindMap) {
+                setMindMapLoading(true);
+                setMindMapInline(null);
+              }
               getAIResponseWithMessages(summaryPrompt, currentModel);
             } else {
               getAIResponse(userMessage, currentModel, selectedText || '', context || null);

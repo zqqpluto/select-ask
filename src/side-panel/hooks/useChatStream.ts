@@ -254,11 +254,22 @@ export function useChatStream(): UseChatStreamReturn {
           });
         } else if (message.type === 'LLM_STREAM_END') {
           const start = startTime;
-          setMessages(prev => {
-            const idx = prev.findIndex(m => m.role === 'assistant' && m.startTime && m.duration === undefined);
-            if (idx !== -1) { const n = [...prev]; n[idx] = { ...n[idx], duration: Date.now() - start }; return n; }
-            return prev;
-          });
+          const match = answerContent.match(/```markdown\s*([\s\S]*?)```|```\s*([\s\S]*?)```/);
+          const mindMapContent = match ? (match[1] || match[2]) : null;
+          if (mindMapContent && mindMapContent.trim().length > 20) {
+            setMindMapInline(mindMapContent.trim());
+            setMessages(prev => {
+              const idx = prev.findIndex(m => m.role === 'assistant' && m.startTime && m.duration === undefined);
+              if (idx !== -1) { const n = [...prev]; n[idx] = { ...n[idx], content: '', duration: Date.now() - start }; return n; }
+              return prev;
+            });
+          } else {
+            setMessages(prev => {
+              const idx = prev.findIndex(m => m.role === 'assistant' && m.startTime && m.duration === undefined);
+              if (idx !== -1) { const n = [...prev]; n[idx] = { ...n[idx], duration: Date.now() - start }; return n; }
+              return prev;
+            });
+          }
           setIsLoading(false); currentPortRef.current = null; port.disconnect();
           saveToHistory(modelToUse, prompt, null, pageInfo);
         } else if (message.type === 'LLM_STREAM_ERROR') {
@@ -273,7 +284,7 @@ export function useChatStream(): UseChatStreamReturn {
       setIsLoading(false);
       setMessages(prev => [...prev, { role: 'assistant', content: `错误：${error instanceof Error ? error.message : String(error)}`, timestamp: Date.now() }]);
     }
-  }, [currentModel, pageInfo, saveToHistory]);
+  }, [currentModel, pageInfo, saveToHistory, setMindMapInline]);
 
   const getAIResponse = useCallback(async (question: string, model?: ModelConfig, initSelectedText?: string, initContext?: { before: string; after: string } | null) => {
     const modelToUse = model || currentModel;
