@@ -175,9 +175,16 @@ export default function ChatMessageList({
                       <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
                     </svg>
                     <span>正在生成脑图...</span>
+                    {msg.modelName && <span className="side-panel-mindmap-loading-model">{msg.modelName}</span>}
                   </div>
                 ) : mindMapInline ? (
                   <div className="side-panel-mindmap-inline">
+                    {msg.modelName && (
+                      <div className="side-panel-mindmap-meta">
+                        <span className="side-panel-mindmap-model">{msg.modelName}</span>
+                        {msg.duration && <span className="side-panel-mindmap-duration">耗时 {formatDuration(msg.duration)}</span>}
+                      </div>
+                    )}
                     <MindMap markdown={mindMapInline} />
                     <button className="side-panel-mindmap-expand-btn" onClick={() => onSetMindMapMarkdown(mindMapInline)}>
                       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
