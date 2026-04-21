@@ -115,9 +115,18 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         }
 
         if (sidePanelOpenTabs.has(tab.id)) {
-          // 已打开 → 通知 side-panel 自己关闭
-          chrome.runtime.sendMessage({ type: 'CLOSE_SIDE_PANEL' }).catch(() => {});
-          sendResponse({ success: true, action: 'closing' });
+          // 已打开 → 写入 pending 数据让侧边栏通过 storage.onChanged 触发脑图生成
+          chrome.storage.local.set({
+            pending_sidebar_init: {
+              selectedText: message.selectedText,
+              context: message.context,
+              userMessage: message.userMessage,
+              summaryPrompt: message.summaryPrompt,
+              pageUrl: message.pageUrl,
+              pageTitle: message.pageTitle,
+            },
+          }).catch(console.error);
+          sendResponse({ success: true, action: 'triggering' });
         } else {
           chrome.sidePanel.open({ windowId: tab.windowId })
             .then(() => {
