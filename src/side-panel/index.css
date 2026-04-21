@@ -463,6 +463,27 @@ body {
   background: #c9cdd4;
 }
 
+/* AI 回复信息条（无 reasoning 时显示） */
+.side-panel-ai-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #86909c;
+  border-bottom: 1px solid #e5e6eb;
+}
+
+.side-panel-ai-info-model {
+  font-weight: 500;
+  color: #4e5969;
+}
+
+.side-panel-ai-info-duration {
+  color: #bfbfbf;
+}
+
 /* 思考过程 - markdown 引用格式 */
 .side-panel-reasoning-quote {
   margin-bottom: 12px;
@@ -1385,25 +1406,6 @@ body {
   overflow: hidden;
   background: #fafbfc;
   margin-top: 8px;
-}
-
-.side-panel-mindmap-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 12px;
-  border-bottom: 1px solid #e5e7eb;
-  font-size: 12px;
-  color: #6b7280;
-}
-
-.side-panel-mindmap-model {
-  font-weight: 500;
-  color: #4b5563;
-}
-
-.side-panel-mindmap-duration {
-  color: #9ca3af;
 }
 
 .side-panel-mindmap-inline .select-ask-mindmap-container {
