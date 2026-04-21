@@ -16,7 +16,7 @@ export default function App() {
     selectedTextExpanded, setSelectedTextExpanded,
     selectedTextNeedsExpand, setSelectedTextNeedsExpand,
     mindMapMarkdown, setMindMapMarkdown,
-    mindMapInline, mindMapLoading,
+    mindMapInline, mindMapLoading, setMindMapLoading, setMindMapInline,
     expandedReasoning, toggleReasoning,
     currentPortRef: _currentPortRef, messagesCountRef,
     userHasScrolled, setUserHasScrolled,
