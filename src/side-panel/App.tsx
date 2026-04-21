@@ -155,6 +155,9 @@ export default function App() {
             getAIResponse(userMessage, currentModel, selectedText || '', context || null);
           }
           setTimeout(() => { chrome.storage.local.remove('pending_sidebar_init').catch(() => {}); }, 500);
+        } else if (userMessage && !currentModel) {
+          // Model not loaded yet, keep pending data for checkInitMessage to handle
+          console.log('[side-panel] Model not loaded yet, keeping pending_sidebar_init for retry');
         }
       }
     };
@@ -162,7 +165,7 @@ export default function App() {
     return () => { chrome.storage.onChanged.removeListener(storageListener); };
   }, [currentModel, setSelectedText, setContext, setPageInfo, setMessages, getAIResponse, getAIResponseWithMessages, setMindMapLoading, setMindMapInline]);
 
-  // Handle pending init message when models are loaded
+  // Retry pending init when models are loaded (handles race condition where storage.onChanged fires before model loads)
   useEffect(() => {
     if (currentModel && availableModels.length > 0) {
       const checkInitMessage = async () => {

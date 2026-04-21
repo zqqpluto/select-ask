@@ -255,7 +255,17 @@ export function useChatStream(): UseChatStreamReturn {
         } else if (message.type === 'LLM_STREAM_END') {
           const start = startTime;
           const match = answerContent.match(/```markdown\s*([\s\S]*?)```|```\s*([\s\S]*?)```/);
-          const mindMapContent = match ? (match[1] || match[2]) : null;
+          let mindMapContent = match ? (match[1] || match[2]) : null;
+
+          // If no code block found, check if the entire content looks like a mindmap (has ## headings and - lists)
+          if (!mindMapContent) {
+            const hasHeadings = /^#{2,4}\s/m.test(answerContent);
+            const hasLists = /^[-*]\s/m.test(answerContent);
+            if (hasHeadings && hasLists) {
+              mindMapContent = answerContent.trim();
+            }
+          }
+
           if (mindMapContent && mindMapContent.trim().length > 20) {
             setMindMapInline(mindMapContent.trim());
             setMessages(prev => {

@@ -213,64 +213,144 @@ test.describe('Mindmap Interaction Flow Tests', () => {
     expect(result.hasPageTitle).toBe(true);
   });
 
-  test('6. 侧边栏脑图内容渲染正确', async () => {
-    // Use service worker to inject storage data
+  test('6. 完整脑图生成流程：真实 API 调用 + 脑图渲染', async () => {
     const sw = context.serviceWorkers()[0];
     if (!sw) {
-      console.log('No service worker, skipping mindmap rendering test');
+      console.log('No service worker, skipping real mindmap test');
       return;
     }
 
-    // Set up storage via service worker
+    // Configure real DeepSeek model
     await sw.evaluate(async () => {
       await chrome.storage.sync.set({
         app_config: {
           models: [{
-            id: 'test-model',
-            name: 'Test Model',
-            type: 'openai-compat',
+            id: 'deepseek-chat',
+            name: 'DeepSeek Chat',
+            provider: 'deepseek',
             enabled: true,
             enableChat: true,
-            apiKey: 'test-key',
-            apiUrl: 'https://api.test.com/v1',
+            enableQuestion: true,
+            apiKey: 'sk-1a67a951a31f4905b9582dc6ead71292',
+            baseUrl: 'https://api.deepseek.com/v1',
+            modelId: 'deepseek-chat',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
           }],
-          selectedChatModelIds: ['test-model'],
+          selectedChatModelIds: ['deepseek-chat'],
+          selectedModel: 'deepseek-chat',
         },
       });
+      // Clear any old pending data
+      await chrome.storage.local.remove('pending_sidebar_init');
+    });
+
+    // Open side panel FIRST
+    const sidePage = await context.newPage();
+
+    // Listen for console messages
+    sidePage.on('console', msg => {
+      if (msg.type() === 'error') {
+        console.log('SIDE PANEL ERROR:', msg.text());
+      }
+    });
+
+    const sidePanelUrl = `chrome-extension://${extensionId}/src/side-panel/index.html`;
+    await sidePage.goto(sidePanelUrl);
+    await sidePage.waitForTimeout(5000);
+
+    // Now inject pending data
+    await sw.evaluate(async () => {
+      const configResult = await chrome.storage.sync.get('app_config');
+      console.log('[SW] Model config exists:', !!configResult.app_config?.models?.length);
+      console.log('[SW] Models:', JSON.stringify(configResult.app_config?.models?.map((m: any) => ({ id: m.id, name: m.name, type: m.type }))));
+
       await chrome.storage.local.set({
         pending_sidebar_init: {
           selectedText: '',
           context: null,
           userMessage: '生成脑图',
-          summaryPrompt: '```markdown\n## 测试主题\n### 子主题1\n- 要点A\n```\n',
-          pageUrl: 'https://example.com',
+          summaryPrompt: '请将以下内容整理为层级化 Markdown 脑图格式。要求：\n1. 使用 ## 作为一级标题，### 作为二级标题，#### 作为三级标题\n2. 使用 - 列表项表示子节点\n3. 结构清晰，层次分明\n4. 提取核心要点，不要遗漏重要信息\n\n内容：\n人工智能（Artificial Intelligence，简称AI）是计算机科学的一个分支。机器学习是核心，深度学习是子领域。CNN用于视觉，RNN用于NLP。应用于医疗、金融、交通等领域。',
+          pageUrl: 'http://localhost:8766/',
           pageTitle: 'Test Page',
         },
       });
     });
 
-    const sidePage = await context.newPage();
-    const sidePanelUrl = `chrome-extension://${extensionId}/src/side-panel/index.html`;
-    await sidePage.goto(sidePanelUrl);
-    await sidePage.waitForTimeout(10000);
+    // Wait a bit then check service worker console for errors
+    await page.waitForTimeout(3000);
+    const swErrors = await sw.evaluate(() => {
+      // We can't directly access console history, but we can check if the worker is alive
+      return { swAlive: true, swUrl: self.location.href };
+    }).catch(() => ({ swAlive: false }));
+    console.log('Service worker status:', swErrors);
 
-    // Check that mindmap content is rendered
-    const hasMindMap = await sidePage.evaluate(() => {
-      const container = document.querySelector('.side-panel-mindmap-inline');
-      const mindMapContainer = document.querySelector('.select-ask-mindmap-container');
-      const mindMapSvg = document.querySelector('.select-ask-mindmap-container svg');
-      const loading = document.querySelector('.side-panel-mindmap-loading');
-      return {
-        hasInline: !!container,
-        hasContainer: !!mindMapContainer,
-        hasSvg: !!mindMapSvg,
-        hasLoading: !!loading,
-      };
-    });
-    console.log('Mindmap rendering:', hasMindMap);
+    // Wait for AI response and mindmap rendering (up to 60s)
+    let mindMapRendered = false;
+    let renderResult = {};
+    for (let i = 0; i < 30; i++) {
+      renderResult = await sidePage.evaluate(() => {
+        const container = document.querySelector('.side-panel-mindmap-inline');
+        const mindMapContainer = document.querySelector('.select-ask-mindmap-container');
+        const mindMapSvg = document.querySelector('.select-ask-mindmap-container svg');
+        const model = document.querySelector('.side-panel-ai-info-model');
+        const duration = document.querySelector('.side-panel-ai-info-duration');
+        const loading = document.querySelector('.side-panel-mindmap-loading');
+        const userMsg = document.querySelector('.side-panel-message-user-wrapper');
+        const aiMsg = document.querySelector('.side-panel-message-ai-wrapper');
+        const errorEl = [...document.querySelectorAll('*')].find(el => el.textContent?.includes('错误：'));
+        // Check if AI content is being rendered as markdown
+        const aiContent = document.querySelector('.side-panel-ai-content-flat .side-panel-message-content div');
+        const messages = document.querySelectorAll('.side-panel-message-wrapper');
+        const lastMsg = messages[messages.length - 1];
+        return {
+          hasInline: !!container,
+          hasMindMapContainer: !!mindMapContainer,
+          hasSvg: !!mindMapSvg,
+          modelText: model?.textContent,
+          durationText: duration?.textContent,
+          hasLoading: !!loading,
+          hasUserMsg: !!userMsg,
+          hasAiMsg: !!aiMsg,
+          hasError: !!errorEl,
+          errorText: errorEl?.textContent?.substring(0, 100),
+          messages: messages?.length,
+          aiContentLength: aiContent?.textContent?.length || 0,
+          lastMsgContent: lastMsg?.textContent?.substring(0, 100),
+        };
+      });
 
-    // At minimum, should have started processing (loading or rendered)
-    expect(hasMindMap.hasInline || hasMindMap.hasContainer || hasMindMap.hasSvg || hasMindMap.hasLoading).toBe(true);
+      console.log(`Poll ${i + 1}/30:`, JSON.stringify(renderResult));
+
+      if (renderResult.hasInline || renderResult.hasMindMapContainer || renderResult.hasSvg) {
+        mindMapRendered = true;
+        console.log('✅ 脑图渲染成功!');
+        break;
+      }
+      // Check if AI returned content as markdown (might be text without code block)
+      if (renderResult.aiContentLength > 100) {
+        console.log('AI returned content as text, checking for mindmap markdown...');
+        // Give it a moment to process
+        await sidePage.waitForTimeout(2000);
+        const checkResult = await sidePage.evaluate(() => {
+          const container = document.querySelector('.side-panel-mindmap-inline');
+          const mindMapContainer = document.querySelector('.select-ask-mindmap-container');
+          return { hasInline: !!container, hasContainer: !!mindMapContainer };
+        });
+        if (checkResult.hasInline || checkResult.hasContainer) {
+          mindMapRendered = true;
+          break;
+        }
+      }
+      if (renderResult.hasError) {
+        console.log('❌ AI 返回错误:', renderResult.errorText);
+        break;
+      }
+      await sidePage.waitForTimeout(2000);
+    }
+
+    expect(mindMapRendered).toBe(true);
+    console.log('✅ 真实脑图渲染成功');
 
     await sidePage.close();
   });
@@ -282,20 +362,55 @@ test.describe('Mindmap Interaction Flow Tests', () => {
       return;
     }
 
-    // Set up storage via service worker
+    // Clear previous pending data
     await sw.evaluate(async () => {
       await chrome.storage.sync.set({
         app_config: {
           models: [{
-            id: 'test-model',
-            name: 'Test Model',
-            type: 'openai-compat',
+            id: 'deepseek-chat',
+            name: 'DeepSeek Chat',
+            provider: 'deepseek',
             enabled: true,
             enableChat: true,
-            apiKey: 'test-key',
-            apiUrl: 'https://api.test.com/v1',
+            enableQuestion: true,
+            apiKey: 'sk-1a67a951a31f4905b9582dc6ead71292',
+            baseUrl: 'https://api.deepseek.com/v1',
+            modelId: 'deepseek-chat',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
           }],
-          selectedChatModelIds: ['test-model'],
+          selectedChatModelIds: ['deepseek-chat'],
+          selectedModel: 'deepseek-chat',
+        },
+      });
+      await chrome.storage.local.remove('pending_sidebar_init');
+    });
+
+    // Open side panel first
+    const sidePage = await context.newPage();
+    const sidePanelUrl = `chrome-extension://${extensionId}/src/side-panel/index.html`;
+    await sidePage.goto(sidePanelUrl);
+    await sidePage.waitForTimeout(5000);
+
+    // Trigger mindmap via storage
+    await sw.evaluate(async () => {
+      await chrome.storage.sync.set({
+        app_config: {
+          models: [{
+            id: 'deepseek-chat',
+            name: 'DeepSeek Chat',
+            provider: 'deepseek',
+            enabled: true,
+            enableChat: true,
+            enableQuestion: true,
+            apiKey: 'sk-1a67a951a31f4905b9582dc6ead71292',
+            baseUrl: 'https://api.deepseek.com/v1',
+            modelId: 'deepseek-chat',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          }],
+          selectedChatModelIds: ['deepseek-chat'],
+          selectedModel: 'deepseek-chat',
         },
       });
       await chrome.storage.local.set({
@@ -303,41 +418,44 @@ test.describe('Mindmap Interaction Flow Tests', () => {
           selectedText: '',
           context: null,
           userMessage: '生成脑图',
-          summaryPrompt: '```markdown\n## AI\n### 机器学习\n- 监督学习\n```\n',
-          pageUrl: 'https://example.com',
+          summaryPrompt: '请将以下内容整理为层级化 Markdown 脑图格式：\n人工智能是计算机科学分支，包含机器学习和深度学习，应用于医疗、金融、交通等领域。',
+          pageUrl: 'http://localhost:8766/',
           pageTitle: 'Test Page',
         },
       });
     });
 
-    const sidePage = await context.newPage();
-    const sidePanelUrl = `chrome-extension://${extensionId}/src/side-panel/index.html`;
-    await sidePage.goto(sidePanelUrl);
-    await sidePage.waitForTimeout(10000);
+    // Wait for model name and duration
+    let modelFound = false;
+    let durationFound = false;
+    for (let i = 0; i < 30; i++) {
+      const result = await sidePage.evaluate(() => {
+        const model = document.querySelector('.side-panel-ai-info-model');
+        const duration = document.querySelector('.side-panel-ai-info-duration');
+        const mindMapInline = document.querySelector('.side-panel-mindmap-inline');
+        const mindMapContainer = document.querySelector('.select-ask-mindmap-container');
+        return {
+          modelText: model?.textContent,
+          durationText: duration?.textContent,
+          hasMindMap: !!(mindMapInline || mindMapContainer),
+        };
+      });
 
-    // Check for AI info bar or mindmap inline (both indicate processing started)
-    const result = await sidePage.evaluate(() => {
-      const infoBar = document.querySelector('.side-panel-ai-info');
-      const model = document.querySelector('.side-panel-ai-info-model');
-      const duration = document.querySelector('.side-panel-ai-info-duration');
-      const mindMapInline = document.querySelector('.side-panel-mindmap-inline');
-      const loading = document.querySelector('.side-panel-mindmap-loading');
-      const aiMessage = document.querySelector('.side-panel-message-ai-wrapper');
-      return {
-        hasInfoBar: !!infoBar,
-        hasModel: !!model,
-        hasDuration: !!duration,
-        modelText: model?.textContent,
-        durationText: duration?.textContent,
-        hasMindMapInline: !!mindMapInline,
-        hasLoading: !!loading,
-        hasAiMessage: !!aiMessage,
-      };
-    });
-    console.log('Mindmap AI info:', result);
+      console.log(`Poll ${i + 1}:`, JSON.stringify(result));
 
-    // Should have at least started processing (loading) or rendered something
-    expect(result.hasLoading || result.hasMindMapInline || result.hasInfoBar || result.hasAiMessage).toBe(true);
+      if (result.modelText && result.modelText.length > 0) {
+        modelFound = true;
+        if (result.durationText && result.durationText.length > 0) {
+          durationFound = true;
+        }
+        console.log('Model:', result.modelText, 'Duration:', result.durationText);
+        break;
+      }
+      await sidePage.waitForTimeout(2000);
+    }
+
+    expect(modelFound).toBe(true);
+    console.log('✅ 模型名显示正确');
 
     await sidePage.close();
   });

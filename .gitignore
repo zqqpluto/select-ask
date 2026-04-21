@@ -117,3 +117,10 @@ tests/extension-real.spec.ts
 
 # Test model config (contains API keys)
 tests/test-model-config.json
+
+# Playwright
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+tests/test-model-config.json
