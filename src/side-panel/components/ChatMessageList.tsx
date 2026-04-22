@@ -169,7 +169,7 @@ export default function ChatMessageList({
                   </div>
                 )}
 
-                {!msg.reasoning && msg.modelName && (
+                {!msg.reasoning && msg.modelName && !mindMapLoading && !mindMapInline && (
                   <div className="side-panel-ai-info">
                     <span className="side-panel-ai-info-model">{msg.modelName}</span>
                     {msg.duration && <span className="side-panel-ai-info-duration">耗时 {formatDuration(msg.duration)}</span>}

@@ -1002,7 +1002,7 @@ export default function App() {
           onToggleApiKey={() => setShowApiKeyInModal(!showApiKeyInModal)}
           onFetchModels={fetchAvailableModels}
           onSelectModel={(modelId) => {
-            setFormData(prev => ({ ...prev, modelId, name: modelId }));
+            setFormData(prev => ({ ...prev, modelId }));
           }}
           setShowModelDropdown={setShowModelDropdown}
           setModelSearchQuery={setModelSearchQuery}

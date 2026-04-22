@@ -111,17 +111,15 @@ export default function MindMap({ markdown, onReady, onError }: MindMapProps) {
     }
 
     init();
-    // Add timeout to detect hangs
+    // Timeout to detect hangs - 30s for large markmap content
     const timeout = setTimeout(() => {
-      if (!cancelled) {
-        console.error('[MindMap] Init timeout (15s), marking as error');
-        setError('脑图初始化超时');
-        setLoading(false);
+      if (!cancelled && loading) {
+        console.warn('[MindMap] Init taking longer than expected (30s)');
       }
-    }, 15000);
+    }, 30000);
 
     return () => { cancelled = true; clearTimeout(timeout); };
-  }, [markdown]);
+  }, [markdown, loading]);
 
   if (error) {
     return (

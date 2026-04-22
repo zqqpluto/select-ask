@@ -66,7 +66,7 @@ export default function ModelFormModal({
       name: editingModel?.name || '',
       provider,
       baseUrl: extra?.baseUrl || defaults?.baseUrl || '',
-      modelId: extra?.modelId || defaults?.modelId || '',
+      modelId: extra?.modelId || formData.modelId,
       apiKey: formData.apiKey,
     });
   };
@@ -139,7 +139,7 @@ export default function ModelFormModal({
               {([
                 { label: 'Moonshot · Kimi', baseUrl: 'https://api.moonshot.cn/v1', icon: '🌙', iconColor: 'bg-indigo-500' },
                 { label: '字节豆包', baseUrl: 'https://ark.cn-beijing.volces.com/api/v3', icon: '🫘', iconColor: 'bg-red-500' },
-                { label: '百度文心', baseUrl: 'https://qianfan.baidubce.com/v2', icon: '🔵', iconColor: 'bg-blue-600' },
+                { label: '百度文心', baseUrl: 'https://qianfan.baidubce.com/v2', icon: '文', iconColor: 'bg-blue-600' },
                 { label: 'MiniMax', baseUrl: 'https://api.minimax.chat/v1', icon: 'M', iconColor: 'bg-violet-500' },
                 { label: '硅基流动', baseUrl: 'https://api.siliconflow.cn/v1', icon: 'S', iconColor: 'bg-teal-500' },
                 { label: 'Google Gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', icon: 'G', iconColor: 'bg-green-500' },
@@ -337,13 +337,6 @@ export default function ModelFormModal({
             </div>
           )}
 
-          {/* Test Result */}
-          {testResult && (
-            <div className={`p-2.5 rounded-lg text-sm ${testResult.success ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-              {testResult.success ? '✓ 连接成功' : `✗ ${testResult.error}`}
-            </div>
-          )}
-
           {/* Model Status Toggle */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">模型状态</label>
@@ -366,13 +359,18 @@ export default function ModelFormModal({
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3 pt-3 mt-1 border-t border-gray-100">
+          <div className="flex items-center gap-3 pt-3 mt-1 border-t border-gray-100">
             <button
               onClick={onTestConnection}
               disabled={testing}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300 rounded-lg transition-all disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300 rounded-lg transition-all disabled:opacity-50 flex items-center gap-2"
             >
               {testing ? '测试中...' : '测试连接'}
+              {testResult && (
+                <span className={`text-sm ${testResult.success ? 'text-green-600' : 'text-red-600'}`}>
+                  {testResult.success ? '✓ 成功' : `✗ ${testResult.error}`}
+                </span>
+              )}
             </button>
             <div className="flex-1" />
             <button
