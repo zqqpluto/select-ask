@@ -283,7 +283,7 @@ export default function ModelFormModal({
                             key={model}
                             type="button"
                             onClick={() => {
-                              onSelectModel(model);
+                              onFormDataChange({ modelId: model });
                               setShowModelDropdown(false);
                             }}
                             className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${

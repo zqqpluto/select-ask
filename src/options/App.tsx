@@ -1003,6 +1003,7 @@ export default function App() {
           onFetchModels={fetchAvailableModels}
           onSelectModel={(modelId) => {
             setFormData(prev => ({ ...prev, modelId }));
+            setShowModelDropdown(false);
           }}
           setShowModelDropdown={setShowModelDropdown}
           setModelSearchQuery={setModelSearchQuery}
