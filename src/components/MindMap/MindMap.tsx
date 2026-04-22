@@ -49,11 +49,14 @@ export default function MindMap({ markdown, onReady, onError }: MindMapProps) {
 
     async function init() {
       try {
+        console.log('[MindMap] Starting init, markdown length:', markdown.length);
         const transformer = await createTransformer();
         if (cancelled) return;
+        console.log('[MindMap] Transformer created');
 
         const { root, features } = await transformMarkdown(transformer as any, markdown);
         if (cancelled) return;
+        console.log('[MindMap] Markdown transformed, root children:', root.children?.length);
 
         // 加载外部资源
         const assets = getMarkmapAssets(transformer as any, features);
@@ -77,6 +80,7 @@ export default function MindMap({ markdown, onReady, onError }: MindMapProps) {
           );
         }
         if (cancelled) return;
+        console.log('[MindMap] Assets loaded, importing markmap-view');
 
         // 注入中文字体
         const fontStyle = document.createElement('style');
@@ -85,11 +89,14 @@ export default function MindMap({ markdown, onReady, onError }: MindMapProps) {
 
         // 渲染脑图
         const svg = svgRef.current!;
-        const mm = (await import('markmap-view')).Markmap.create(
+        const markmapModule = await import('markmap-view');
+        console.log('[MindMap] markmap-view imported, creating Markmap...');
+        const mm = markmapModule.Markmap.create(
           svg,
           MARKMAP_OPTIONS,
           root as IPureNode
         );
+        console.log('[MindMap] Markmap created successfully');
 
         markmapRef.current = mm;
         setLoading(false);
@@ -104,17 +111,17 @@ export default function MindMap({ markdown, onReady, onError }: MindMapProps) {
     }
 
     init();
-    return () => { cancelled = true; };
-  }, [markdown]);
+    // Add timeout to detect hangs
+    const timeout = setTimeout(() => {
+      if (!cancelled) {
+        console.error('[MindMap] Init timeout (15s), marking as error');
+        setError('脑图初始化超时');
+        setLoading(false);
+      }
+    }, 15000);
 
-  if (loading) {
-    return (
-      <div className="select-ask-mindmap-loading">
-        <div className="select-ask-mindmap-loading-spinner" />
-        <span>正在生成脑图...</span>
-      </div>
-    );
-  }
+    return () => { cancelled = true; clearTimeout(timeout); };
+  }, [markdown]);
 
   if (error) {
     return (
@@ -126,7 +133,13 @@ export default function MindMap({ markdown, onReady, onError }: MindMapProps) {
   }
 
   return (
-    <div className="select-ask-mindmap-container">
+    <div className="select-ask-mindmap-container" style={{ position: 'relative' }}>
+      {loading && (
+        <div className="select-ask-mindmap-loading" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fafbfc', zIndex: 10 }}>
+          <div className="select-ask-mindmap-loading-spinner" />
+          <span>正在生成脑图...</span>
+        </div>
+      )}
       <svg
         ref={svgRef}
         className="select-ask-mindmap-svg"

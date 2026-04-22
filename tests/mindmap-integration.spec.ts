@@ -255,10 +255,8 @@ test.describe('Mindmap Interaction Flow Tests', () => {
     const sidePage = await context.newPage();
 
     // Listen for console messages
-    const consoleErrors = [];
     sidePage.on('console', msg => {
       if (msg.type() === 'error') {
-        consoleErrors.push(msg.text());
         console.log('SIDE PANEL ERROR:', msg.text());
       }
     });
@@ -293,57 +291,62 @@ test.describe('Mindmap Interaction Flow Tests', () => {
     }).catch(() => ({ swAlive: false }));
     console.log('Service worker status:', swErrors);
 
-    // Wait for AI response and mindmap rendering (up to 60s)
+    // Poll for mindmap rendering - wait for actual SVG inside MindMap component
     let mindMapRendered = false;
     let renderResult = {};
     for (let i = 0; i < 30; i++) {
       renderResult = await sidePage.evaluate(() => {
-        const container = document.querySelector('.side-panel-mindmap-inline');
+        const inline = document.querySelector('.side-panel-mindmap-inline');
         const mindMapContainer = document.querySelector('.select-ask-mindmap-container');
         const mindMapSvg = document.querySelector('.select-ask-mindmap-container svg');
+        const mindMapLoading = document.querySelector('.select-ask-mindmap-loading');
+        const mindMapError = document.querySelector('.select-ask-mindmap-error');
+        const parentLoading = document.querySelector('.side-panel-mindmap-loading');
         const model = document.querySelector('.side-panel-ai-info-model');
         const duration = document.querySelector('.side-panel-ai-info-duration');
-        const loading = document.querySelector('.side-panel-mindmap-loading');
-        const userMsg = document.querySelector('.side-panel-message-user-wrapper');
-        const aiMsg = document.querySelector('.side-panel-message-ai-wrapper');
-        const errorEl = [...document.querySelectorAll('*')].find(el => el.textContent?.includes('错误：'));
-        // Check if AI content is being rendered as markdown
-        const aiContent = document.querySelector('.side-panel-ai-content-flat .side-panel-message-content div');
-        const messages = document.querySelectorAll('.side-panel-message-wrapper');
-        const lastMsg = messages[messages.length - 1];
-        // Check for mindmap rendering errors
-        const mindMapError = document.querySelector('.select-ask-mindmap-error');
         return {
-          hasInline: !!container,
+          hasInline: !!inline,
           hasMindMapContainer: !!mindMapContainer,
           hasSvg: !!mindMapSvg,
+          hasMindMapLoading: !!mindMapLoading,
+          hasMindMapError: !!mindMapError,
+          hasParentLoading: !!parentLoading,
           modelText: model?.textContent,
           durationText: duration?.textContent,
-          hasLoading: !!loading,
-          hasUserMsg: !!userMsg,
-          hasAiMsg: !!aiMsg,
-          hasError: !!errorEl,
-          errorText: errorEl?.textContent?.substring(0, 100),
-          messages: messages?.length,
-          aiContentLength: aiContent?.textContent?.length || 0,
-          lastMsgContent: lastMsg?.textContent?.substring(0, 100),
-          hasMindMapError: !!mindMapError,
-          mindMapErrorText: mindMapError?.textContent?.substring(0, 100),
         };
       });
 
       console.log(`Poll ${i + 1}/30:`, JSON.stringify(renderResult));
 
-      if (renderResult.hasInline || renderResult.hasMindMapContainer || renderResult.hasSvg) {
+      // Success: SVG exists inside mindmap container (mindmap fully rendered)
+      if (renderResult.hasSvg) {
         mindMapRendered = true;
-        console.log('✅ 脑图渲染成功!');
+        console.log('✅ Mindmap SVG rendered!');
         break;
       }
-      if (renderResult.hasError) {
-        console.log('❌ AI 返回错误:', renderResult.errorText);
+      // MindMap component still initializing
+      if (renderResult.hasInline && renderResult.hasMindMapLoading) {
+        console.log('⏳ MindMap component initializing...');
+        await sidePage.waitForTimeout(2000);
+        continue;
+      }
+      // Error: MindMap component reported error
+      if (renderResult.hasMindMapError) {
+        console.log('❌ MindMap error detected');
         break;
+      }
+      // Timeout: inline container exists for 10s but no SVG appeared
+      if (renderResult.hasInline && i > 10) {
+        console.log('⏳ MindMap inline container exists but SVG not yet rendered, waiting more...');
+        await sidePage.waitForTimeout(2000);
+        continue;
       }
       await sidePage.waitForTimeout(2000);
+    }
+
+    if (!mindMapRendered) {
+      // Print detailed state for debugging
+      console.log('Final state:', JSON.stringify(renderResult));
     }
 
     expect(mindMapRendered).toBe(true);
