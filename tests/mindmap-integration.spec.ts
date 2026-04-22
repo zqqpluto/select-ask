@@ -220,6 +220,12 @@ test.describe('Mindmap Interaction Flow Tests', () => {
       return;
     }
 
+    // Clear any residual state from previous tests
+    await sw.evaluate(async () => {
+      await chrome.storage.local.remove('pending_sidebar_init');
+    });
+    await page.waitForTimeout(500);
+
     // Configure real DeepSeek model
     await sw.evaluate(async () => {
       await chrome.storage.sync.set({
