@@ -145,7 +145,19 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             })
             .catch((error) => {
               console.error('Failed to open Side Panel:', error);
-              sendResponse({ success: false, error: error.message });
+              // Even if sidePanel.open fails, still write pending data
+              // so the user can open the side panel manually or via another path
+              chrome.storage.local.set({
+                pending_sidebar_init: {
+                  selectedText: message.selectedText,
+                  context: message.context,
+                  userMessage: message.userMessage,
+                  summaryPrompt: message.summaryPrompt,
+                  pageUrl: message.pageUrl,
+                  pageTitle: message.pageTitle,
+                },
+              }).catch(console.error);
+              sendResponse({ success: true, action: 'data_saved' });
             });
         }
       });
