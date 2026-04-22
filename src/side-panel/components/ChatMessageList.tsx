@@ -143,9 +143,10 @@ export default function ChatMessageList({
           ) : (
             <div className="side-panel-message-wrapper side-panel-message-ai-wrapper">
               <div className="side-panel-message-content side-panel-ai-content-flat">
-                {msg.reasoning && (
-                  <div className="side-panel-reasoning-quote">
-                    <div className="side-panel-reasoning-header" onClick={() => toggleReasoning(index)}>
+                {/* 统一 AI 回复表头 */}
+                {msg.modelName && (
+                  <div className="side-panel-reasoning-quote" style={{ marginBottom: '12px' }}>
+                    <div className="side-panel-reasoning-header" onClick={() => msg.reasoning && toggleReasoning(index)} style={!msg.reasoning ? { cursor: 'default' } : {}}>
                       <div className="side-panel-reasoning-status">
                         {!msg.duration ? (
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -156,23 +157,20 @@ export default function ChatMessageList({
                             <polyline points="20 6 9 17 4 12" />
                           </svg>
                         )}
-                        <span className="side-panel-reasoning-model">{msg.modelName || 'AI'}</span>
-                        {!msg.duration ? <span>思考中...</span> : <span>已思考（用时{formatDuration(msg.duration)}）</span>}
+                        <span className="side-panel-reasoning-model">{msg.modelName}</span>
+                        {!msg.duration ? <span>生成中...</span> : <span>耗时 {formatDuration(msg.duration)}</span>}
                       </div>
-                      <svg className={`side-panel-reasoning-chevron ${expandedReasoning[index] === false ? 'collapsed' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M6 9l6 6 6-6" />
-                      </svg>
+                      {msg.reasoning && (
+                        <svg className={`side-panel-reasoning-chevron ${expandedReasoning[index] === false ? 'collapsed' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M6 9l6 6 6-6" />
+                        </svg>
+                      )}
                     </div>
-                    <div className={`side-panel-reasoning-content ${expandedReasoning[index] === false ? 'collapsed' : ''}`}>
-                      <div className="side-panel-reasoning-quote-text" dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.reasoning) }} />
-                    </div>
-                  </div>
-                )}
-
-                {!msg.reasoning && msg.modelName && !mindMapLoading && !mindMapInline && (
-                  <div className="side-panel-ai-info">
-                    <span className="side-panel-ai-info-model">{msg.modelName}</span>
-                    {msg.duration && <span className="side-panel-ai-info-duration">耗时 {formatDuration(msg.duration)}</span>}
+                    {msg.reasoning && (
+                      <div className={`side-panel-reasoning-content ${expandedReasoning[index] === false ? 'collapsed' : ''}`}>
+                        <div className="side-panel-reasoning-quote-text" dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.reasoning) }} />
+                      </div>
+                    )}
                   </div>
                 )}
 
