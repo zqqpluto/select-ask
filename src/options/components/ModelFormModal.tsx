@@ -363,15 +363,15 @@ export default function ModelFormModal({
             <button
               onClick={onTestConnection}
               disabled={testing}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300 rounded-lg transition-all disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300 rounded-lg transition-all disabled:opacity-50"
             >
               {testing ? '测试中...' : '测试连接'}
-              {testResult && (
-                <span className={`text-sm ${testResult.success ? 'text-green-600' : 'text-red-600'}`}>
-                  {testResult.success ? '✓ 成功' : `✗ ${testResult.error}`}
-                </span>
-              )}
             </button>
+            {testResult && (
+              <span className={`text-sm ${testResult.success ? 'text-green-600' : 'text-red-600'}`}>
+                {testResult.success ? '✓ 连接成功' : `✗ ${testResult.error}`}
+              </span>
+            )}
             <div className="flex-1" />
             <button
               onClick={onClose}
