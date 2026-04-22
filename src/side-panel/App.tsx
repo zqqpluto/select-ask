@@ -149,9 +149,8 @@ export default function App() {
             if (isMindMap) {
               setMindMapLoading(true);
               setMindMapInline(null);
-              console.log('[side-panel] Mindmap: calling getAIResponseWithMessages, model:', currentModel.name);
             }
-            getAIResponseWithMessages(summaryPrompt, currentModel);
+            getAIResponseWithMessages(summaryPrompt, currentModel, { isMindMap });
           } else {
             setMessages(prev => [...prev, userMsg]);
             getAIResponse(userMessage, currentModel, selectedText || '', context || null);
@@ -188,7 +187,7 @@ export default function App() {
                 setMindMapLoading(true);
                 setMindMapInline(null);
               }
-              getAIResponseWithMessages(summaryPrompt, currentModel);
+              getAIResponseWithMessages(summaryPrompt, currentModel, { isMindMap });
             } else {
               getAIResponse(userMessage, currentModel, selectedText || '', context || null);
             }

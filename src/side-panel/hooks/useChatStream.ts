@@ -219,9 +219,9 @@ export function useChatStream(): UseChatStreamReturn {
     });
   }, []);
 
-  const getAIResponseWithMessages = useCallback(async (prompt: string, model?: ModelConfig) => {
+  const getAIResponseWithMessages = useCallback(async (prompt: string, model?: ModelConfig, options?: { isMindMap?: boolean }) => {
     const modelToUse = model || currentModel;
-    console.log('[useChatStream] getAIResponseWithMessages called, model:', modelToUse?.name, 'prompt length:', prompt.length);
+    const isMindMap = options?.isMindMap ?? false;
     if (!modelToUse) {
       setMessages(prev => [...prev, { role: 'assistant', content: '请先在配置页面添加并启用模型', timestamp: Date.now() }]);
       return;
@@ -231,11 +231,9 @@ export function useChatStream(): UseChatStreamReturn {
     let reasoningContent = '';
     let answerContent = '';
     try {
-      console.log('[useChatStream] Connecting to llm-stream port, modelId:', modelToUse.id);
       const port = chrome.runtime.connect({ name: 'llm-stream' });
       currentPortRef.current = port;
       port.onMessage.addListener((message) => {
-        console.log('[useChatStream] Port message:', message.type, message.chunk?.substring?.(0, 30) || '');
         if (message.type === 'LLM_STREAM_CHUNK') {
           const chunk = message.chunk || '';
           if (chunk === '[REASONING]' || chunk === '[REASONING_DONE]') return;
@@ -257,28 +255,39 @@ export function useChatStream(): UseChatStreamReturn {
           });
         } else if (message.type === 'LLM_STREAM_END') {
           const start = startTime;
-          const match = answerContent.match(/```markdown\s*([\s\S]*?)```|```\s*([\s\S]*?)```/);
-          let mindMapContent = match ? (match[1] || match[2]) : null;
-
-          // If no code block found, check if the entire content looks like a mindmap (has ## headings and - lists)
-          if (!mindMapContent) {
-            const hasHeadings = /^#{2,4}\s/m.test(answerContent);
-            const hasLists = /^[-*]\s/m.test(answerContent);
-            if (hasHeadings && hasLists) {
-              mindMapContent = answerContent.trim();
-            }
-          }
-
           setMindMapLoading(false);
-          if (mindMapContent && mindMapContent.trim().length > 20) {
-            setMindMapInline(mindMapContent.trim());
-            setMessages(prev => {
-              const idx = prev.findIndex(m => m.role === 'assistant' && m.startTime && m.duration === undefined);
-              if (idx !== -1) { const n = [...prev]; n[idx] = { ...n[idx], content: '', duration: Date.now() - start }; return n; }
-              return prev;
-            });
-            console.log('[useChatStream] Mindmap detected, rendered inline');
+
+          if (isMindMap) {
+            // Only detect mindmap when explicitly requested
+            const match = answerContent.match(/```markdown\s*([\s\S]*?)```|```\s*([\s\S]*?)```/);
+            let mindMapContent = match ? (match[1] || match[2]) : null;
+            if (!mindMapContent) {
+              const hasHeadings = /^#{2,4}\s/m.test(answerContent);
+              const hasLists = /^[-*]\s/m.test(answerContent);
+              if (hasHeadings && hasLists) {
+                mindMapContent = answerContent.trim();
+              }
+            }
+            if (mindMapContent && mindMapContent.trim().length > 20) {
+              setMindMapInline(mindMapContent.trim());
+              setMessages(prev => {
+                const idx = prev.findIndex(m => m.role === 'assistant' && m.startTime && m.duration === undefined);
+                if (idx !== -1) { const n = [...prev]; n[idx] = { ...n[idx], content: '', duration: Date.now() - start }; return n; }
+                return prev;
+              });
+            } else {
+              setMessages(prev => {
+                const idx = prev.findIndex(m => m.role === 'assistant' && m.startTime && m.duration === undefined);
+                if (idx !== -1) {
+                  const n = [...prev];
+                  n[idx] = { ...n[idx], content: answerContent, duration: Date.now() - start };
+                  return n;
+                }
+                return prev;
+              });
+            }
           } else {
+            // Regular response: just show content
             setMessages(prev => {
               const idx = prev.findIndex(m => m.role === 'assistant' && m.startTime && m.duration === undefined);
               if (idx !== -1) {
@@ -288,7 +297,6 @@ export function useChatStream(): UseChatStreamReturn {
               }
               return prev;
             });
-            console.log('[useChatStream] Not mindmap, showing as regular markdown, length:', answerContent.length);
           }
           setIsLoading(false); currentPortRef.current = null; port.disconnect();
           saveToHistory(modelToUse, prompt, null, pageInfo);
