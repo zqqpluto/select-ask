@@ -221,6 +221,7 @@ export function useChatStream(): UseChatStreamReturn {
 
   const getAIResponseWithMessages = useCallback(async (prompt: string, model?: ModelConfig) => {
     const modelToUse = model || currentModel;
+    console.log('[useChatStream] getAIResponseWithMessages called, model:', modelToUse?.name, 'prompt length:', prompt.length);
     if (!modelToUse) {
       setMessages(prev => [...prev, { role: 'assistant', content: '请先在配置页面添加并启用模型', timestamp: Date.now() }]);
       return;
@@ -230,9 +231,11 @@ export function useChatStream(): UseChatStreamReturn {
     let reasoningContent = '';
     let answerContent = '';
     try {
+      console.log('[useChatStream] Connecting to llm-stream port, modelId:', modelToUse.id);
       const port = chrome.runtime.connect({ name: 'llm-stream' });
       currentPortRef.current = port;
       port.onMessage.addListener((message) => {
+        console.log('[useChatStream] Port message:', message.type, message.chunk?.substring?.(0, 30) || '');
         if (message.type === 'LLM_STREAM_CHUNK') {
           const chunk = message.chunk || '';
           if (chunk === '[REASONING]' || chunk === '[REASONING_DONE]') return;
@@ -266,6 +269,7 @@ export function useChatStream(): UseChatStreamReturn {
             }
           }
 
+          setMindMapLoading(false);
           if (mindMapContent && mindMapContent.trim().length > 20) {
             setMindMapInline(mindMapContent.trim());
             setMessages(prev => {
@@ -273,12 +277,18 @@ export function useChatStream(): UseChatStreamReturn {
               if (idx !== -1) { const n = [...prev]; n[idx] = { ...n[idx], content: '', duration: Date.now() - start }; return n; }
               return prev;
             });
+            console.log('[useChatStream] Mindmap detected, rendered inline');
           } else {
             setMessages(prev => {
               const idx = prev.findIndex(m => m.role === 'assistant' && m.startTime && m.duration === undefined);
-              if (idx !== -1) { const n = [...prev]; n[idx] = { ...n[idx], duration: Date.now() - start }; return n; }
+              if (idx !== -1) {
+                const n = [...prev];
+                n[idx] = { ...n[idx], content: answerContent, duration: Date.now() - start };
+                return n;
+              }
               return prev;
             });
+            console.log('[useChatStream] Not mindmap, showing as regular markdown, length:', answerContent.length);
           }
           setIsLoading(false); currentPortRef.current = null; port.disconnect();
           saveToHistory(modelToUse, prompt, null, pageInfo);

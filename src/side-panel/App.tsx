@@ -137,6 +137,7 @@ export default function App() {
     const storageListener = (changes: Record<string, chrome.storage.StorageChange>, areaName: string) => {
       if (areaName === 'local' && changes.pending_sidebar_init?.newValue) {
         const { selectedText, context, userMessage, summaryPrompt, pageUrl, pageTitle } = changes.pending_sidebar_init.newValue;
+        console.log('[side-panel] pending_sidebar_init received, userMessage:', userMessage, 'hasSummaryPrompt:', !!summaryPrompt, 'currentModel:', currentModel?.name);
         setSelectedText(selectedText || '');
         setContext(context || null);
         setPageInfo({ selectedText: selectedText || '', pageUrl: pageUrl || '', pageTitle: pageTitle || '' });
@@ -148,6 +149,7 @@ export default function App() {
             if (isMindMap) {
               setMindMapLoading(true);
               setMindMapInline(null);
+              console.log('[side-panel] Mindmap: calling getAIResponseWithMessages, model:', currentModel.name);
             }
             getAIResponseWithMessages(summaryPrompt, currentModel);
           } else {
@@ -156,7 +158,6 @@ export default function App() {
           }
           setTimeout(() => { chrome.storage.local.remove('pending_sidebar_init').catch(() => {}); }, 500);
         } else if (userMessage && !currentModel) {
-          // Model not loaded yet, keep pending data for checkInitMessage to handle
           console.log('[side-panel] Model not loaded yet, keeping pending_sidebar_init for retry');
         }
       }
