@@ -255,8 +255,10 @@ test.describe('Mindmap Interaction Flow Tests', () => {
     const sidePage = await context.newPage();
 
     // Listen for console messages
+    const consoleErrors = [];
     sidePage.on('console', msg => {
       if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
         console.log('SIDE PANEL ERROR:', msg.text());
       }
     });
@@ -309,6 +311,8 @@ test.describe('Mindmap Interaction Flow Tests', () => {
         const aiContent = document.querySelector('.side-panel-ai-content-flat .side-panel-message-content div');
         const messages = document.querySelectorAll('.side-panel-message-wrapper');
         const lastMsg = messages[messages.length - 1];
+        // Check for mindmap rendering errors
+        const mindMapError = document.querySelector('.select-ask-mindmap-error');
         return {
           hasInline: !!container,
           hasMindMapContainer: !!mindMapContainer,
@@ -323,6 +327,8 @@ test.describe('Mindmap Interaction Flow Tests', () => {
           messages: messages?.length,
           aiContentLength: aiContent?.textContent?.length || 0,
           lastMsgContent: lastMsg?.textContent?.substring(0, 100),
+          hasMindMapError: !!mindMapError,
+          mindMapErrorText: mindMapError?.textContent?.substring(0, 100),
         };
       });
 
@@ -332,21 +338,6 @@ test.describe('Mindmap Interaction Flow Tests', () => {
         mindMapRendered = true;
         console.log('✅ 脑图渲染成功!');
         break;
-      }
-      // Check if AI returned content as markdown (might be text without code block)
-      if (renderResult.aiContentLength > 100) {
-        console.log('AI returned content as text, checking for mindmap markdown...');
-        // Give it a moment to process
-        await sidePage.waitForTimeout(2000);
-        const checkResult = await sidePage.evaluate(() => {
-          const container = document.querySelector('.side-panel-mindmap-inline');
-          const mindMapContainer = document.querySelector('.select-ask-mindmap-container');
-          return { hasInline: !!container, hasContainer: !!mindMapContainer };
-        });
-        if (checkResult.hasInline || checkResult.hasContainer) {
-          mindMapRendered = true;
-          break;
-        }
       }
       if (renderResult.hasError) {
         console.log('❌ AI 返回错误:', renderResult.errorText);
