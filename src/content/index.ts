@@ -349,60 +349,19 @@ function initFloatingIcon(): void {
         onSummarizePage: () => {
           showPageSummary({
             showToast: (msg) => console.log('[summary]', msg),
-            openSidePanel: (params) => {
-              chrome.tabs.getCurrent((tab) => {
-                if (!tab?.id) return;
-                chrome.sidePanel.open({ tabId: tab.id }).then(() => {
-                  chrome.storage.local.set({ side_panel_open: true }).catch(() => {});
-                }).catch(() => {
-                  // Fallback: send message if direct open fails
-                  chrome.runtime.sendMessage({ type: 'TOGGLE_SIDE_PANEL', ...params });
-                });
-              });
-              chrome.storage.local.set({ pending_sidebar_init: params }).catch(console.error);
-            },
+            openSidePanel: (params) => chrome.runtime.sendMessage({ type: 'TOGGLE_SIDE_PANEL', ...params }),
           });
         },
         onMindMapPage: () => {
           handleMindMapFromPage({
             showToast: (msg: string) => console.log('[mindmap]', msg),
-            openSidePanel: (params) => {
-              chrome.tabs.getCurrent((tab) => {
-                if (!tab?.id) return;
-                chrome.sidePanel.open({ tabId: tab.id }).then(() => {
-                  chrome.storage.local.set({ side_panel_open: true }).catch(() => {});
-                }).catch(() => {
-                  // Fallback: send message if direct open fails
-                  chrome.runtime.sendMessage({ type: 'TOGGLE_SIDE_PANEL', ...params });
-                });
-              });
-              chrome.storage.local.set({ pending_sidebar_init: params }).catch(console.error);
-            },
+            openSidePanel: (params) => chrome.runtime.sendMessage({ type: 'TOGGLE_SIDE_PANEL', ...params }),
             selectionData: null,
           });
         },
         onClickIcon: () => {
-          // 点击图标：切换侧边栏（直接打开，如果已打开会覆盖）
-          chrome.tabs.getCurrent(async (tab) => {
-            if (!tab?.id) return;
-            try {
-              await chrome.sidePanel.open({ tabId: tab.id });
-              chrome.storage.local.set({ side_panel_open: true }).catch(() => {});
-              // 写入 pending 数据
-              chrome.storage.local.set({
-                pending_sidebar_init: {
-                  selectedText: '',
-                  context: null,
-                  userMessage: '',
-                  summaryPrompt: null,
-                  pageUrl: window.location.href,
-                  pageTitle: document.title,
-                },
-              }).catch(console.error);
-            } catch (error) {
-              console.error('Failed to open Side Panel:', error);
-            }
-          });
+          // 点击图标：切换侧边栏
+          chrome.runtime.sendMessage({ type: 'TOGGLE_SIDE_PANEL', selectedText: '', context: null, userMessage: '', pageUrl: window.location.href, pageTitle: document.title });
         },
         isTranslating: false,
       });
