@@ -349,19 +349,69 @@ function initFloatingIcon(): void {
         onSummarizePage: () => {
           showPageSummary({
             showToast: (msg) => console.log('[summary]', msg),
-            openSidePanel: (params) => chrome.runtime.sendMessage({ type: 'TOGGLE_SIDE_PANEL', ...params }),
+            openSidePanel: (params) => {
+              chrome.tabs.getCurrent((tab) => {
+                if (!tab?.id) return;
+                chrome.sidePanel.open({ tabId: tab.id }).then(() => {
+                  chrome.storage.local.set({ side_panel_open: true }).catch(() => {});
+                }).catch(() => {
+                  // Fallback: send message if direct open fails
+                  chrome.runtime.sendMessage({ type: 'TOGGLE_SIDE_PANEL', ...params });
+                });
+              });
+              chrome.storage.local.set({ pending_sidebar_init: params }).catch(console.error);
+            },
           });
         },
         onMindMapPage: () => {
           handleMindMapFromPage({
             showToast: (msg: string) => console.log('[mindmap]', msg),
-            openSidePanel: (params) => chrome.runtime.sendMessage({ type: 'TOGGLE_SIDE_PANEL', ...params }),
+            openSidePanel: (params) => {
+              chrome.tabs.getCurrent((tab) => {
+                if (!tab?.id) return;
+                chrome.sidePanel.open({ tabId: tab.id }).then(() => {
+                  chrome.storage.local.set({ side_panel_open: true }).catch(() => {});
+                }).catch(() => {
+                  // Fallback: send message if direct open fails
+                  chrome.runtime.sendMessage({ type: 'TOGGLE_SIDE_PANEL', ...params });
+                });
+              });
+              chrome.storage.local.set({ pending_sidebar_init: params }).catch(console.error);
+            },
             selectionData: null,
           });
         },
         onClickIcon: () => {
           // 点击图标：切换侧边栏（未打开则打开，已打开则关闭）
-          chrome.runtime.sendMessage({ type: 'TOGGLE_SIDE_PANEL', selectedText: '', context: null, userMessage: '', pageUrl: window.location.href, pageTitle: document.title });
+          chrome.storage.local.get(['side_panel_open'], async (result) => {
+            const isOpen = result.side_panel_open;
+            if (isOpen) {
+              // 侧边栏已打开 → 关闭
+              chrome.runtime.sendMessage({ type: 'CLOSE_SIDE_PANEL' }).catch(() => {});
+            } else {
+              // 侧边栏未打开 → 直接在用户手势回调中打开
+              chrome.tabs.getCurrent(async (tab) => {
+                if (!tab?.id) return;
+                try {
+                  await chrome.sidePanel.open({ tabId: tab.id });
+                  chrome.storage.local.set({ side_panel_open: true }).catch(() => {});
+                  // 写入 pending 数据
+                  chrome.storage.local.set({
+                    pending_sidebar_init: {
+                      selectedText: '',
+                      context: null,
+                      userMessage: '',
+                      summaryPrompt: null,
+                      pageUrl: window.location.href,
+                      pageTitle: document.title,
+                    },
+                  }).catch(console.error);
+                } catch (error) {
+                  console.error('Failed to open Side Panel:', error);
+                }
+              });
+            }
+          });
         },
         isTranslating: false,
       });

@@ -453,14 +453,33 @@ export function buildAskInputMenuItem(onHideMenu?: () => void): HTMLElement {
     const text = textarea.value.trim();
     if (!text) return;
 
-    chrome.runtime.sendMessage({
-      type: 'TOGGLE_SIDE_PANEL',
-      selectedText: '',
-      userMessage: text,
-      summaryPrompt: text,
-      pageUrl: window.location.href,
-      pageTitle: document.title,
+    // Directly open side panel in user gesture context
+    chrome.tabs.getCurrent((tab) => {
+      if (!tab?.id) return;
+      chrome.sidePanel.open({ tabId: tab.id }).then(() => {
+        chrome.storage.local.set({ side_panel_open: true }).catch(() => {});
+      }).catch(() => {
+        // Fallback: send message if direct open fails
+        chrome.runtime.sendMessage({
+          type: 'TOGGLE_SIDE_PANEL',
+          selectedText: '',
+          userMessage: text,
+          summaryPrompt: text,
+          pageUrl: window.location.href,
+          pageTitle: document.title,
+        });
+      });
     });
+    chrome.storage.local.set({
+      pending_sidebar_init: {
+        selectedText: '',
+        context: null,
+        userMessage: text,
+        summaryPrompt: text,
+        pageUrl: window.location.href,
+        pageTitle: document.title,
+      },
+    }).catch(console.error);
 
     inputArea.style.display = 'none';
     triggerBtn.style.display = '';
