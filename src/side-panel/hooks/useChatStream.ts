@@ -4,6 +4,7 @@ import { generateSessionId, generateTitle } from '../../utils/history-manager';
 
 export interface ExtendedHistoryMessage extends HistoryMessage {
   modelName?: string;
+  modelProvider?: string;
   duration?: number;
   startTime?: number;
   reasoning?: string;
@@ -182,7 +183,7 @@ export function useChatStream(): UseChatStreamReturn {
       const session = {
         id: sessionId, title: sessionTitle, type: sessionType,
         selectedText: textForTitle.length > 100 ? '' : textForTitle,
-        messages: messagesToSave, modelId: modelToUse.id, modelName: modelToUse.name,
+        messages: messagesToSave, modelId: modelToUse.id, modelName: modelToUse.name, modelProvider: modelToUse.provider,
         createdAt: Date.now(), updatedAt: Date.now(),
         pageUrl: currentPageInfo?.pageUrl || undefined, pageTitle: currentPageInfo?.pageTitle || undefined,
       };
@@ -241,8 +242,8 @@ export function useChatStream(): UseChatStreamReturn {
             reasoningContent += chunk.slice(11);
             setMessages(prev => {
               const last = prev[prev.length - 1];
-              if (last?.role === 'assistant') return [...prev.slice(0, -1), { ...last, content: answerContent, reasoning: reasoningContent, modelName: modelToUse.name, startTime }];
-              return [...prev, { role: 'assistant', content: answerContent, reasoning: reasoningContent, timestamp: Date.now(), modelName: modelToUse.name, startTime }];
+              if (last?.role === 'assistant') return [...prev.slice(0, -1), { ...last, content: answerContent, reasoning: reasoningContent, modelName: modelToUse.name, modelProvider: modelToUse.provider, startTime }];
+              return [...prev, { role: 'assistant', content: answerContent, reasoning: reasoningContent, timestamp: Date.now(), modelName: modelToUse.name, modelProvider: modelToUse.provider, startTime }];
             });
             return;
           }
@@ -250,8 +251,8 @@ export function useChatStream(): UseChatStreamReturn {
           answerContent += chunk;
           setMessages(prev => {
             const last = prev[prev.length - 1];
-            if (last?.role === 'assistant') return [...prev.slice(0, -1), { ...last, content: answerContent, reasoning: reasoningContent || undefined, modelName: modelToUse.name, startTime }];
-            return [...prev, { role: 'assistant', content: answerContent, reasoning: reasoningContent || undefined, timestamp: Date.now(), modelName: modelToUse.name, startTime }];
+            if (last?.role === 'assistant') return [...prev.slice(0, -1), { ...last, content: answerContent, reasoning: reasoningContent || undefined, modelName: modelToUse.name, modelProvider: modelToUse.provider, startTime }];
+            return [...prev, { role: 'assistant', content: answerContent, reasoning: reasoningContent || undefined, timestamp: Date.now(), modelName: modelToUse.name, modelProvider: modelToUse.provider, startTime }];
           });
         } else if (message.type === 'LLM_STREAM_END') {
           const start = startTime;
@@ -302,7 +303,7 @@ export function useChatStream(): UseChatStreamReturn {
           saveToHistory(modelToUse, prompt, null, pageInfo);
         } else if (message.type === 'LLM_STREAM_ERROR') {
           setIsLoading(false); currentPortRef.current = null;
-          setMessages(prev => [...prev, { role: 'assistant', content: `错误：${message.error}`, timestamp: Date.now(), modelName: modelToUse.name }]);
+          setMessages(prev => [...prev, { role: 'assistant', content: `错误：${message.error}`, timestamp: Date.now(), modelName: modelToUse.name, modelProvider: modelToUse.provider }]);
           port.disconnect();
         }
       });
@@ -338,16 +339,16 @@ export function useChatStream(): UseChatStreamReturn {
             reasoningContent += chunk.slice(11);
             setMessages(prev => {
               const last = prev[prev.length - 1];
-              if (last?.role === 'assistant') return [...prev.slice(0, -1), { ...last, content: answerContent, reasoning: reasoningContent, modelName: modelToUse.name, startTime }];
-              return [...prev, { role: 'assistant', content: answerContent, reasoning: reasoningContent, timestamp: Date.now(), modelName: modelToUse.name, startTime }];
+              if (last?.role === 'assistant') return [...prev.slice(0, -1), { ...last, content: answerContent, reasoning: reasoningContent, modelName: modelToUse.name, modelProvider: modelToUse.provider, startTime }];
+              return [...prev, { role: 'assistant', content: answerContent, reasoning: reasoningContent, timestamp: Date.now(), modelName: modelToUse.name, modelProvider: modelToUse.provider, startTime }];
             });
             return;
           }
           answerContent += chunk;
           setMessages(prev => {
             const last = prev[prev.length - 1];
-            if (last?.role === 'assistant') return [...prev.slice(0, -1), { ...last, content: answerContent, reasoning: reasoningContent || undefined, modelName: modelToUse.name, startTime }];
-            return [...prev, { role: 'assistant', content: answerContent, reasoning: reasoningContent || undefined, timestamp: Date.now(), modelName: modelToUse.name, startTime }];
+            if (last?.role === 'assistant') return [...prev.slice(0, -1), { ...last, content: answerContent, reasoning: reasoningContent || undefined, modelName: modelToUse.name, modelProvider: modelToUse.provider, startTime }];
+            return [...prev, { role: 'assistant', content: answerContent, reasoning: reasoningContent || undefined, timestamp: Date.now(), modelName: modelToUse.name, modelProvider: modelToUse.provider, startTime }];
           });
         } else if (message.type === 'LLM_STREAM_END') {
           const start = startTime;
@@ -374,7 +375,7 @@ export function useChatStream(): UseChatStreamReturn {
           })();
         } else if (message.type === 'LLM_STREAM_ERROR') {
           setIsLoading(false); currentPortRef.current = null;
-          setMessages(prev => [...prev, { role: 'assistant', content: `错误：${message.error}`, timestamp: Date.now(), modelName: modelToUse.name }]);
+          setMessages(prev => [...prev, { role: 'assistant', content: `错误：${message.error}`, timestamp: Date.now(), modelName: modelToUse.name, modelProvider: modelToUse.provider }]);
           port.disconnect();
         }
       });
@@ -462,7 +463,7 @@ ${response.content}`;
     setMindMapLoading(true); setMindMapInline(null); setIsLoading(true);
     const startTime = Date.now();
     let reasoningContent = ''; let answerContent = '';
-    setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: Date.now(), modelName: currentModel.name, startTime }]);
+    setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: Date.now(), modelName: currentModel.name, modelProvider: currentModel.provider, startTime }]);
     const port = chrome.runtime.connect({ name: 'llm-stream' });
     currentPortRef.current = port;
     port.onMessage.addListener((message) => {
@@ -472,7 +473,7 @@ ${response.content}`;
         setMessages(prev => {
           const last = prev[prev.length - 1];
           if (last?.role === 'assistant') return [...prev.slice(0, -1), { ...last, content: '', reasoning: reasoningContent || undefined, startTime }];
-          return [...prev, { role: 'assistant', content: '', reasoning: reasoningContent || undefined, timestamp: Date.now(), modelName: currentModel.name, startTime }];
+          return [...prev, { role: 'assistant', content: '', reasoning: reasoningContent || undefined, timestamp: Date.now(), modelName: currentModel.name, modelProvider: currentModel.provider, startTime }];
         });
       } else if (message.type === 'LLM_STREAM_END') {
         const match = answerContent.match(/```markdown\s*([\s\S]*?)```|```\s*([\s\S]*?)```/);
@@ -486,7 +487,7 @@ ${response.content}`;
         port.disconnect();
       } else if (message.type === 'LLM_STREAM_ERROR') {
         setMindMapLoading(false); setIsLoading(false); currentPortRef.current = null;
-        setMessages(prev => [...prev, { role: 'assistant', content: `错误：${message.error}`, timestamp: Date.now(), modelName: currentModel.name }]);
+        setMessages(prev => [...prev, { role: 'assistant', content: `错误：${message.error}`, timestamp: Date.now(), modelName: currentModel.name, modelProvider: currentModel.provider }]);
         port.disconnect();
       }
     });
@@ -513,7 +514,7 @@ ${content}`;
     setMindMapLoading(true); setMindMapInline(null); setIsLoading(true);
     const startTime = Date.now();
     let reasoningContent = ''; let answerContent = '';
-    setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: Date.now(), modelName: currentModel.name, startTime }]);
+    setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: Date.now(), modelName: currentModel.name, modelProvider: currentModel.provider, startTime }]);
     const port = chrome.runtime.connect({ name: 'llm-stream' });
     currentPortRef.current = port;
     port.onMessage.addListener((message) => {
@@ -523,7 +524,7 @@ ${content}`;
         setMessages(prev => {
           const last = prev[prev.length - 1];
           if (last?.role === 'assistant') return [...prev.slice(0, -1), { ...last, content: '', reasoning: reasoningContent || undefined, startTime }];
-          return [...prev, { role: 'assistant', content: '', reasoning: reasoningContent || undefined, timestamp: Date.now(), modelName: currentModel.name, startTime }];
+          return [...prev, { role: 'assistant', content: '', reasoning: reasoningContent || undefined, timestamp: Date.now(), modelName: currentModel.name, modelProvider: currentModel.provider, startTime }];
         });
       } else if (message.type === 'LLM_STREAM_END') {
         const match = answerContent.match(/```markdown\s*([\s\S]*?)```|```\s*([\s\S]*?)```/);
@@ -537,7 +538,7 @@ ${content}`;
         port.disconnect();
       } else if (message.type === 'LLM_STREAM_ERROR') {
         setMindMapLoading(false); setIsLoading(false); currentPortRef.current = null;
-        setMessages(prev => [...prev, { role: 'assistant', content: `错误：${message.error}`, timestamp: Date.now(), modelName: currentModel.name }]);
+        setMessages(prev => [...prev, { role: 'assistant', content: `错误：${message.error}`, timestamp: Date.now(), modelName: currentModel.name, modelProvider: currentModel.provider }]);
         port.disconnect();
       }
     });
@@ -550,7 +551,7 @@ ${content}`;
     if (!message || isLoading) return;
     setMessages(prev => [...prev, { role: 'user', content: message, timestamp: Date.now() }]);
     setInputValue('');
-    setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: Date.now(), modelName: currentModel?.name, startTime: Date.now() }]);
+    setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: Date.now(), modelName: currentModel?.name, modelProvider: currentModel?.provider, startTime: Date.now() }]);
     await getAIResponse(message, currentModel || undefined);
   }, [inputValue, isLoading, currentModel, getAIResponse]);
 

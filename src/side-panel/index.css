@@ -520,6 +520,27 @@ body {
   font-weight: 500;
 }
 
+.side-panel-reasoning-provider-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: white;
+  flex-shrink: 0;
+}
+
+.side-panel-reasoning-provider-icon.openai { background: #10a37f; }
+.side-panel-reasoning-provider-icon.anthropic { background: #d97757; }
+.side-panel-reasoning-provider-icon.deepseek { background: #4d6bfe; }
+.side-panel-reasoning-provider-icon.qwen { background: #8b5cf6; }
+.side-panel-reasoning-provider-icon.glm { background: #06b6d4; }
+.side-panel-reasoning-provider-icon.openai-compat { background: #64748b; }
+.side-panel-reasoning-provider-icon.local-ollama { background: #f59e0b; }
+
 .side-panel-reasoning-status svg {
   width: 16px;
   height: 16px;

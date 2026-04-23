@@ -157,6 +157,11 @@ export default function ChatMessageList({
                             <polyline points="20 6 9 17 4 12" />
                           </svg>
                         )}
+                        {msg.modelProvider && (
+                          <span className={`side-panel-reasoning-provider-icon ${msg.modelProvider}`}>
+                            {msg.modelProvider === 'openai' ? 'O' : msg.modelProvider === 'anthropic' ? 'A' : msg.modelProvider === 'deepseek' ? 'D' : msg.modelProvider === 'qwen' ? 'Q' : msg.modelProvider === 'glm' ? 'G' : msg.modelProvider === 'openai-compat' ? '⚙' : msg.modelProvider === 'local-ollama' ? '🖥' : 'M'}
+                          </span>
+                        )}
                         <span className="side-panel-reasoning-model">{msg.modelName}</span>
                         {!msg.duration ? <span>生成中...</span> : <span>耗时 {formatDuration(msg.duration)}</span>}
                       </div>
