@@ -6,9 +6,6 @@ import { cleanExpiredSessions } from '../utils/history-manager';
 
 let sidePanelInitialized = false;
 
-// 跟踪哪些 tab 已打开 Side Panel（用于实现点击切换关闭）
-const sidePanelOpenTabs = new Set<number>();
-
 // 初始化 Side Panel
 async function initializeSidePanel() {
   if (sidePanelInitialized) return;
@@ -61,19 +58,6 @@ chrome.runtime.onConnect.addListener((port) => {
       }
     });
   }
-
-  // 跟踪 Side Panel 连接状态（用于 toggle 功能）
-  if (port.name === 'sidepanel') {
-    const tabId = port.sender?.tab?.id;
-    if (tabId) {
-      sidePanelOpenTabs.add(tabId);
-    }
-    port.onDisconnect.addListener(() => {
-      if (tabId) {
-        sidePanelOpenTabs.delete(tabId);
-      }
-    });
-  }
 });
 
 // 监听来自content script的消息
@@ -106,7 +90,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       break;
 
     case 'TOGGLE_SIDE_PANEL': {
-      // 切换 Side Panel（已打开则关闭，未打开则打开）
+      // 打开 Side Panel（Chrome 会处理已关闭状态的重开）
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         const tab = tabs[0];
         if (!tab?.windowId || !tab.id) {
@@ -114,52 +98,26 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           return;
         }
 
-        if (sidePanelOpenTabs.has(tab.id)) {
-          // 已打开 → 写入 pending 数据让侧边栏通过 storage.onChanged 触发脑图生成
-          chrome.storage.local.set({
-            pending_sidebar_init: {
-              selectedText: message.selectedText,
-              context: message.context,
-              userMessage: message.userMessage,
-              summaryPrompt: message.summaryPrompt,
-              pageUrl: message.pageUrl,
-              pageTitle: message.pageTitle,
-            },
-          }).catch(console.error);
-          sendResponse({ success: true, action: 'triggering' });
-        } else {
-          chrome.sidePanel.open({ windowId: tab.windowId })
-            .then(() => {
-              if (tab.id) sidePanelOpenTabs.add(tab.id);
-              sendResponse({ success: true, action: 'opened' });
-              chrome.storage.local.set({
-                pending_sidebar_init: {
-                  selectedText: message.selectedText,
-                  context: message.context,
-                  userMessage: message.userMessage,
-                  summaryPrompt: message.summaryPrompt,
-                  pageUrl: message.pageUrl,
-                  pageTitle: message.pageTitle,
-                },
-              }).catch(console.error);
-            })
-            .catch((error) => {
-              console.error('Failed to open Side Panel:', error);
-              // Even if sidePanel.open fails, still write pending data
-              // so the user can open the side panel manually or via another path
-              chrome.storage.local.set({
-                pending_sidebar_init: {
-                  selectedText: message.selectedText,
-                  context: message.context,
-                  userMessage: message.userMessage,
-                  summaryPrompt: message.summaryPrompt,
-                  pageUrl: message.pageUrl,
-                  pageTitle: message.pageTitle,
-                },
-              }).catch(console.error);
-              sendResponse({ success: true, action: 'data_saved' });
-            });
-        }
+        chrome.sidePanel.open({ windowId: tab.windowId })
+          .then(() => {
+            sendResponse({ success: true, action: 'opened' });
+          })
+          .catch((error) => {
+            console.error('Failed to open Side Panel:', error);
+            sendResponse({ success: false, error: error.message });
+          });
+
+        // 写入 pending 数据，供侧边栏读取
+        chrome.storage.local.set({
+          pending_sidebar_init: {
+            selectedText: message.selectedText,
+            context: message.context,
+            userMessage: message.userMessage,
+            summaryPrompt: message.summaryPrompt,
+            pageUrl: message.pageUrl,
+            pageTitle: message.pageTitle,
+          },
+        }).catch(console.error);
       });
       return true; // 异步响应
     }
@@ -174,34 +132,35 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
         chrome.sidePanel.open({ windowId: tab.windowId })
           .then(() => {
-            if (tab.id) sidePanelOpenTabs.add(tab.id);
             sendResponse({ success: true });
-            // 写入 pending 数据，供新打开或已打开的侧边栏读取
-            chrome.storage.local.set({
-              pending_sidebar_init: {
-                selectedText: message.selectedText,
-                context: message.context,
-                userMessage: message.userMessage,
-                summaryPrompt: message.summaryPrompt,
-                pageUrl: message.pageUrl,
-                pageTitle: message.pageTitle,
-              },
-            }).catch(console.error);
-            // 尝试通知已打开的侧边栏（如果侧边栏未打开会失败，忽略）
-            chrome.runtime.sendMessage({
-              type: 'SIDEBAR_INIT',
-              selectedText: message.selectedText,
-              context: message.context,
-              userMessage: message.userMessage,
-              summaryPrompt: message.summaryPrompt,
-              pageUrl: message.pageUrl,
-              pageTitle: message.pageTitle,
-            }).catch(() => {});
           })
           .catch((error) => {
             console.error('Failed to open Side Panel:', error);
             sendResponse({ success: false, error: error.message });
           });
+
+        // 写入 pending 数据，供侧边栏读取
+        chrome.storage.local.set({
+          pending_sidebar_init: {
+            selectedText: message.selectedText,
+            context: message.context,
+            userMessage: message.userMessage,
+            summaryPrompt: message.summaryPrompt,
+            pageUrl: message.pageUrl,
+            pageTitle: message.pageTitle,
+          },
+        }).catch(console.error);
+
+        // 尝试通知已打开的侧边栏（如果侧边栏未打开会失败，忽略）
+        chrome.runtime.sendMessage({
+          type: 'SIDEBAR_INIT',
+          selectedText: message.selectedText,
+          context: message.context,
+          userMessage: message.userMessage,
+          summaryPrompt: message.summaryPrompt,
+          pageUrl: message.pageUrl,
+          pageTitle: message.pageTitle,
+        }).catch(() => {});
       });
       return true; // 异步响应
     }
