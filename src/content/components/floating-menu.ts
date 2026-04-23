@@ -113,35 +113,11 @@ export function buildMindMapMenuItem(
  * 构建总结图标 SVG
  */
 export function buildSummarizeIcon(): SVGSVGElement | null {
-  const svg = createSvg('20', '20', '0 0 24 24');
-  svg.setAttribute('fill', 'none');
-  svg.setAttribute('stroke', 'currentColor');
-  svg.setAttribute('stroke-width', '2');
-  svg.setAttribute('stroke-linecap', 'round');
-  svg.setAttribute('stroke-linejoin', 'round');
-
+  const svg = createSvg('20', '20', '0 0 1024 1024');
+  svg.setAttribute('fill', 'currentColor');
   const p1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  p1.setAttribute('d', 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z');
+  p1.setAttribute('d', 'M770.4576 51.2a144.1792 144.1792 0 0 1 144.128 143.6672l0.768 291.4304a35.328 35.328 0 1 1-70.7072 0.2048l-0.7168-291.4304a73.4208 73.4208 0 0 0-73.472-73.1648l-472.6784 1.1264A73.4208 73.4208 0 0 0 224.256 196.4544v582.0928c0 40.5504 32.8704 73.4208 73.472 73.4208l182.0672-1.0752a35.3792 35.3792 0 0 1 0.1024 70.656H297.7792A143.2576 143.2576 0 0 1 153.6 778.5984l0.0512-582.144a144.1792 144.1792 0 0 1 144.1792-144.128L770.5088 51.2h-0.0512z m-24.5248 530.0736l31.2832 89.3952a40.2432 40.2432 0 0 0 26.8288 26.8288l89.4464 31.3344c8.9088 4.4544 8.9088 13.4144 0 17.8688l-89.4464 31.2832a40.3456 40.3456 0 0 0-26.8288 26.8288l-31.2832 89.3952c-4.5056 8.96-13.4144 8.96-17.8688 0l-31.3344-89.3952a40.3456 40.3456 0 0 0-26.8288-26.8288l-89.4464-31.2832c-8.9088-4.4544-8.9088-13.4144 0-17.92l89.4464-31.232a40.2432 40.2432 0 0 0 26.8288-26.88l31.3344-89.3952c4.4544-8.96 13.3632-8.96 17.8176 0h0.1024z m-192.512-21.4528a35.328 35.328 0 0 1 0 70.7584h-146.944a35.328 35.328 0 0 1 0-70.7584h146.944z m108.7488-163.1744a35.328 35.328 0 0 1 0 70.7072H406.528a35.328 35.328 0 1 1 0-70.7072h255.6416z m0-163.2256a35.328 35.328 0 0 1 0 70.7584H406.528a35.328 35.328 0 1 1 0-70.7584h255.6416z');
   svg.appendChild(p1);
-
-  const p2 = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-  p2.setAttribute('points', '14 2 14 8 20 8');
-  svg.appendChild(p2);
-
-  const p3 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-  p3.setAttribute('x1', '16'); p3.setAttribute('y1', '13');
-  p3.setAttribute('x2', '8'); p3.setAttribute('y2', '13');
-  svg.appendChild(p3);
-
-  const p4 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-  p4.setAttribute('x1', '16'); p4.setAttribute('y1', '17');
-  p4.setAttribute('x2', '8'); p4.setAttribute('y2', '17');
-  svg.appendChild(p4);
-
-  const p5 = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-  p5.setAttribute('points', '10 9 9 9 8 9');
-  svg.appendChild(p5);
-
   return svg;
 }
 
