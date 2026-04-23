@@ -453,14 +453,16 @@ export function buildAskInputMenuItem(onHideMenu?: () => void): HTMLElement {
     const text = textarea.value.trim();
     if (!text) return;
 
-    chrome.runtime.sendMessage({
-      type: 'TOGGLE_SIDE_PANEL',
+    const port = chrome.runtime.connect({ name: 'sidepanel-toggle' });
+    port.postMessage({
       selectedText: '',
+      context: null,
       userMessage: text,
       summaryPrompt: text,
       pageUrl: window.location.href,
       pageTitle: document.title,
     });
+    port.disconnect();
 
     inputArea.style.display = 'none';
     triggerBtn.style.display = '';

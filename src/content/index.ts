@@ -349,19 +349,37 @@ function initFloatingIcon(): void {
         onSummarizePage: () => {
           showPageSummary({
             showToast: (msg) => console.log('[summary]', msg),
-            openSidePanel: (params) => chrome.runtime.sendMessage({ type: 'TOGGLE_SIDE_PANEL', ...params }),
+            openSidePanel: (params) => {
+              const port = chrome.runtime.connect({ name: 'sidepanel-toggle' });
+              port.postMessage(params);
+              port.disconnect();
+            },
           });
         },
         onMindMapPage: () => {
           handleMindMapFromPage({
             showToast: (msg: string) => console.log('[mindmap]', msg),
-            openSidePanel: (params) => chrome.runtime.sendMessage({ type: 'TOGGLE_SIDE_PANEL', ...params }),
+            openSidePanel: (params) => {
+              const port = chrome.runtime.connect({ name: 'sidepanel-toggle' });
+              port.postMessage(params);
+              port.disconnect();
+            },
             selectionData: null,
           });
         },
         onClickIcon: () => {
           // 点击图标：切换侧边栏
-          chrome.runtime.sendMessage({ type: 'TOGGLE_SIDE_PANEL', selectedText: '', context: null, userMessage: '', pageUrl: window.location.href, pageTitle: document.title });
+          // Use port connection to preserve user gesture context across content script -> background
+          const port = chrome.runtime.connect({ name: 'sidepanel-toggle' });
+          port.postMessage({
+            selectedText: '',
+            context: null,
+            userMessage: '',
+            summaryPrompt: null,
+            pageUrl: window.location.href,
+            pageTitle: document.title,
+          });
+          port.disconnect();
         },
         isTranslating: false,
       });
