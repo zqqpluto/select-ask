@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import {
   getAppConfig,
   saveAppConfig,
+  mergePreferences,
   saveModelConfig,
   deleteModelConfig,
   testModelConnection,
@@ -658,13 +659,7 @@ export default function App() {
                               const newValue = !preferences.sendWithEnter;
                               setPreferences(prev => ({ ...prev, sendWithEnter: newValue }));
                               const config = await getAppConfig();
-                              config.preferences = {
-                                ...config.preferences,
-                                sendWithEnter: newValue,
-                                sidebarWidth: config.preferences?.sidebarWidth ?? 420,
-                                autoGenerateQuestions: config.preferences?.autoGenerateQuestions ?? true,
-                                translation: config.preferences?.translation ?? DEFAULT_TRANSLATION_CONFIG,
-                              };
+                              config.preferences = mergePreferences({ ...config.preferences, sendWithEnter: newValue });
                               await saveAppConfig(config);
                             }}
                             className="sr-only peer"
@@ -688,13 +683,7 @@ export default function App() {
                             const newVal = !preferences.autoGenerateQuestions;
                             setPreferences(prev => ({ ...prev, autoGenerateQuestions: newVal }));
                             const config = await getAppConfig();
-                            config.preferences = {
-                              ...config.preferences,
-                              sendWithEnter: config.preferences?.sendWithEnter ?? false,
-                              sidebarWidth: config.preferences?.sidebarWidth ?? 420,
-                              autoGenerateQuestions: newVal,
-                              translation: config.preferences?.translation ?? DEFAULT_TRANSLATION_CONFIG,
-                            };
+                            config.preferences = mergePreferences({ ...config.preferences, autoGenerateQuestions: newVal });
                             await saveAppConfig(config);
                           }}
                           className="sr-only peer"
@@ -720,14 +709,7 @@ export default function App() {
                             const newVal = Math.min(3650, Math.max(1, Number(e.target.value) || 1));
                             setPreferences(prev => ({ ...prev, historyRetentionDays: newVal }));
                             const config = await getAppConfig();
-                            config.preferences = {
-                              ...config.preferences,
-                              sendWithEnter: config.preferences?.sendWithEnter ?? false,
-                              sidebarWidth: config.preferences?.sidebarWidth ?? 420,
-                              autoGenerateQuestions: config.preferences?.autoGenerateQuestions ?? true,
-                              translation: config.preferences?.translation ?? DEFAULT_TRANSLATION_CONFIG,
-                              historyRetentionDays: newVal,
-                            };
+                            config.preferences = mergePreferences({ ...config.preferences, historyRetentionDays: newVal });
                             await saveAppConfig(config);
                           }}
                           className="w-20 text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 text-center"
@@ -837,6 +819,17 @@ export default function App() {
                         </svg>
                         Star 支持
                       </a>
+                      <a
+                        href="https://github.com/zqqpluto/select-ask/issues"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.07] text-white/80 text-xs font-medium rounded-lg hover:bg-white/15 hover:text-white transition-all border border-white/10"
+                      >
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        </svg>
+                        反馈建议
+                      </a>
                       <span className="text-white/20 text-xs">|</span>
                       <span className="font-mono text-[11px] text-indigo-300/30">React + TypeScript + Vite</span>
                     </div>
@@ -935,36 +928,6 @@ export default function App() {
                         {provider.desc && <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">{provider.desc}</span>}
                       </div>
                     ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* 反馈建议 */}
-              <div className="mb-6">
-                <div className="p-4 bg-white rounded-xl border border-gray-200 hover:border-blue-300 transition-colors shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                        <svg className="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                        </svg>
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-gray-900 text-sm">反馈建议</h4>
-                        <p className="text-xs text-gray-500 mt-0.5">遇到问题或有好的建议？欢迎在 GitHub 提交 Issue</p>
-                      </div>
-                    </div>
-                    <a
-                      href="https://github.com/zqqpluto/select-ask/issues"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
-                    >
-                      提交反馈
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M5 12h14M12 5l7 7-7 7"/>
-                      </svg>
-                    </a>
                   </div>
                 </div>
               </div>

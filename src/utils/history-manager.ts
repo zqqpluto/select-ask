@@ -3,6 +3,7 @@
  */
 
 import type { HistorySession, HistoryMessage, HistoryStorage } from '../types/history';
+import { getAppConfig } from './config-manager';
 
 const STORAGE_KEY = 'select_ask_history';
 const MAX_SESSIONS = 100;
@@ -15,15 +16,8 @@ export async function cleanExpiredSessions(): Promise<void> {
   const sessions = await getHistory();
   const now = Date.now();
 
-  // Read retention days from config, fallback to MAX_DAYS
-  let retentionDays = MAX_DAYS;
-  try {
-    const { getAppConfig } = await import('./config-manager');
-    const config = await getAppConfig();
-    retentionDays = config.preferences?.historyRetentionDays ?? MAX_DAYS;
-  } catch {
-    // Ignore errors in config reading
-  }
+  const config = await getAppConfig();
+  const retentionDays = config.preferences?.historyRetentionDays ?? MAX_DAYS;
 
   const expireTime = retentionDays * 24 * 60 * 60 * 1000;
   const validSessions = sessions.filter(s => (now - s.updatedAt) < expireTime);

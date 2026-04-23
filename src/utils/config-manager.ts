@@ -3,7 +3,7 @@
  * 管理模型配置和应用设置
  */
 
-import type { AppConfig, ModelConfig, DisplayMode, TranslationConfig, TranslationMode, TranslationOverlapMode, FullPageTranslationConfig } from '../types/config';
+import type { AppConfig, ModelConfig, DisplayMode, TranslationConfig, TranslationMode, TranslationOverlapMode, FullPageTranslationConfig, UserPreferences } from '../types/config';
 import { DEFAULT_TRANSLATION_CONFIG, DEFAULT_FULLPAGE_TRANSLATION_CONFIG, TARGET_LANGUAGES } from '../types/config';
 import { encryptApiKey, decryptApiKey } from '../services/llm/crypto';
 import { getStorageSync, setStorageSync } from '../utils/storage';
@@ -28,6 +28,20 @@ const DEFAULT_CONFIG: AppConfig = {
     historyRetentionDays: 365,
   },
 };
+
+/**
+ * Merge partial preferences with defaults, filling missing fields
+ */
+export function mergePreferences(partial: Partial<UserPreferences>): UserPreferences {
+  return {
+    ...DEFAULT_CONFIG.preferences,
+    ...partial,
+    translation: {
+      ...DEFAULT_CONFIG.preferences.translation,
+      ...partial.translation,
+    },
+  };
+}
 
 /**
  * 获取应用配置
