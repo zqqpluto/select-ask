@@ -382,34 +382,25 @@ function initFloatingIcon(): void {
           });
         },
         onClickIcon: () => {
-          // 点击图标：切换侧边栏（未打开则打开，已打开则关闭）
-          chrome.storage.local.get(['side_panel_open'], async (result) => {
-            const isOpen = result.side_panel_open;
-            if (isOpen) {
-              // 侧边栏已打开 → 关闭
-              chrome.runtime.sendMessage({ type: 'CLOSE_SIDE_PANEL' }).catch(() => {});
-            } else {
-              // 侧边栏未打开 → 直接在用户手势回调中打开
-              chrome.tabs.getCurrent(async (tab) => {
-                if (!tab?.id) return;
-                try {
-                  await chrome.sidePanel.open({ tabId: tab.id });
-                  chrome.storage.local.set({ side_panel_open: true }).catch(() => {});
-                  // 写入 pending 数据
-                  chrome.storage.local.set({
-                    pending_sidebar_init: {
-                      selectedText: '',
-                      context: null,
-                      userMessage: '',
-                      summaryPrompt: null,
-                      pageUrl: window.location.href,
-                      pageTitle: document.title,
-                    },
-                  }).catch(console.error);
-                } catch (error) {
-                  console.error('Failed to open Side Panel:', error);
-                }
-              });
+          // 点击图标：切换侧边栏（直接打开，如果已打开会覆盖）
+          chrome.tabs.getCurrent(async (tab) => {
+            if (!tab?.id) return;
+            try {
+              await chrome.sidePanel.open({ tabId: tab.id });
+              chrome.storage.local.set({ side_panel_open: true }).catch(() => {});
+              // 写入 pending 数据
+              chrome.storage.local.set({
+                pending_sidebar_init: {
+                  selectedText: '',
+                  context: null,
+                  userMessage: '',
+                  summaryPrompt: null,
+                  pageUrl: window.location.href,
+                  pageTitle: document.title,
+                },
+              }).catch(console.error);
+            } catch (error) {
+              console.error('Failed to open Side Panel:', error);
             }
           });
         },
