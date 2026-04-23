@@ -62,7 +62,9 @@ export default function ModelList({
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-medium text-gray-900">{model.name}</span>
-                  <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-500 font-mono">{model.modelId}</code>
+                  {model.modelId !== model.name && (
+                    <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-500 font-mono">{model.modelId}</code>
+                  )}
                 </div>
                 <div className="text-xs text-gray-400 mt-0.5">
                   <span>{PROVIDER_NAMES[model.provider]}</span>
