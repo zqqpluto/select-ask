@@ -1387,11 +1387,7 @@ body {
   color: #86909c;
 }
 
-.side-panel-mindmap-loading-model {
-  margin-left: auto;
-  font-size: 12px;
-  color: #bfbfbf;
-}
+/* 脑图操作按钮 */
 
 .side-panel-mindmap-loading .side-panel-spin-icon {
   width: 18px;

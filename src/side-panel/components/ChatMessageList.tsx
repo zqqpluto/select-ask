@@ -180,7 +180,6 @@ export default function ChatMessageList({
                       <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
                     </svg>
                     <span>正在生成脑图...</span>
-                    {msg.modelName && <span className="side-panel-mindmap-loading-model">{msg.modelName}</span>}
                   </div>
                 ) : mindMapInline ? (
                   <div className="side-panel-mindmap-inline">
