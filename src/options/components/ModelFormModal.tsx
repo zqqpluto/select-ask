@@ -274,7 +274,7 @@ export default function ModelFormModal({
                   />
                   {/* Dropdown */}
                   {showModelDropdown && availableModels.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    <div className="model-dropdown-wrapper absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                       {availableModels
                         .filter(m => !modelSearchQuery || m.toLowerCase().includes(modelSearchQuery.toLowerCase()))
                         .slice(0, 50)
