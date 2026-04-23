@@ -55,6 +55,7 @@ export interface UserPreferences {
   sidebarWidth: number;
   autoGenerateQuestions: boolean;
   translation: TranslationConfig;
+  historyRetentionDays: number; // 历史记录保留天数，默认 365
 }
 
 /**

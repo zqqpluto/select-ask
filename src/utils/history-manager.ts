@@ -6,15 +6,26 @@ import type { HistorySession, HistoryMessage, HistoryStorage } from '../types/hi
 
 const STORAGE_KEY = 'select_ask_history';
 const MAX_SESSIONS = 100;
-const MAX_DAYS = 30; // 历史记录保留天数
+const MAX_DAYS = 30; // default retention days, overridden by config
 
 /**
- * 清理过期记录（超过30天）
+ * 清理过期记录
  */
 export async function cleanExpiredSessions(): Promise<void> {
   const sessions = await getHistory();
   const now = Date.now();
-  const expireTime = MAX_DAYS * 24 * 60 * 60 * 1000; // 30天的毫秒数
+
+  // Read retention days from config, fallback to MAX_DAYS
+  let retentionDays = MAX_DAYS;
+  try {
+    const { getAppConfig } = await import('./config-manager');
+    const config = await getAppConfig();
+    retentionDays = config.preferences?.historyRetentionDays ?? MAX_DAYS;
+  } catch {
+    // Ignore errors in config reading
+  }
+
+  const expireTime = retentionDays * 24 * 60 * 60 * 1000;
   const validSessions = sessions.filter(s => (now - s.updatedAt) < expireTime);
   if (validSessions.length !== sessions.length) {
     await saveHistory(validSessions);

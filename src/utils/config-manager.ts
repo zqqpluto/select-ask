@@ -25,6 +25,7 @@ const DEFAULT_CONFIG: AppConfig = {
     sidebarWidth: 420,
     autoGenerateQuestions: true,
     translation: DEFAULT_TRANSLATION_CONFIG,
+    historyRetentionDays: 365,
   },
 };
 
