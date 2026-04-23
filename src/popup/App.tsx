@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { getAppConfig } from '../utils/config-manager';
+import { getAppConfig, getSelectedTranslationModel, setSelectedTranslationModel } from '../utils/config-manager';
 import type { ModelConfig } from '../types';
 import { useI18n } from '../hooks/useI18n';
 
@@ -9,12 +9,18 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [floatingIconEnabled, setFloatingIconEnabled] = useState(true);
 
-  // 模型选择器状态
+  // 问答模型选择器状态
   const [currentModel, setCurrentModel] = useState<ModelConfig | null>(null);
   const [availableModels, setAvailableModels] = useState<ModelConfig[]>([]);
   const [showModelSelector, setShowModelSelector] = useState(false);
 
+  // 翻译模型选择器状态
+  const [currentTranslationModel, setCurrentTranslationModel] = useState<ModelConfig | null>(null);
+  const [translationModels, setTranslationModels] = useState<ModelConfig[]>([]);
+  const [showTranslationSelector, setShowTranslationSelector] = useState(false);
+
   const modelButtonRef = useRef<HTMLButtonElement>(null);
+  const translationButtonRef = useRef<HTMLButtonElement>(null);
   const [_dropdownPosition, setDropdownPosition] = useState<{ bottom: number; left: number } | null>(null);
 
   useEffect(() => {
@@ -33,7 +39,7 @@ export default function App() {
 
   // 点击外部关闭下拉菜单
   useEffect(() => {
-    if (!showModelSelector) return;
+    if (!showModelSelector && !showTranslationSelector) return;
 
     const handleClickOutside = (e: MouseEvent) => {
       if (modelButtonRef.current && !modelButtonRef.current.contains(e.target as Node)) {
@@ -43,11 +49,17 @@ export default function App() {
           setDropdownPosition(null);
         }
       }
+      if (translationButtonRef.current && !translationButtonRef.current.contains(e.target as Node)) {
+        const dropdown = document.querySelector('.popup-translation-dropdown');
+        if (dropdown && !dropdown.contains(e.target as Node)) {
+          setShowTranslationSelector(false);
+        }
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showModelSelector]);
+  }, [showModelSelector, showTranslationSelector]);
 
   const loadConfig = async () => {
     try {
@@ -68,6 +80,7 @@ export default function App() {
       }
 
       setAvailableModels(modelsToUse);
+      setTranslationModels(enabledModels);
 
       const selectedId = selectedIds.length > 0 ? selectedIds[0] : undefined;
       if (selectedId) {
@@ -76,6 +89,15 @@ export default function App() {
         else if (modelsToUse.length > 0) setCurrentModel(modelsToUse[0]);
       } else if (modelsToUse.length > 0) {
         setCurrentModel(modelsToUse[0]);
+      }
+
+      // Load translation model
+      const translationModel = await getSelectedTranslationModel();
+      if (translationModel) {
+        setCurrentTranslationModel(translationModel);
+      } else {
+        // Default to current chat model for translation
+        setCurrentTranslationModel(currentModel);
       }
     } catch (error) {
       console.error('Failed to load config:', error);
@@ -134,6 +156,17 @@ export default function App() {
       setDropdownPosition(null);
     } catch (error) {
       console.error('Failed to select model:', error);
+    }
+  };
+
+  const handleTranslationModelSelect = async (modelId: string) => {
+    try {
+      await setSelectedTranslationModel(modelId);
+      const model = translationModels.find(m => m.id === modelId);
+      if (model) setCurrentTranslationModel(model);
+      setShowTranslationSelector(false);
+    } catch (error) {
+      console.error('Failed to select translation model:', error);
     }
   };
 
@@ -273,6 +306,49 @@ export default function App() {
                       </button>
                     ))}
                     {availableModels.length === 0 && (
+                      <div className="popup-model-empty">请先在设置中添加模型</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 翻译模型选择 */}
+            <div className="popup-model-row">
+              <span className="popup-model-label">翻译模型</span>
+              <div className="popup-model-selector-wrapper">
+                <button ref={translationButtonRef} className="popup-model-btn" onClick={() => setShowTranslationSelector(!showTranslationSelector)}>
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/>
+                  </svg>
+                  <span>{currentTranslationModel?.name || '默认（同问答模型）'}</span>
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M6 9l6 6 6-6"/>
+                  </svg>
+                </button>
+
+                {showTranslationSelector && (
+                  <div className="popup-model-dropdown popup-translation-dropdown popup-model-dropdown-down">
+                    <button
+                      className={`popup-model-option ${!currentTranslationModel ? 'active' : ''}`}
+                      onClick={async () => {
+                        await setSelectedTranslationModel(null);
+                        setCurrentTranslationModel(null);
+                        setShowTranslationSelector(false);
+                      }}
+                    >
+                      默认（同问答模型）
+                    </button>
+                    {translationModels.map(model => (
+                      <button
+                        key={model.id}
+                        className={`popup-model-option ${currentTranslationModel?.id === model.id ? 'active' : ''}`}
+                        onClick={() => handleTranslationModelSelect(model.id)}
+                      >
+                        {model.name}
+                      </button>
+                    ))}
+                    {translationModels.length === 0 && (
                       <div className="popup-model-empty">请先在设置中添加模型</div>
                     )}
                   </div>

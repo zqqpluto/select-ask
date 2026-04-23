@@ -55,6 +55,7 @@ export default function App() {
     sidebarWidth: 420,
     autoGenerateQuestions: true,
     translation: DEFAULT_TRANSLATION_CONFIG,
+    historyRetentionDays: 365,
   });
   const [fallbackLang, setFallbackLang] = useState<string>('en');
   const [showFloatingIcon, setShowFloatingIcon] = useState(true);
@@ -700,6 +701,39 @@ export default function App() {
                         />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                      <div className="flex-1">
+                        <h3 className="text-sm font-medium text-gray-900">历史记录保存时长</h3>
+                        <p className="text-xs text-gray-500 mt-1">
+                          超过设定天数的历史对话将自动清理（1–3650 天）
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        <input
+                          type="number"
+                          min="1"
+                          max="3650"
+                          value={preferences.historyRetentionDays}
+                          onChange={async (e) => {
+                            const newVal = Math.min(3650, Math.max(1, Number(e.target.value) || 1));
+                            setPreferences(prev => ({ ...prev, historyRetentionDays: newVal }));
+                            const config = await getAppConfig();
+                            config.preferences = {
+                              ...config.preferences,
+                              sendWithEnter: config.preferences?.sendWithEnter ?? false,
+                              sidebarWidth: config.preferences?.sidebarWidth ?? 420,
+                              autoGenerateQuestions: config.preferences?.autoGenerateQuestions ?? true,
+                              translation: config.preferences?.translation ?? DEFAULT_TRANSLATION_CONFIG,
+                              historyRetentionDays: newVal,
+                            };
+                            await saveAppConfig(config);
+                          }}
+                          className="w-20 text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 text-center"
+                        />
+                        <span className="text-sm text-gray-500">天</span>
+                      </div>
                     </div>
                   </div>
                 </section>
