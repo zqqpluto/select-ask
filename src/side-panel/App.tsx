@@ -117,6 +117,7 @@ export default function App() {
         }).catch(console.error);
         sendResponse({ success: true });
       } else if (message.type === 'CLOSE_SIDE_PANEL') {
+        chrome.storage.local.set({ side_panel_open: false }).catch(() => {});
         window.close();
         sendResponse({ success: true });
       }
@@ -141,6 +142,19 @@ export default function App() {
         setSelectedText(selectedText || '');
         setContext(context || null);
         setPageInfo({ selectedText: selectedText || '', pageUrl: pageUrl || '', pageTitle: pageTitle || '' });
+
+        // Check if last close was > 1 day ago → new session
+        chrome.storage.local.get(['side_panel_closed_at'], (result) => {
+          const lastClosed = result.side_panel_closed_at as number | undefined;
+          const oneDay = 24 * 60 * 60 * 1000;
+          const isNewSession = !lastClosed || (Date.now() - lastClosed) > oneDay;
+          if (isNewSession) {
+            setMessages([]);
+            setCurrentSessionId('');
+          }
+          chrome.storage.local.remove('side_panel_closed_at').catch(() => {});
+        });
+
         if (userMessage && currentModel) {
           const userMsg: ExtendedHistoryMessage = { role: 'user', content: userMessage, timestamp: Date.now() };
           if (summaryPrompt) {
@@ -155,7 +169,7 @@ export default function App() {
             setMessages(prev => [...prev, userMsg]);
             getAIResponse(userMessage, currentModel, selectedText || '', context || null);
           }
-          setTimeout(() => { chrome.storage.local.remove('pending_sidebar_init').catch(() => {}); }, 500);
+          setTimeout(() => { chrome.storage.local.remove(['pending_sidebar_init', 'side_panel_open']).catch(() => {}); }, 500);
         } else if (userMessage && !currentModel) {
           console.log('[side-panel] Model not loaded yet, keeping pending_sidebar_init for retry');
         }
@@ -169,18 +183,29 @@ export default function App() {
   useEffect(() => {
     if (currentModel && availableModels.length > 0) {
       const checkInitMessage = async () => {
-        const result = await chrome.storage.local.get(['pending_sidebar_init']);
+        const result = await chrome.storage.local.get(['pending_sidebar_init', 'side_panel_closed_at']);
         if (result.pending_sidebar_init) {
           const { selectedText, context, userMessage, summaryPrompt, pageUrl, pageTitle } = result.pending_sidebar_init;
           setSelectedText(selectedText || '');
           setContext(context || null);
           setPageInfo({ selectedText: selectedText || '', pageUrl: pageUrl || '', pageTitle: pageTitle || '' });
+
+          // Check if last close was > 1 day ago → new session
+          const lastClosed = result.side_panel_closed_at as number | undefined;
+          const oneDay = 24 * 60 * 60 * 1000;
+          const isNewSession = !lastClosed || (Date.now() - lastClosed) > oneDay;
+          if (isNewSession) {
+            setMessages([]);
+            setCurrentSessionId('');
+          }
+          await chrome.storage.local.remove(['pending_sidebar_init', 'side_panel_open', 'side_panel_closed_at']);
+
           if (userMessage) {
             const userMsg: ExtendedHistoryMessage = { role: 'user', content: userMessage, timestamp: Date.now() };
             setMessages([userMsg]);
             const sessionId = generateSessionId();
             setCurrentSessionId(sessionId);
-            await chrome.storage.local.remove(['pending_sidebar_init']);
+            await chrome.storage.local.remove(['pending_sidebar_init', 'side_panel_open']);
             if (summaryPrompt) {
               const isMindMap = userMessage?.includes('脑图');
               if (isMindMap) {

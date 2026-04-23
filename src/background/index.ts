@@ -90,34 +90,47 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       break;
 
     case 'TOGGLE_SIDE_PANEL': {
-      // 打开 Side Panel（Chrome 会处理已关闭状态的重开）
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        const tab = tabs[0];
-        if (!tab?.windowId || !tab.id) {
-          sendResponse({ success: false, error: 'No active tab found' });
-          return;
-        }
+      // 切换 Side Panel（已打开则关闭，未打开则打开）
+      chrome.storage.local.get(['side_panel_open'], async (result) => {
+        const isOpen = result.side_panel_open;
 
-        chrome.sidePanel.open({ windowId: tab.windowId })
-          .then(() => {
-            sendResponse({ success: true, action: 'opened' });
-          })
-          .catch((error) => {
-            console.error('Failed to open Side Panel:', error);
-            sendResponse({ success: false, error: error.message });
+        if (isOpen) {
+          // 侧边栏已打开 → 关闭，记录关闭时间
+          chrome.storage.local.set({ side_panel_closed_at: Date.now() }).catch(() => {});
+          chrome.runtime.sendMessage({ type: 'CLOSE_SIDE_PANEL' }).catch(() => {});
+          sendResponse({ success: true, action: 'closed' });
+        } else {
+          // 侧边栏未打开 → 打开
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            const tab = tabs[0];
+            if (!tab?.windowId || !tab.id) {
+              sendResponse({ success: false, error: 'No active tab found' });
+              return;
+            }
+
+            chrome.sidePanel.open({ windowId: tab.windowId })
+              .then(() => {
+                chrome.storage.local.set({ side_panel_open: true }).catch(() => {});
+                sendResponse({ success: true, action: 'opened' });
+              })
+              .catch((error) => {
+                console.error('Failed to open Side Panel:', error);
+                sendResponse({ success: false, error: error.message });
+              });
+
+            // 写入 pending 数据，供侧边栏读取
+            chrome.storage.local.set({
+              pending_sidebar_init: {
+                selectedText: message.selectedText,
+                context: message.context,
+                userMessage: message.userMessage,
+                summaryPrompt: message.summaryPrompt,
+                pageUrl: message.pageUrl,
+                pageTitle: message.pageTitle,
+              },
+            }).catch(console.error);
           });
-
-        // 写入 pending 数据，供侧边栏读取
-        chrome.storage.local.set({
-          pending_sidebar_init: {
-            selectedText: message.selectedText,
-            context: message.context,
-            userMessage: message.userMessage,
-            summaryPrompt: message.summaryPrompt,
-            pageUrl: message.pageUrl,
-            pageTitle: message.pageTitle,
-          },
-        }).catch(console.error);
+        }
       });
       return true; // 异步响应
     }
