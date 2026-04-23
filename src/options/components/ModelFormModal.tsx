@@ -284,7 +284,8 @@ export default function ModelFormModal({
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              onFormDataChange({ modelId: model });
+                              onFormDataChange({ modelId: model, name: model });
+                              setModelSearchQuery(model);
                               setShowModelDropdown(false);
                             }}
                             className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 ${
