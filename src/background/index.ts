@@ -62,32 +62,37 @@ chrome.runtime.onConnect.addListener((port) => {
   // Handle side panel toggle via port (preserves user gesture context)
   if (port.name === 'sidepanel-toggle') {
     port.onMessage.addListener((payload) => {
+      const tabId = port.sender?.tab?.id;
+      const windowId = port.sender?.tab?.windowId;
+
+      // Check if side panel is open and toggle
       chrome.storage.local.get(['side_panel_open'], (result) => {
         const isOpen = result.side_panel_open;
         if (isOpen) {
+          // Close side panel
           chrome.runtime.sendMessage({ type: 'CLOSE_SIDE_PANEL' }).catch(() => {});
           chrome.storage.local.set({ side_panel_open: false }).catch(() => {});
         } else {
-          const tabId = port.sender?.tab?.id;
-          const windowId = port.sender?.tab?.windowId;
+          // Open side panel - call synchronously to preserve gesture context
           if (tabId && windowId) {
             chrome.sidePanel.open({ tabId }).then(() => {
               chrome.storage.local.set({ side_panel_open: true }).catch(() => {});
             }).catch(console.error);
           }
         }
-        // Write pending data regardless of open/close
-        chrome.storage.local.set({
-          pending_sidebar_init: {
-            selectedText: payload.selectedText,
-            context: payload.context,
-            userMessage: payload.userMessage,
-            summaryPrompt: payload.summaryPrompt,
-            pageUrl: payload.pageUrl,
-            pageTitle: payload.pageTitle,
-          },
-        }).catch(console.error);
       });
+
+      // Write pending data regardless of open/close
+      chrome.storage.local.set({
+        pending_sidebar_init: {
+          selectedText: payload.selectedText,
+          context: payload.context,
+          userMessage: payload.userMessage,
+          summaryPrompt: payload.summaryPrompt,
+          pageUrl: payload.pageUrl,
+          pageTitle: payload.pageTitle,
+        },
+      }).catch(console.error);
     });
   }
 });
