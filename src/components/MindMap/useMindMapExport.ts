@@ -35,7 +35,10 @@ export function useMindMapExport(svgRef: React.RefObject<SVGSVGElement | null>) 
     setExporting(true);
     try {
       const { toBlob } = await import('html-to-image');
-      const blob = await toBlob(svgRef.current as unknown as HTMLElement, { backgroundColor: '#ffffff' });
+      const blob = await toBlob(svgRef.current as unknown as HTMLElement, {
+        backgroundColor: '#ffffff',
+        pixelRatio: 2,
+      });
       if (!blob) throw new Error('Failed to generate blob');
       await navigator.clipboard.write([
         new ClipboardItem({ 'image/png': blob }),
@@ -52,27 +55,85 @@ export function useMindMapExport(svgRef: React.RefObject<SVGSVGElement | null>) 
     if (!svgRef.current) return;
     setExporting(true);
     try {
-      const svgClone = svgRef.current.cloneNode(true) as SVGSVGElement;
-      svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      const svg = svgRef.current;
+      const nodeGroups = svg.querySelectorAll('.markmap-node');
+      if (nodeGroups.length === 0) throw new Error('No mind map nodes found');
 
-      const htmlBlob = new Blob([svgClone.outerHTML], { type: 'text/html' });
-      const textBlob = new Blob([svgClone.outerHTML], { type: 'text/plain' });
+      interface MindMapNode { text: string; depth: number }
+      const nodes: MindMapNode[] = [];
+
+      for (const group of nodeGroups) {
+        const foreign = group.querySelector('.markmap-foreign');
+        if (!foreign) continue;
+        const innerDiv = foreign.querySelector('div');
+        if (!innerDiv) continue;
+        const text = innerDiv.textContent?.trim();
+        if (!text) continue;
+
+        let depth = 0;
+        let parent = group.parentElement;
+        while (parent) {
+          if (parent.classList?.contains('markmap-branch')) depth++;
+          parent = parent.parentElement;
+        }
+        nodes.push({ text, depth });
+      }
+
+      if (nodes.length === 0) throw new Error('No valid nodes found');
+
+      function buildHtmlList(items: MindMapNode[], start: number): { html: string; end: number } {
+        let html = '<ul>\n';
+        let i = start;
+        while (i < items.length) {
+          const item = items[i];
+          html += `<li>${escapeHtml(item.text)}`;
+          if (i + 1 < items.length && items[i + 1].depth > item.depth) {
+            const child = buildHtmlList(items, i + 1);
+            html += child.html;
+            i = child.end;
+          }
+          html += '</li>\n';
+          i++;
+          if (i < items.length && items[i].depth <= item.depth - 1) break;
+        }
+        html += '</ul>\n';
+        return { html, end: i };
+      }
+
+      function buildPlainText(items: MindMapNode[]): string {
+        return items.map(item => '\t'.repeat(item.depth) + item.text).join('\n');
+      }
+
+      const { html: htmlContent } = buildHtmlList(nodes, 0);
+      const plainText = buildPlainText(nodes);
+
+      const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
+      const textBlob = new Blob([plainText], { type: 'text/plain' });
 
       await navigator.clipboard.write([
-        new ClipboardItem({
-          'text/html': htmlBlob,
-          'text/plain': textBlob,
-        }),
+        new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob }),
       ]);
     } catch (err) {
       console.error('Failed to copy rich text:', err);
-      fallbackCopyText('SVG 源码已复制到剪贴板（文本格式）');
+      fallbackCopyText('脑图内容复制失败');
     } finally {
       setExporting(false);
     }
   }, [svgRef]);
 
   return { downloadPng, copyPngToClipboard, copyRichText, exporting };
+}
+
+/**
+ * Escape HTML special characters
+ */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 /**

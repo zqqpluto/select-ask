@@ -90,15 +90,20 @@ export default function MindMap({ markdown, onReady, onError }: MindMapProps) {
         // 渲染脑图
         const svg = svgRef.current!;
         const markmapModule = await import('markmap-view');
-        console.log('[MindMap] markmap-view imported, creating Markmap...');
-        const mm = markmapModule.Markmap.create(
-          svg,
-          MARKMAP_OPTIONS,
-          root as IPureNode
-        );
-        console.log('[MindMap] Markmap created successfully');
-
-        markmapRef.current = mm;
+        if (markmapRef.current) {
+          markmapRef.current.setData(root as IPureNode);
+          markmapRef.current.fit();
+          console.log('[MindMap] Markmap data updated');
+        } else {
+          console.log('[MindMap] markmap-view imported, creating Markmap...');
+          const mm = markmapModule.Markmap.create(
+            svg,
+            MARKMAP_OPTIONS,
+            root as IPureNode
+          );
+          console.log('[MindMap] Markmap created successfully');
+          markmapRef.current = mm;
+        }
         setLoading(false);
         onReady?.();
       } catch (err) {
@@ -119,7 +124,23 @@ export default function MindMap({ markdown, onReady, onError }: MindMapProps) {
     }, 30000);
 
     return () => { cancelled = true; clearTimeout(timeout); };
-  }, [markdown, loading]);
+  }, [markdown]);
+
+  // Auto-fit markmap on container resize
+  useEffect(() => {
+    const container = svgRef.current?.parentElement;
+    if (!container || !markmapRef.current) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const observer = new ResizeObserver(() => {
+      clearTimeout(timer);
+      timer = setTimeout(() => markmapRef.current?.fit(), 100);
+    });
+    observer.observe(container);
+    return () => {
+      observer.disconnect();
+      clearTimeout(timer);
+    };
+  }, [loading]);
 
   if (error) {
     return (
