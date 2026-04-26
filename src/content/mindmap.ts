@@ -11,9 +11,10 @@ import {
   getMarkmapAssets,
   loadCSS,
   loadJS,
-  CHINESE_FONT_CSS,
+  injectChineseFontCSS,
 } from '../components/MindMap/mindmap-utils';
 import { MARKMAP_OPTIONS } from '../components/MindMap/mindmap-options';
+
 let currentMindMapPanel: HTMLElement | null = null;
 
 /**
@@ -109,28 +110,15 @@ async function createMindMapPanel(markdown: string) {
   title.appendChild(titleSvg);
   title.appendChild(document.createTextNode('脑图'));
 
-  const closeBtn = document.createElement('button');
-  closeBtn.className = 'select-ask-mindmap-panel-close';
-  closeBtn.title = '关闭';
-  const closeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  closeSvg.setAttribute('viewBox', '0 0 24 24');
-  closeSvg.setAttribute('width', '14');
-  closeSvg.setAttribute('height', '14');
-  closeSvg.setAttribute('fill', 'none');
-  closeSvg.setAttribute('stroke', 'currentColor');
-  closeSvg.setAttribute('stroke-width', '2');
-  const l1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-  l1.setAttribute('x1', '18'); l1.setAttribute('y1', '6');
-  l1.setAttribute('x2', '6'); l1.setAttribute('y2', '18');
-  closeSvg.appendChild(l1);
-  const l2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-  l2.setAttribute('x1', '6'); l2.setAttribute('y1', '6');
-  l2.setAttribute('x2', '18'); l2.setAttribute('y2', '18');
-  closeSvg.appendChild(l2);
-  closeBtn.appendChild(closeSvg);
+  // Toolbar buttons container
+  const toolbar = document.createElement('div');
+  toolbar.className = 'select-ask-mindmap-panel-toolbar';
+
+  const closeBtn = createToolbarBtn('select-ask-mindmap-panel-toolbar-btn', '关闭', '✕');
+  toolbar.appendChild(closeBtn);
 
   header.appendChild(title);
-  header.appendChild(closeBtn);
+  header.appendChild(toolbar);
 
   // Body
   const body = document.createElement('div');
@@ -156,13 +144,9 @@ async function createMindMapPanel(markdown: string) {
     if (currentMindMapPanel === panel) currentMindMapPanel = null;
   });
 
-  await renderMindMapToElement(body, markdown);
-}
-
-/**
- * 在指定元素中渲染脑图
- */
-async function renderMindMapToElement(container: HTMLElement, markdown: string) {
+  // Render mindmap
+  let svg: SVGSVGElement | null = null;
+  let mm: any = null;
   try {
     const transformer = await createTransformer();
     const { root, features } = await transformMarkdown(transformer as any, markdown);
@@ -188,28 +172,25 @@ async function renderMindMapToElement(container: HTMLElement, markdown: string) 
       );
     }
 
-    if (!document.getElementById('select-ask-mindmap-chinese-font')) {
-      const fontStyle = document.createElement('style');
-      fontStyle.id = 'select-ask-mindmap-chinese-font';
-      fontStyle.textContent = CHINESE_FONT_CSS;
-      document.head.appendChild(fontStyle);
-    }
+    injectChineseFontCSS();
 
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.style.width = '100%';
     svg.style.height = '100%';
-    container.innerHTML = '';
-    container.appendChild(svg);
+    body.innerHTML = '';
+    body.appendChild(svg);
 
-    const mm = (await import('markmap-view')).Markmap.create(
-      svg,
-      MARKMAP_OPTIONS,
-      root as any
-    );
+    mm = (await import('markmap-view')).Markmap.create(svg, MARKMAP_OPTIONS, root as any);
+
+    // ResizeObserver for auto-fit
+    const observer = new ResizeObserver(() => {
+      setTimeout(() => mm?.fit(), 50);
+    });
+    observer.observe(body);
 
     setTimeout(() => mm.fit(), 100);
   } catch (err) {
-    container.innerHTML = '';
+    body.innerHTML = '';
     const errorDiv = document.createElement('div');
     errorDiv.className = 'select-ask-mindmap-panel-loading';
     const errorText = document.createElement('span');
@@ -221,6 +202,91 @@ async function renderMindMapToElement(container: HTMLElement, markdown: string) 
     detailText.textContent = err instanceof Error ? err.message : String(err);
     errorDiv.appendChild(errorText);
     errorDiv.appendChild(detailText);
-    container.appendChild(errorDiv);
+    body.appendChild(errorDiv);
+    return;
   }
+
+  // Add toolbar actions after successful render
+  if (mm && svg) {
+    addToolbarActions(toolbar, svg, mm, panel);
+  }
+}
+
+/**
+ * 添加工具栏操作按钮
+ */
+function addToolbarActions(
+  toolbar: HTMLElement,
+  svg: SVGSVGElement,
+  mm: any,
+  panel: HTMLElement
+) {
+  const btnClass = 'select-ask-mindmap-panel-toolbar-btn';
+
+  // Fullscreen
+  const fullscreenBtn = createToolbarBtn(btnClass, '全屏', '⛶');
+  fullscreenBtn.addEventListener('click', () => {
+    panel.classList.toggle('select-ask-mindmap-panel-fullscreen');
+  });
+  toolbar.insertBefore(fullscreenBtn, toolbar.firstChild);
+
+  // Zoom in
+  const zoomInBtn = createToolbarBtn(btnClass, '放大', '+');
+  zoomInBtn.addEventListener('click', () => mm.scaleBy(1.25));
+  toolbar.insertBefore(zoomInBtn, toolbar.firstChild);
+
+  // Zoom out
+  const zoomOutBtn = createToolbarBtn(btnClass, '缩小', '−');
+  zoomOutBtn.addEventListener('click', () => mm.scaleBy(0.8));
+  toolbar.insertBefore(zoomOutBtn, toolbar.firstChild);
+
+  // Fit
+  const fitBtn = createToolbarBtn(btnClass, '适配', '⊡');
+  fitBtn.addEventListener('click', () => mm.fit());
+  toolbar.insertBefore(fitBtn, toolbar.firstChild);
+
+  // Copy image
+  const copyBtn = createToolbarBtn(btnClass, '复制图片', '⊡');
+  copyBtn.addEventListener('click', async () => {
+    try {
+      const { toBlob } = await import('html-to-image');
+      const blob = await toBlob(svg as unknown as HTMLElement, {
+        backgroundColor: '#ffffff',
+        pixelRatio: 2,
+      });
+      if (blob) {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      }
+    } catch (err) {
+      console.error('Copy failed:', err);
+    }
+  });
+  toolbar.insertBefore(copyBtn, toolbar.firstChild);
+
+  // Download PNG
+  const downloadBtn = createToolbarBtn(btnClass, '下载图片', '↓');
+  downloadBtn.addEventListener('click', async () => {
+    try {
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(svg as unknown as HTMLElement, {
+        backgroundColor: '#ffffff',
+        pixelRatio: 2,
+      });
+      const link = document.createElement('a');
+      link.download = `mindmap-${Date.now()}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error('Download failed:', err);
+    }
+  });
+  toolbar.insertBefore(downloadBtn, toolbar.firstChild);
+}
+
+function createToolbarBtn(className: string, title: string, text: string): HTMLButtonElement {
+  const btn = document.createElement('button');
+  btn.className = className;
+  btn.title = title;
+  btn.textContent = text;
+  return btn;
 }

@@ -55,6 +55,34 @@
   color: #6366f1;
 }
 
+/* 工具栏 */
+.select-ask-mindmap-panel-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.select-ask-mindmap-panel-toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #4e5969;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.select-ask-mindmap-panel-toolbar-btn:hover {
+  background: #f2f3f5;
+  color: #6366f1;
+}
+
 /* 脑图面板关闭按钮 */
 .select-ask-mindmap-panel-close {
   display: flex;
@@ -135,4 +163,13 @@
 .select-ask-mindmap-btn svg {
   width: 14px;
   height: 14px;
+}
+
+/* 全屏模式 */
+.select-ask-mindmap-panel-fullscreen {
+  width: 100vw !important;
+  height: 100vh !important;
+  bottom: 0 !important;
+  right: 0 !important;
+  border-radius: 0 !important;
 }

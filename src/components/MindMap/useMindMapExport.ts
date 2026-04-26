@@ -12,16 +12,35 @@ import { useState, useCallback } from 'react';
 export function useMindMapExport(svgRef: React.RefObject<SVGSVGElement | null>) {
   const [exporting, setExporting] = useState(false);
 
+  /**
+   * 创建离屏克隆 SVG，避免导出时受视口裁剪影响
+   */
+  function createOffscreenClone(): SVGSVGElement | null {
+    if (!svgRef.current) return null;
+    const clone = svgRef.current.cloneNode(true) as SVGSVGElement;
+    clone.style.position = 'fixed';
+    clone.style.left = '-10000px';
+    clone.style.top = '0';
+    clone.style.width = svgRef.current.style.width || '800px';
+    clone.style.height = svgRef.current.style.height || '600px';
+    clone.style.zIndex = '-1';
+    document.body.appendChild(clone);
+    return clone;
+  }
+
   const downloadPng = useCallback(async (filename = 'mindmap.png') => {
     if (!svgRef.current) return;
     setExporting(true);
     try {
       const { toPng } = await import('html-to-image');
-      const dataUrl = await toPng(svgRef.current as unknown as HTMLElement, {
+      const offscreen = createOffscreenClone();
+      const target = offscreen || svgRef.current;
+      const dataUrl = await toPng(target as unknown as HTMLElement, {
         backgroundColor: '#ffffff',
         cacheBust: true,
         pixelRatio: 2,
       });
+      if (offscreen) offscreen.remove();
       triggerDownload(dataUrl, filename);
     } catch (err) {
       console.error('Failed to download PNG:', err);
@@ -35,10 +54,13 @@ export function useMindMapExport(svgRef: React.RefObject<SVGSVGElement | null>) 
     setExporting(true);
     try {
       const { toBlob } = await import('html-to-image');
-      const blob = await toBlob(svgRef.current as unknown as HTMLElement, {
+      const offscreen = createOffscreenClone();
+      const target = offscreen || svgRef.current;
+      const blob = await toBlob(target as unknown as HTMLElement, {
         backgroundColor: '#ffffff',
         pixelRatio: 2,
       });
+      if (offscreen) offscreen.remove();
       if (!blob) throw new Error('Failed to generate blob');
       await navigator.clipboard.write([
         new ClipboardItem({ 'image/png': blob }),
