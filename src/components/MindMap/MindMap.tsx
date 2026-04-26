@@ -13,7 +13,6 @@ import {
   getMarkmapAssets,
   loadCSS,
   loadJS,
-  CHINESE_FONT_CSS,
   injectChineseFontCSS,
 } from './mindmap-utils';
 

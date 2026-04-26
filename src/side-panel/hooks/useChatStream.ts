@@ -54,7 +54,7 @@ interface UseChatStreamReturn {
   currentSessionId: string | null;
   setCurrentSessionId: React.Dispatch<React.SetStateAction<string | null>>;
   getAIResponse: (question: string, model?: ModelConfig, initSelectedText?: string, initContext?: { before: string; after: string } | null) => Promise<void>;
-  getAIResponseWithMessages: (prompt: string, model?: ModelConfig) => Promise<void>;
+  getAIResponseWithMessages: (prompt: string, model?: ModelConfig, options?: { isMindMap?: boolean }) => Promise<void>;
   handleSend: () => Promise<void>;
   handleStopGeneration: () => void;
   handleRegenerate: (messageIndex?: number) => Promise<void>;

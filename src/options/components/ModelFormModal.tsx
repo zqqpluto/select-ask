@@ -27,7 +27,6 @@ interface ModelFormModalProps {
   onFormDataChange: (updates: Partial<ModelFormModalProps['formData']>) => void;
   onToggleApiKey: () => void;
   onFetchModels: () => void;
-  onSelectModel: (modelId: string) => void;
   setShowModelDropdown: (show: boolean) => void;
   setModelSearchQuery: (query: string) => void;
   // Provider icon renderer
@@ -51,7 +50,6 @@ export default function ModelFormModal({
   onFormDataChange,
   onToggleApiKey,
   onFetchModels,
-  onSelectModel,
   setShowModelDropdown,
   setModelSearchQuery,
   getProviderIcon,

@@ -2,7 +2,7 @@
  * Background Script 消息类型定义
  */
 
-import type { LLMMessage, LLMContext } from './llm';
+import type { LLMContext } from './llm';
 
 /**
  * 消息类型
