@@ -16,6 +16,7 @@ import {
   loadJS,
   CHINESE_FONT_CSS,
 } from './mindmap-utils';
+import { MARKMAP_OPTIONS } from './mindmap-options';
 import { useMindMapExport } from './useMindMapExport';
 import MindMapToolbar from './MindMapToolbar';
 
@@ -23,23 +24,6 @@ interface MindMapFullscreenProps {
   markdown: string;
   onClose: () => void;
 }
-
-const MARKMAP_OPTIONS = {
-  duration: 500,
-  maxWidth: 400,
-  autoFit: false,
-  fitRatio: 0.95,
-  nodeMinHeight: 30,
-  spacingHorizontal: 100,
-  spacingVertical: 10,
-  paddingX: 10,
-  scrollForPan: true,
-  initialExpandLevel: -1,
-  zoom: true,
-  pan: true,
-  toggleRecursively: false,
-};
-
 export default function MindMapFullscreen({ markdown, onClose }: MindMapFullscreenProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const markmapRef = useRef<Markmap | null>(null);
@@ -51,8 +35,13 @@ export default function MindMapFullscreen({ markdown, onClose }: MindMapFullscre
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener('keydown', handler);
+    };
   }, [onClose]);
 
   useEffect(() => {
@@ -91,7 +80,10 @@ export default function MindMapFullscreen({ markdown, onClose }: MindMapFullscre
 
         const fontStyle = document.createElement('style');
         fontStyle.textContent = CHINESE_FONT_CSS;
-        document.head.appendChild(fontStyle);
+        if (!document.getElementById('select-ask-mindmap-chinese-font')) {
+          fontStyle.id = 'select-ask-mindmap-chinese-font';
+          document.head.appendChild(fontStyle);
+        }
 
         const svg = svgRef.current!;
         const mm = (await import('markmap-view')).Markmap.create(

@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { IPureNode } from 'markmap-common';
 import type { Markmap } from 'markmap-view';
+import { MARKMAP_OPTIONS } from './mindmap-options';
 import {
   createTransformer,
   transformMarkdown,
@@ -13,6 +14,7 @@ import {
   loadCSS,
   loadJS,
   CHINESE_FONT_CSS,
+  injectChineseFontCSS,
 } from './mindmap-utils';
 
 interface MindMapProps {
@@ -20,23 +22,6 @@ interface MindMapProps {
   onReady?: () => void;
   onError?: (error: Error) => void;
 }
-
-const MARKMAP_OPTIONS = {
-  duration: 500,
-  maxWidth: 400,
-  autoFit: false,
-  fitRatio: 0.95,
-  nodeMinHeight: 30,
-  spacingHorizontal: 100,
-  spacingVertical: 10,
-  paddingX: 10,
-  scrollForPan: true,
-  initialExpandLevel: -1,
-  zoom: true,
-  pan: true,
-  toggleRecursively: false,
-};
-
 export default function MindMap({ markdown, onReady, onError }: MindMapProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const markmapRef = useRef<Markmap | null>(null);
@@ -83,9 +68,7 @@ export default function MindMap({ markdown, onReady, onError }: MindMapProps) {
         console.log('[MindMap] Assets loaded, importing markmap-view');
 
         // 注入中文字体
-        const fontStyle = document.createElement('style');
-        fontStyle.textContent = CHINESE_FONT_CSS;
-        document.head.appendChild(fontStyle);
+        injectChineseFontCSS();
 
         // 渲染脑图
         const svg = svgRef.current!;

@@ -13,23 +13,7 @@ import {
   loadJS,
   CHINESE_FONT_CSS,
 } from '../components/MindMap/mindmap-utils';
-
-const MARKMAP_OPTIONS = {
-  duration: 500,
-  maxWidth: 400,
-  autoFit: true,
-  fitRatio: 0.95,
-  nodeMinHeight: 30,
-  spacingHorizontal: 100,
-  spacingVertical: 10,
-  paddingX: 10,
-  scrollForPan: true,
-  initialExpandLevel: -1,
-  zoom: true,
-  pan: true,
-  toggleRecursively: false,
-};
-
+import { MARKMAP_OPTIONS } from '../components/MindMap/mindmap-options';
 let currentMindMapPanel: HTMLElement | null = null;
 
 /**
@@ -204,9 +188,12 @@ async function renderMindMapToElement(container: HTMLElement, markdown: string) 
       );
     }
 
-    const fontStyle = document.createElement('style');
-    fontStyle.textContent = CHINESE_FONT_CSS;
-    document.head.appendChild(fontStyle);
+    if (!document.getElementById('select-ask-mindmap-chinese-font')) {
+      const fontStyle = document.createElement('style');
+      fontStyle.id = 'select-ask-mindmap-chinese-font';
+      fontStyle.textContent = CHINESE_FONT_CSS;
+      document.head.appendChild(fontStyle);
+    }
 
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.style.width = '100%';

@@ -109,3 +109,14 @@ export const CHINESE_FONT_CSS = `
     line-height: 1.6 !important;
   }
 `;
+
+/**
+ * 注入中文字体 CSS（幂等，只注入一次）
+ */
+export function injectChineseFontCSS(): void {
+  if (document.getElementById('select-ask-mindmap-chinese-font')) return;
+  const style = document.createElement('style');
+  style.id = 'select-ask-mindmap-chinese-font';
+  style.textContent = CHINESE_FONT_CSS;
+  document.head.appendChild(style);
+}
