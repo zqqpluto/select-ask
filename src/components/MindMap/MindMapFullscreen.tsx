@@ -29,11 +29,17 @@ export default function MindMapFullscreen({ markdown, onClose }: MindMapFullscre
   const markmapRef = useRef<Markmap | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [closing, setClosing] = useState(false);
   const { downloadPng, copyPngToClipboard, copyRichText, exporting } = useMindMapExport(svgRef);
+
+  const handleClose = () => {
+    setClosing(true);
+    setTimeout(() => onClose(), 200);
+  };
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') handleClose();
     };
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -106,10 +112,10 @@ export default function MindMapFullscreen({ markdown, onClose }: MindMapFullscre
   }, [markdown]);
 
   const content = (
-    <div className="select-ask-mindmap-fullscreen-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className={`select-ask-mindmap-fullscreen-overlay${closing ? ' select-ask-mindmap-fadeOut' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}>
       <div className="select-ask-mindmap-fullscreen-header">
         <span className="select-ask-mindmap-fullscreen-title">脑图</span>
-        <button className="select-ask-mindmap-toolbar-btn" title="关闭 (Esc)" onClick={onClose}>
+        <button className="select-ask-mindmap-toolbar-btn" title="关闭 (Esc)" onClick={handleClose}>
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="18" y1="6" x2="6" y2="18"/>
             <line x1="6" y1="6" x2="18" y2="18"/>
@@ -147,7 +153,7 @@ export default function MindMapFullscreen({ markdown, onClose }: MindMapFullscre
           copyPngToClipboard={copyPngToClipboard}
           copyRichText={copyRichText}
           exporting={exporting}
-          onClose={onClose}
+          onClose={handleClose}
         />
       )}
     </div>

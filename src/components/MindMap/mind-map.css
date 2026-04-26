@@ -73,6 +73,15 @@
   to { opacity: 1; }
 }
 
+.select-ask-mindmap-fadeOut {
+  animation: select-ask-mindmap-fadeOut 0.2s ease-in !important;
+}
+
+@keyframes select-ask-mindmap-fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
 /* 全屏头部 */
 .select-ask-mindmap-fullscreen-header {
   display: flex;
