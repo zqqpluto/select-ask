@@ -139,14 +139,17 @@ async function createMindMapPanel(markdown: string) {
   document.body.appendChild(panel);
   currentMindMapPanel = panel;
 
-  closeBtn.addEventListener('click', () => {
+  const closeHandler = () => {
+    observer?.disconnect();
     panel.remove();
     if (currentMindMapPanel === panel) currentMindMapPanel = null;
-  });
+  };
+  closeBtn.addEventListener('click', closeHandler);
 
   // Render mindmap
   let svg: SVGSVGElement | null = null;
   let mm: any = null;
+  let observer: ResizeObserver | null = null;
   try {
     const transformer = await createTransformer();
     const { root, features } = await transformMarkdown(transformer as any, markdown);
@@ -183,7 +186,7 @@ async function createMindMapPanel(markdown: string) {
     mm = (await import('markmap-view')).Markmap.create(svg, MARKMAP_OPTIONS, root as any);
 
     // ResizeObserver for auto-fit
-    const observer = new ResizeObserver(() => {
+    observer = new ResizeObserver(() => {
       setTimeout(() => mm?.fit(), 50);
     });
     observer.observe(body);

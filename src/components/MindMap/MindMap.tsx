@@ -33,14 +33,11 @@ export default function MindMap({ markdown, onReady, onError }: MindMapProps) {
 
     async function init() {
       try {
-        console.log('[MindMap] Starting init, markdown length:', markdown.length);
         const transformer = await createTransformer();
         if (cancelled) return;
-        console.log('[MindMap] Transformer created');
 
         const { root, features } = await transformMarkdown(transformer as any, markdown);
         if (cancelled) return;
-        console.log('[MindMap] Markdown transformed, root children:', root.children?.length);
 
         // 加载外部资源
         const assets = getMarkmapAssets(transformer as any, features);
@@ -64,7 +61,6 @@ export default function MindMap({ markdown, onReady, onError }: MindMapProps) {
           );
         }
         if (cancelled) return;
-        console.log('[MindMap] Assets loaded, importing markmap-view');
 
         // 注入中文字体
         injectChineseFontCSS();
@@ -75,15 +71,12 @@ export default function MindMap({ markdown, onReady, onError }: MindMapProps) {
         if (markmapRef.current) {
           markmapRef.current.setData(root as IPureNode);
           markmapRef.current.fit();
-          console.log('[MindMap] Markmap data updated');
         } else {
-          console.log('[MindMap] markmap-view imported, creating Markmap...');
           const mm = markmapModule.Markmap.create(
             svg,
             MARKMAP_OPTIONS,
             root as IPureNode
           );
-          console.log('[MindMap] Markmap created successfully');
           markmapRef.current = mm;
         }
         setLoading(false);

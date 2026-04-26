@@ -4,6 +4,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import { escapeHtml } from '../../utils/shared';
 
 /**
  * 脑图导出 Hook
@@ -31,20 +32,21 @@ export function useMindMapExport(svgRef: React.RefObject<SVGSVGElement | null>) 
   const downloadPng = useCallback(async (filename = 'mindmap.png') => {
     if (!svgRef.current) return;
     setExporting(true);
+    let offscreen: SVGSVGElement | null = null;
     try {
       const { toPng } = await import('html-to-image');
-      const offscreen = createOffscreenClone();
+      offscreen = createOffscreenClone();
       const target = offscreen || svgRef.current;
       const dataUrl = await toPng(target as unknown as HTMLElement, {
         backgroundColor: '#ffffff',
         cacheBust: true,
         pixelRatio: 2,
       });
-      if (offscreen) offscreen.remove();
       triggerDownload(dataUrl, filename);
     } catch (err) {
       console.error('Failed to download PNG:', err);
     } finally {
+      if (offscreen) offscreen.remove();
       setExporting(false);
     }
   }, [svgRef]);
@@ -52,15 +54,15 @@ export function useMindMapExport(svgRef: React.RefObject<SVGSVGElement | null>) 
   const copyPngToClipboard = useCallback(async () => {
     if (!svgRef.current) return;
     setExporting(true);
+    let offscreen: SVGSVGElement | null = null;
     try {
       const { toBlob } = await import('html-to-image');
-      const offscreen = createOffscreenClone();
+      offscreen = createOffscreenClone();
       const target = offscreen || svgRef.current;
       const blob = await toBlob(target as unknown as HTMLElement, {
         backgroundColor: '#ffffff',
         pixelRatio: 2,
       });
-      if (offscreen) offscreen.remove();
       if (!blob) throw new Error('Failed to generate blob');
       await navigator.clipboard.write([
         new ClipboardItem({ 'image/png': blob }),
@@ -69,6 +71,7 @@ export function useMindMapExport(svgRef: React.RefObject<SVGSVGElement | null>) 
       console.error('Failed to copy to clipboard:', err);
       fallbackCopyText('图片导出失败，请尝试下载功能');
     } finally {
+      if (offscreen) offscreen.remove();
       setExporting(false);
     }
   }, [svgRef]);
@@ -144,18 +147,6 @@ export function useMindMapExport(svgRef: React.RefObject<SVGSVGElement | null>) 
   }, [svgRef]);
 
   return { downloadPng, copyPngToClipboard, copyRichText, exporting };
-}
-
-/**
- * Escape HTML special characters
- */
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
 }
 
 /**

@@ -4,7 +4,7 @@
  * 按 Escape 键退出全屏
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import type { IPureNode } from 'markmap-common';
 import type { Markmap } from 'markmap-view';
@@ -14,7 +14,7 @@ import {
   getMarkmapAssets,
   loadCSS,
   loadJS,
-  CHINESE_FONT_CSS,
+  injectChineseFontCSS,
 } from './mindmap-utils';
 import { MARKMAP_OPTIONS } from './mindmap-options';
 import { useMindMapExport } from './useMindMapExport';
@@ -32,10 +32,10 @@ export default function MindMapFullscreen({ markdown, onClose }: MindMapFullscre
   const [closing, setClosing] = useState(false);
   const { downloadPng, copyPngToClipboard, copyRichText, exporting } = useMindMapExport(svgRef);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setClosing(true);
     setTimeout(() => onClose(), 200);
-  };
+  }, [onClose]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -84,12 +84,7 @@ export default function MindMapFullscreen({ markdown, onClose }: MindMapFullscre
         }
         if (cancelled) return;
 
-        const fontStyle = document.createElement('style');
-        fontStyle.textContent = CHINESE_FONT_CSS;
-        if (!document.getElementById('select-ask-mindmap-chinese-font')) {
-          fontStyle.id = 'select-ask-mindmap-chinese-font';
-          document.head.appendChild(fontStyle);
-        }
+        injectChineseFontCSS();
 
         const svg = svgRef.current!;
         const mm = (await import('markmap-view')).Markmap.create(
