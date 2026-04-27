@@ -30,7 +30,7 @@ export default function MindMapFullscreen({ markdown, onClose }: MindMapFullscre
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
-  const { downloadPng, copyPngToClipboard, copyRichText, exporting } = useMindMapExport(svgRef);
+  const { downloadPng, copyPngToClipboard, copyRichText, copySvg, downloadSvg, exporting } = useMindMapExport(svgRef);
 
   const handleClose = useCallback(() => {
     setClosing(true);
@@ -145,8 +145,10 @@ export default function MindMapFullscreen({ markdown, onClose }: MindMapFullscre
           markmapRef={markmapRef}
           svgRef={svgRef}
           downloadPng={downloadPng}
+          downloadSvg={downloadSvg}
           copyPngToClipboard={copyPngToClipboard}
           copyRichText={copyRichText}
+          copySvg={copySvg}
           exporting={exporting}
           onClose={handleClose}
         />

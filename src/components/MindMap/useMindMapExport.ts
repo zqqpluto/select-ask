@@ -19,12 +19,14 @@ export function useMindMapExport(svgRef: React.RefObject<SVGSVGElement | null>) 
   function createOffscreenClone(): SVGSVGElement | null {
     if (!svgRef.current) return null;
     const clone = svgRef.current.cloneNode(true) as SVGSVGElement;
+    const viewBox = svgRef.current.viewBox.baseVal;
+    if (viewBox.width > 0 && viewBox.height > 0) {
+      clone.setAttribute('width', String(viewBox.width * 2));
+      clone.setAttribute('height', String(viewBox.height * 2));
+    }
     clone.style.position = 'fixed';
     clone.style.left = '-10000px';
     clone.style.top = '0';
-    clone.style.width = svgRef.current.style.width || '800px';
-    clone.style.height = svgRef.current.style.height || '600px';
-    clone.style.zIndex = '-1';
     document.body.appendChild(clone);
     return clone;
   }
@@ -34,15 +36,21 @@ export function useMindMapExport(svgRef: React.RefObject<SVGSVGElement | null>) 
     setExporting(true);
     let offscreen: SVGSVGElement | null = null;
     try {
-      const { toPng } = await import('html-to-image');
+      const { toBlob } = await import('html-to-image');
       offscreen = createOffscreenClone();
       const target = offscreen || svgRef.current;
-      const dataUrl = await toPng(target as unknown as HTMLElement, {
+      const blob = await toBlob(target as unknown as HTMLElement, {
         backgroundColor: '#ffffff',
         cacheBust: true,
         pixelRatio: 2,
       });
-      triggerDownload(dataUrl, filename);
+      if (!blob) throw new Error('Failed to generate blob');
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = url;
+      link.click();
+      URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Failed to download PNG:', err);
     } finally {
@@ -146,19 +154,38 @@ export function useMindMapExport(svgRef: React.RefObject<SVGSVGElement | null>) 
     }
   }, [svgRef]);
 
-  return { downloadPng, copyPngToClipboard, copyRichText, exporting };
-}
+  const copySvg = useCallback(async () => {
+    if (!svgRef.current) return;
+    setExporting(true);
+    try {
+      const serializer = new XMLSerializer();
+      const svgString = serializer.serializeToString(svgRef.current);
+      const blob = new Blob([svgString], { type: 'image/svg+xml' });
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/svg+xml': blob }),
+      ]);
+    } catch (err) {
+      console.error('Failed to copy SVG:', err);
+      fallbackCopyText('SVG 复制失败，请尝试下载功能');
+    } finally {
+      setExporting(false);
+    }
+  }, [svgRef]);
 
-/**
- * 触发浏览器下载
- */
-function triggerDownload(dataUrl: string, filename: string) {
-  const link = document.createElement('a');
-  link.download = filename;
-  link.href = dataUrl;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  const downloadSvg = useCallback(async (filename = 'mindmap.svg') => {
+    if (!svgRef.current) return;
+    const serializer = new XMLSerializer();
+    const svgString = serializer.serializeToString(svgRef.current);
+    const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = filename;
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [svgRef]);
+
+  return { downloadPng, copyPngToClipboard, copyRichText, copySvg, downloadSvg, exporting };
 }
 
 /**
