@@ -148,15 +148,6 @@ export default function ChatMessageList({
                   <div className="side-panel-reasoning-quote" style={{ marginBottom: '12px' }}>
                     <div className="side-panel-reasoning-header" onClick={() => msg.reasoning && toggleReasoning(index)} style={!msg.reasoning ? { cursor: 'default' } : {}}>
                       <div className="side-panel-reasoning-status">
-                        {!msg.duration ? (
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
-                          </svg>
-                        ) : (
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                        )}
                         {msg.modelProvider && (
                           <span className={`side-panel-reasoning-provider-icon ${msg.modelProvider}`}>
                             {msg.modelProvider === 'openai' ? 'O' : msg.modelProvider === 'anthropic' ? 'A' : msg.modelProvider === 'deepseek' ? 'D' : msg.modelProvider === 'qwen' ? 'Q' : msg.modelProvider === 'glm' ? 'G' : msg.modelProvider === 'openai-compat' ? '⚙' : msg.modelProvider === 'local-ollama' ? '🖥' : 'M'}
