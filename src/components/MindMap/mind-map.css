@@ -54,6 +54,26 @@
   color: #f53f3f;
   font-size: 14px;
   text-align: center;
+  border: 1px solid #fde2e2;
+  border-radius: 12px;
+  background: #fff8f8;
+}
+
+.select-ask-mindmap-error button.select-ask-mindmap-retry-btn {
+  margin-top: 4px;
+  padding: 6px 20px;
+  border: 1px solid #f53f3f;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #f53f3f;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.select-ask-mindmap-error button.select-ask-mindmap-retry-btn:hover {
+  background: #f53f3f;
+  color: #ffffff;
 }
 
 /* 全屏覆盖层 */
@@ -65,15 +85,24 @@
   backdrop-filter: blur(4px);
   display: flex;
   flex-direction: column;
-  animation: select-ask-mindmap-fadeIn 0.2s ease-out;
 }
 
-@keyframes select-ask-mindmap-fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+@keyframes select-ask-mindmap-fullscreen-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
-.select-ask-mindmap-fadeOut {
+.select-ask-mindmap-fullscreen-overlay.enter {
+  animation: select-ask-mindmap-fullscreen-enter 0.25s ease-out;
+}
+
+.select-ask-mindmap-fullscreen-overlay.exit {
   animation: select-ask-mindmap-fadeOut 0.2s ease-in !important;
 }
 
@@ -167,6 +196,22 @@
   margin: 0 2px;
 }
 
+/* 缩放级别显示 */
+.select-ask-mindmap-toolbar-zoom {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  padding: 0 6px;
+  height: 24px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #4e5969;
+  background: #f2f3f5;
+  border-radius: 6px;
+  user-select: none;
+}
+
 /* 导出下拉菜单 */
 .select-ask-mindmap-export-dropdown {
   position: absolute;
@@ -178,6 +223,18 @@
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
   padding: 6px;
   z-index: 11;
+  animation: select-ask-mindmap-dropdown-enter 0.15s ease-out;
+}
+
+@keyframes select-ask-mindmap-dropdown-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .select-ask-mindmap-export-item {
@@ -208,4 +265,10 @@
   width: 16px;
   height: 16px;
   flex-shrink: 0;
+}
+
+/* 聊天内脑图间距 */
+.chat-message .select-ask-mindmap-container {
+  margin-top: 8px;
+  min-height: 300px;
 }

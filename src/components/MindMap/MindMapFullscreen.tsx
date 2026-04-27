@@ -6,17 +6,8 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import type { IPureNode } from 'markmap-common';
+import { renderMindmap } from '../../utils/mindmap-renderer';
 import type { Markmap } from 'markmap-view';
-import {
-  createTransformer,
-  transformMarkdown,
-  getMarkmapAssets,
-  loadCSS,
-  loadJS,
-  injectChineseFontCSS,
-} from './mindmap-utils';
-import { MARKMAP_OPTIONS } from './mindmap-options';
 import { useMindMapExport } from './useMindMapExport';
 import MindMapToolbar from './MindMapToolbar';
 
@@ -30,7 +21,21 @@ export default function MindMapFullscreen({ markdown, onClose }: MindMapFullscre
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
+  const [entering, setEntering] = useState(true);
   const { downloadPng, copyPngToClipboard, copyRichText, copySvg, downloadSvg, exporting } = useMindMapExport(svgRef);
+
+  useEffect(() => {
+    const t = setTimeout(() => setEntering(false), 300);
+    return () => clearTimeout(t);
+  }, []);
+
+  const handleRetry = useCallback(() => {
+    setError(null);
+    setLoading(true);
+    setRetryKey((k) => k + 1);
+  }, []);
+
+  const [retryKey, setRetryKey] = useState(0);
 
   const handleClose = useCallback(() => {
     setClosing(true);
@@ -53,47 +58,19 @@ export default function MindMapFullscreen({ markdown, onClose }: MindMapFullscre
   useEffect(() => {
     if (!svgRef.current) return;
     let cancelled = false;
+    let dispose: (() => void) | null = null;
 
     async function init() {
       try {
-        const transformer = await createTransformer();
-        if (cancelled) return;
-
-        const { root, features } = await transformMarkdown(transformer as any, markdown);
-        if (cancelled) return;
-
-        const assets = getMarkmapAssets(transformer as any, features);
-        if (assets.styles?.length) {
-          await Promise.allSettled(
-            assets.styles.map((s: { type: string; url?: string; text?: string }) => {
-              if (s.type === 'stylesheet' && s.url) return loadCSS(s.url);
-              if (s.type === 'style' && s.text) {
-                const style = document.createElement('style');
-                style.textContent = s.text;
-                document.head.appendChild(style);
-                return Promise.resolve();
-              }
-              return Promise.resolve();
-            })
-          );
+        const container = svgRef.current!.parentElement || svgRef.current;
+        const result = await renderMindmap(svgRef.current!, markdown, container as HTMLElement);
+        if (cancelled) {
+          result.dispose();
+          return;
         }
-        if (assets.scripts?.length) {
-          await Promise.allSettled(
-            assets.scripts.map((s: any) => s.url && loadJS(s.url))
-          );
-        }
-        if (cancelled) return;
 
-        injectChineseFontCSS();
-
-        const svg = svgRef.current!;
-        const mm = (await import('markmap-view')).Markmap.create(
-          svg,
-          MARKMAP_OPTIONS,
-          root as IPureNode
-        );
-
-        markmapRef.current = mm;
+        markmapRef.current = result.markmap;
+        dispose = result.dispose;
         setLoading(false);
       } catch (err) {
         if (!cancelled) {
@@ -103,11 +80,14 @@ export default function MindMapFullscreen({ markdown, onClose }: MindMapFullscre
     }
 
     init();
-    return () => { cancelled = true; };
-  }, [markdown]);
+    return () => {
+      cancelled = true;
+      dispose?.();
+    };
+  }, [markdown, retryKey]);
 
   const content = (
-    <div className={`select-ask-mindmap-fullscreen-overlay${closing ? ' select-ask-mindmap-fadeOut' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}>
+    <div className={`select-ask-mindmap-fullscreen-overlay${closing ? ' exit' : ''}${entering ? ' enter' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}>
       <div className="select-ask-mindmap-fullscreen-header">
         <span className="select-ask-mindmap-fullscreen-title">脑图</span>
         <button className="select-ask-mindmap-toolbar-btn" title="关闭 (Esc)" onClick={handleClose}>
@@ -130,6 +110,7 @@ export default function MindMapFullscreen({ markdown, onClose }: MindMapFullscre
             <div className="select-ask-mindmap-error">
               <span>脑图生成失败</span>
               <span style={{ fontSize: 12, color: '#86909c' }}>{error}</span>
+              <button className="select-ask-mindmap-retry-btn" onClick={handleRetry}>重试</button>
             </div>
           )}
           <svg

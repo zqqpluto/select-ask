@@ -73,8 +73,8 @@ export default function MindMapToolbar({
 
   const handleExpandAll = () => {
     const mm = markmapRef.current;
-    if (!mm) return;
-    const data = mm.getData();
+    if (!mm || !mm.state.data) return;
+    const data = mm.state.data;
     function setFold(node: any, fold: number) {
       if (node.children) {
         node.payload = { ...node.payload, fold };
@@ -82,14 +82,13 @@ export default function MindMapToolbar({
       }
     }
     data.children?.forEach((child: any) => setFold(child, 0));
-    mm.setData(data);
-    mm.fit();
+    void mm.setData(data as any).then(() => mm.fit());
   };
 
   const handleCollapseAll = () => {
     const mm = markmapRef.current;
-    if (!mm) return;
-    const data = mm.getData();
+    if (!mm || !mm.state.data) return;
+    const data = mm.state.data;
     function setFold(node: any) {
       if (node.children && node.children.length > 0) {
         node.payload = { ...node.payload, fold: 1 };
@@ -97,8 +96,7 @@ export default function MindMapToolbar({
       }
     }
     data.children?.forEach((child: any) => setFold(child));
-    mm.setData(data);
-    mm.fit();
+    void mm.setData(data as any).then(() => mm.fit());
   };
 
   return (

@@ -6,14 +6,8 @@
 
 import {
   detectMarkdownStructure,
-  createTransformer,
-  transformMarkdown,
-  getMarkmapAssets,
-  loadCSS,
-  loadJS,
-  injectChineseFontCSS,
 } from '../components/MindMap/mindmap-utils';
-import { MARKMAP_OPTIONS } from '../components/MindMap/mindmap-options';
+import { renderMindmap } from '../utils/mindmap-renderer';
 
 let currentMindMapPanel: HTMLElement | null = null;
 
@@ -88,6 +82,7 @@ export function addMindMapButton(
  * 创建脑图面板
  */
 async function createMindMapPanel(markdown: string) {
+  let mindmapResult: Awaited<ReturnType<typeof renderMindmap>> | null = null;
   const panel = document.createElement('div');
   panel.className = 'select-ask-mindmap-panel';
 
@@ -140,62 +135,45 @@ async function createMindMapPanel(markdown: string) {
   currentMindMapPanel = panel;
 
   const closeHandler = () => {
-    observer?.disconnect();
+    document.removeEventListener('keydown', handleEscape);
+    mindmapResult?.dispose();
+    backdrop?.remove();
     panel.remove();
     if (currentMindMapPanel === panel) currentMindMapPanel = null;
   };
   closeBtn.addEventListener('click', closeHandler);
 
-  // Render mindmap
+  // Escape key to close
+  const handleEscape = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') closeHandler();
+  };
+  document.addEventListener('keydown', handleEscape);
+
+  // Click backdrop to close
+  const backdrop = document.createElement('div');
+  backdrop.className = 'select-ask-mindmap-backdrop';
+  backdrop.style.cssText = 'position:fixed;inset:0;z-index:2147483644;background:rgba(0,0,0,0.3);';
+  backdrop.addEventListener('click', closeHandler);
+  document.body.appendChild(backdrop);
+
+  // Render mindmap using shared renderer
   let svg: SVGSVGElement | null = null;
   let mm: any = null;
-  let observer: ResizeObserver | null = null;
   try {
-    const transformer = await createTransformer();
-    const { root, features } = await transformMarkdown(transformer as any, markdown);
-
-    const assets = getMarkmapAssets(transformer as any, features);
-    if (assets.styles?.length) {
-      await Promise.allSettled(
-        assets.styles.map((s: { type: string; url?: string; text?: string }) => {
-          if (s.type === 'stylesheet' && s.url) return loadCSS(s.url);
-          if (s.type === 'style' && s.text) {
-            const style = document.createElement('style');
-            style.textContent = s.text;
-            document.head.appendChild(style);
-            return Promise.resolve();
-          }
-          return Promise.resolve();
-        })
-      );
-    }
-    if (assets.scripts?.length) {
-      await Promise.allSettled(
-        assets.scripts.map((s: any) => loadJS(s.url))
-      );
-    }
-
-    injectChineseFontCSS();
-
     svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.style.width = '100%';
     svg.style.height = '100%';
     body.innerHTML = '';
     body.appendChild(svg);
 
-    mm = (await import('markmap-view')).Markmap.create(svg, MARKMAP_OPTIONS, root as any);
-
-    // ResizeObserver for auto-fit
-    observer = new ResizeObserver(() => {
-      setTimeout(() => mm?.fit(), 50);
-    });
-    observer.observe(body);
-
-    setTimeout(() => mm.fit(), 100);
+    mindmapResult = await renderMindmap(svg, markdown, body);
+    mm = mindmapResult.markmap;
   } catch (err) {
     body.innerHTML = '';
     const errorDiv = document.createElement('div');
     errorDiv.className = 'select-ask-mindmap-panel-loading';
+    errorDiv.style.flexDirection = 'column';
+    errorDiv.style.gap = '8px';
     const errorText = document.createElement('span');
     errorText.style.color = '#f53f3f';
     errorText.textContent = '脑图生成失败';
@@ -203,8 +181,19 @@ async function createMindMapPanel(markdown: string) {
     detailText.style.fontSize = '11px';
     detailText.style.color = '#86909c';
     detailText.textContent = err instanceof Error ? err.message : String(err);
+    const retryBtn = document.createElement('button');
+    retryBtn.className = 'select-ask-mindmap-btn';
+    retryBtn.textContent = '重试';
+    retryBtn.style.marginTop = '4px';
+    retryBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      panel.remove();
+      if (currentMindMapPanel === panel) currentMindMapPanel = null;
+      createMindMapPanel(markdown);
+    });
     errorDiv.appendChild(errorText);
     errorDiv.appendChild(detailText);
+    errorDiv.appendChild(retryBtn);
     body.appendChild(errorDiv);
     return;
   }
@@ -247,6 +236,62 @@ function addToolbarActions(
   const fitBtn = createToolbarBtn(btnClass, '适配', '⊡');
   fitBtn.addEventListener('click', () => mm.fit());
   toolbar.insertBefore(fitBtn, toolbar.firstChild);
+
+  // Expand All
+  const expandBtn = createToolbarBtn(btnClass, '展开全部', '⊞');
+  expandBtn.addEventListener('click', () => {
+    const data = mm.getData();
+    function setFold(node: any, fold: number) {
+      if (node.children) {
+        node.payload = { ...node.payload, fold };
+        node.children.forEach((child: any) => setFold(child, fold));
+      }
+    }
+    data.children?.forEach((child: any) => setFold(child, 0));
+    mm.setData(data);
+    mm.fit();
+  });
+  toolbar.insertBefore(expandBtn, toolbar.firstChild);
+
+  // Collapse All
+  const collapseBtn = createToolbarBtn(btnClass, '折叠全部', '⊟');
+  collapseBtn.addEventListener('click', () => {
+    const data = mm.getData();
+    function setFold(node: any) {
+      if (node.children && node.children.length > 0) {
+        node.payload = { ...node.payload, fold: 1 };
+        node.children.forEach((child: any) => setFold(child));
+      }
+    }
+    data.children?.forEach((child: any) => setFold(child));
+    mm.setData(data);
+    mm.fit();
+  });
+  toolbar.insertBefore(collapseBtn, toolbar.firstChild);
+
+  // Zoom level display
+  const zoomDisplay = document.createElement('span');
+  zoomDisplay.className = 'select-ask-mindmap-toolbar-zoom';
+  zoomDisplay.textContent = '100%';
+  toolbar.insertBefore(zoomDisplay, toolbar.firstChild);
+
+  // Update zoom display when transform changes
+  const updateZoom = () => {
+    const g = svg.querySelector('g');
+    if (g) {
+      const transform = (g as SVGGraphicsElement).transform?.baseVal;
+      if (transform && transform.numberOfItems > 0) {
+        const matrix = transform.getItem(0).matrix;
+        zoomDisplay.textContent = Math.round(matrix.a * 100) + '%';
+      }
+    }
+  };
+  const g = svg.querySelector('g');
+  if (g) {
+    const mo = new MutationObserver(updateZoom);
+    mo.observe(g, { attributes: true, attributeFilter: ['transform'] });
+    updateZoom();
+  }
 
   // Copy image
   const copyBtn = createToolbarBtn(btnClass, '复制图片', '⊡');

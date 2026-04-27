@@ -4,17 +4,8 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import type { IPureNode } from 'markmap-common';
 import type { Markmap } from 'markmap-view';
-import { MARKMAP_OPTIONS } from './mindmap-options';
-import {
-  createTransformer,
-  transformMarkdown,
-  getMarkmapAssets,
-  loadCSS,
-  loadJS,
-  injectChineseFontCSS,
-} from './mindmap-utils';
+import { renderMindmap } from '../../utils/mindmap-renderer';
 
 interface MindMapProps {
   markdown: string;
@@ -26,59 +17,33 @@ export default function MindMap({ markdown, onReady, onError }: MindMapProps) {
   const markmapRef = useRef<Markmap | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
+
+  const handleRetry = () => {
+    setError(null);
+    setLoading(true);
+    setRetryKey((k) => k + 1);
+  };
 
   useEffect(() => {
     if (!svgRef.current) return;
     let cancelled = false;
+    let cleanupDispose: (() => void) | null = null;
 
     async function init() {
       try {
-        const transformer = await createTransformer();
-        if (cancelled) return;
-
-        const { root, features } = await transformMarkdown(transformer as any, markdown);
-        if (cancelled) return;
-
-        // 加载外部资源
-        const assets = getMarkmapAssets(transformer as any, features);
-        if (assets.styles?.length) {
-          await Promise.allSettled(
-            assets.styles.map((s: { type: string; url?: string; text?: string }) => {
-              if (s.type === 'stylesheet' && s.url) return loadCSS(s.url);
-              if (s.type === 'style' && s.text) {
-                const style = document.createElement('style');
-                style.textContent = s.text;
-                document.head.appendChild(style);
-                return Promise.resolve();
-              }
-              return Promise.resolve();
-            })
-          );
+        const container = svgRef.current!.parentElement || svgRef.current;
+        const result = await renderMindmap(svgRef.current!, markdown, container as HTMLElement, {
+          existingMarkmap: markmapRef.current,
+        });
+        if (cancelled) {
+          // Only dispose if we created a new instance (not reusing)
+          if (!markmapRef.current) result.dispose();
+          return;
         }
-        if (assets.scripts?.length) {
-          await Promise.allSettled(
-            assets.scripts.map((s: any) => s.url && loadJS(s.url))
-          );
-        }
-        if (cancelled) return;
 
-        // 注入中文字体
-        injectChineseFontCSS();
-
-        // 渲染脑图
-        const svg = svgRef.current!;
-        const markmapModule = await import('markmap-view');
-        if (markmapRef.current) {
-          markmapRef.current.setData(root as IPureNode);
-          markmapRef.current.fit();
-        } else {
-          const mm = markmapModule.Markmap.create(
-            svg,
-            MARKMAP_OPTIONS,
-            root as IPureNode
-          );
-          markmapRef.current = mm;
-        }
+        markmapRef.current = result.markmap;
+        cleanupDispose = result.dispose;
         setLoading(false);
         onReady?.();
       } catch (err) {
@@ -98,30 +63,19 @@ export default function MindMap({ markdown, onReady, onError }: MindMapProps) {
       }
     }, 30000);
 
-    return () => { cancelled = true; clearTimeout(timeout); };
-  }, [markdown]);
-
-  // Auto-fit markmap on container resize
-  useEffect(() => {
-    const container = svgRef.current?.parentElement;
-    if (!container || !markmapRef.current) return;
-    let timer: ReturnType<typeof setTimeout>;
-    const observer = new ResizeObserver(() => {
-      clearTimeout(timer);
-      timer = setTimeout(() => markmapRef.current?.fit(), 100);
-    });
-    observer.observe(container);
     return () => {
-      observer.disconnect();
-      clearTimeout(timer);
+      cancelled = true;
+      clearTimeout(timeout);
+      cleanupDispose?.();
     };
-  }, [loading]);
+  }, [markdown, retryKey]);
 
   if (error) {
     return (
       <div className="select-ask-mindmap-error">
         <span>脑图生成失败</span>
         <span style={{ fontSize: 12, color: '#86909c' }}>{error}</span>
+        <button className="select-ask-mindmap-retry-btn" onClick={handleRetry}>重试</button>
       </div>
     );
   }
