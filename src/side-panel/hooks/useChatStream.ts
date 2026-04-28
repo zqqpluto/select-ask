@@ -516,9 +516,15 @@ export function useChatStream(): UseChatStreamReturn {
         });
       } else if (message.type === 'LLM_STREAM_END') {
         const match = answerContent.match(/```markdown\s*([\s\S]*?)```|```\s*([\s\S]*?)```/);
-        const content = match ? (match[1] || match[2]) : answerContent;
+        let content = match ? (match[1] || match[2]) : answerContent;
         const finalKey = `mindmap_${startTime}`;
-        setMindMapInline(pm => { const m = new Map(pm); m.delete(pendingKey); m.set(finalKey, content.trim()); return m; });
+        content = content.trim();
+        if (content.length > 20) {
+          setMindMapInline(pm => { const m = new Map(pm); m.delete(pendingKey); m.set(finalKey, content); return m; });
+        } else {
+          const displayContent = content || answerContent.trim() || '脑图生成内容为空';
+          setMindMapInline(pm => { const m = new Map(pm); m.delete(pendingKey); m.set(finalKey, displayContent); return m; });
+        }
         setMindMapLoading(false); setIsLoading(false); currentPortRef.current = null;
         setMessages(prev => {
           const last = prev[prev.length - 1];
@@ -577,9 +583,15 @@ export function useChatStream(): UseChatStreamReturn {
         });
       } else if (message.type === 'LLM_STREAM_END') {
         const match = answerContent.match(/```markdown\s*([\s\S]*?)```|```\s*([\s\S]*?)```/);
-        const content = match ? (match[1] || match[2]) : answerContent;
+        let content = match ? (match[1] || match[2]) : answerContent;
         const finalKey = `mindmap_${startTime}`;
-        setMindMapInline(pm => { const m = new Map(pm); m.delete(pendingKey); m.set(finalKey, content.trim()); return m; });
+        content = content.trim();
+        if (content.length > 20) {
+          setMindMapInline(pm => { const m = new Map(pm); m.delete(pendingKey); m.set(finalKey, content); return m; });
+        } else {
+          const displayContent = content || answerContent.trim() || '脑图生成内容为空';
+          setMindMapInline(pm => { const m = new Map(pm); m.delete(pendingKey); m.set(finalKey, displayContent); return m; });
+        }
         setMindMapLoading(false); setIsLoading(false); currentPortRef.current = null;
         setMessages(prev => {
           const last = prev[prev.length - 1];
