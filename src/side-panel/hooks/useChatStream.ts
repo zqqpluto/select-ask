@@ -482,9 +482,7 @@ export function useChatStream(): UseChatStreamReturn {
     setMindMapLoading(true); setMindMapInline(new Map()); setIsLoading(true);
     const startTime = Date.now();
     let reasoningContent = ''; let answerContent = '';
-    const pendingKey = `pending_${startTime}`;
-    // Pre-register with sentinel value so MindMap div appears immediately
-    setMindMapInline(pm => { const m = new Map(pm); m.set(pendingKey, ''); return m; });
+    let pendingKey = '';
     setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: Date.now(), modelName: currentModel.name, modelProvider: currentModel.provider, startTime }]);
     const port = chrome.runtime.connect({ name: 'llm-stream' });
     currentPortRef.current = port;
@@ -492,13 +490,18 @@ export function useChatStream(): UseChatStreamReturn {
       if (message.type === 'LLM_STREAM_CHUNK') {
         const chunk = message.chunk || '';
         if (message.reasoning) reasoningContent += chunk; else answerContent += chunk;
+        // Only show mindmap container when actual answer content arrives (not during thinking)
+        if (pendingKey === '' && answerContent.length > 0) {
+          pendingKey = `pending_${startTime}`;
+          setMindMapInline(pm => { const m = new Map(pm); m.set(pendingKey, ''); return m; });
+        }
         // Stream partial markdown: extract content after opening ``` but before closing ```
         const openMatch = answerContent.match(/```(?:markdown)?\s*([\s\S]*)/);
         if (openMatch) {
           let partialMarkdown = openMatch[1] || '';
           // Remove closing ``` and anything after
           partialMarkdown = partialMarkdown.replace(/\s*```\s*[\s\S]*$/, '');
-          if (partialMarkdown.trim().length > 0) {
+          if (partialMarkdown.trim().length > 0 && pendingKey) {
             setMindMapInline(pm => { const m = new Map(pm); m.set(pendingKey, partialMarkdown.trim()); return m; });
           }
         }
@@ -540,9 +543,7 @@ export function useChatStream(): UseChatStreamReturn {
     setMindMapLoading(true); setMindMapInline(new Map()); setIsLoading(true);
     const startTime = Date.now();
     let reasoningContent = ''; let answerContent = '';
-    const pendingKey = `pending_${startTime}`;
-    // Pre-register with sentinel value so MindMap div appears immediately
-    setMindMapInline(pm => { const m = new Map(pm); m.set(pendingKey, ''); return m; });
+    let pendingKey = '';
     setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: Date.now(), modelName: currentModel.name, modelProvider: currentModel.provider, startTime }]);
     const port = chrome.runtime.connect({ name: 'llm-stream' });
     currentPortRef.current = port;
@@ -550,13 +551,18 @@ export function useChatStream(): UseChatStreamReturn {
       if (message.type === 'LLM_STREAM_CHUNK') {
         const chunk = message.chunk || '';
         if (message.reasoning) reasoningContent += chunk; else answerContent += chunk;
+        // Only show mindmap container when actual answer content arrives (not during thinking)
+        if (pendingKey === '' && answerContent.length > 0) {
+          pendingKey = `pending_${startTime}`;
+          setMindMapInline(pm => { const m = new Map(pm); m.set(pendingKey, ''); return m; });
+        }
         // Stream partial markdown: extract content after opening ``` but before closing ```
         const openMatch = answerContent.match(/```(?:markdown)?\s*([\s\S]*)/);
         if (openMatch) {
           let partialMarkdown = openMatch[1] || '';
           // Remove closing ``` and anything after
           partialMarkdown = partialMarkdown.replace(/\s*```\s*[\s\S]*$/, '');
-          if (partialMarkdown.trim().length > 0) {
+          if (partialMarkdown.trim().length > 0 && pendingKey) {
             setMindMapInline(pm => { const m = new Map(pm); m.set(pendingKey, partialMarkdown.trim()); return m; });
           }
         }

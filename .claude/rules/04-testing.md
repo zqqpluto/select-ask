@@ -69,7 +69,21 @@ npm test tests/self-test.spec.ts  # 仅跑自测
 npm test                # 跑所有测试
 ```
 
+### 硬性执行流程
+每次改动后，**必须严格按以下顺序执行，不可跳过或乱序**：
+
+```bash
+1. npm run build              # 构建 → 确认成功
+2. npm test tests/self-test.spec.ts  # 跑测试 → 确认 "X passed"
+3. git commit                 # 只有前两步都通过后才能 commit
+```
+
+**禁止行为**：
+- 只跑 `npm run build` 不跑测试就 commit
+- 看到测试超时/跳过/0 run 就认为通过
+- 跳过测试直接提交代码
+
 ### 违反后果
-- Mock 数据 = 测试无效，用户会重复遇到线上 bug
+- 跳过测试就 commit = 用户会要求立即补测 + 承认错误
 - 不充分自测 = 提交不可用代码，浪费用户时间
 - 同一错误重复出现 = 流程失效
