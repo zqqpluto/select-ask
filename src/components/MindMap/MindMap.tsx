@@ -1,9 +1,13 @@
 /**
  * 脑图主组件
  * 接收 Markdown 字符串，使用 markmap 渲染为交互式 SVG 脑图
+ *
+ * 关键设计：流式更新时使用 debounce，只在 markdown 稳定后渲染。
+ * 豆包模式：AI 回复完成后一次性渲染。本项目需支持流式，
+ * 因此必须避免频繁重渲染导致的竞态。
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import type { Markmap } from 'markmap-view';
 import { renderMindmap } from '../../utils/mindmap-renderer';
 import { createTransformer, transformMarkdown } from './mindmap-utils';
@@ -13,6 +17,11 @@ interface MindMapProps {
   onReady?: () => void;
   onError?: (error: Error) => void;
 }
+
+// 流式更新 debounce 时间（ms）
+// 豆包不存在此问题（一次性渲染），本项目需 300ms 防抖
+const STREAMING_DEBOUNCE_MS = 300;
+
 export default function MindMap({ markdown, onReady, onError }: MindMapProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const markmapRef = useRef<Markmap | null>(null);
@@ -20,75 +29,75 @@ export default function MindMap({ markdown, onReady, onError }: MindMapProps) {
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
 
+  // 当前正在渲染的 markdown 版本（用于跳过过时的流式更新）
+  const renderingVersionRef = useRef(0);
+  const latestVersionRef = useRef(0);
+
   const handleRetry = () => {
     setError(null);
     setLoading(true);
     setRetryKey((k) => k + 1);
   };
 
-  useEffect(() => {
-    if (!svgRef.current) return;
-    let cancelled = false;
-    let cleanupDispose: (() => void) | null = null;
+  // 稳定版渲染函数：只在 markdown 稳定后执行
+  const renderStable = useCallback(async (md: string, version: number) => {
+    if (!svgRef.current || !md.trim()) return;
 
-    async function init() {
-      if (!markdown.trim()) {
-        // Empty markdown: stay in loading state for streaming
+    // 跳过过时版本
+    if (version < latestVersionRef.current) return;
+    renderingVersionRef.current = version;
+
+    try {
+      // 复用已有实例：只更新数据
+      if (markmapRef.current) {
+        try {
+          const { root } = await transformMarkdown(await createTransformer(), md);
+          if (version < latestVersionRef.current) return; // 检查是否有更新版本
+          markmapRef.current.setData(root);
+          markmapRef.current.fit();
+          setLoading(false);
+          onReady?.();
+          return;
+        } catch {
+          markmapRef.current = null;
+        }
+      }
+
+      const container = svgRef.current!.parentElement || svgRef.current;
+      const result = await renderMindmap(svgRef.current!, md, container as HTMLElement, {
+        existingMarkmap: markmapRef.current,
+      });
+      if (version < latestVersionRef.current) {
+        result.dispose();
         return;
       }
-      try {
-        // Reuse existing instance if available - just update data instead of recreating
-        if (markmapRef.current) {
-          try {
-            const { root } = await transformMarkdown(await createTransformer(), markdown);
-            if (cancelled) return;
-            markmapRef.current.setData(root);
-            markmapRef.current.fit();
-            setLoading(false);
-            onReady?.();
-            return;
-          } catch (reuseErr) {
-            // If reuse fails, fall through to create new
-            markmapRef.current = null;
-          }
-        }
 
-        const container = svgRef.current!.parentElement || svgRef.current;
-        const result = await renderMindmap(svgRef.current!, markdown, container as HTMLElement, {
-          existingMarkmap: markmapRef.current,
-        });
-        if (cancelled) {
-          result.dispose();
-          return;
-        }
-
-        markmapRef.current = result.markmap;
-        cleanupDispose = result.dispose;
-        setLoading(false);
-        onReady?.();
-      } catch (err) {
-        if (!cancelled) {
-          const msg = err instanceof Error ? err.message : String(err);
-          setError(msg);
-          onError?.(err instanceof Error ? err : new Error(msg));
-        }
+      markmapRef.current = result.markmap;
+      setLoading(false);
+      onReady?.();
+    } catch (err) {
+      if (version >= latestVersionRef.current) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setError(msg);
+        onError?.(err instanceof Error ? err : new Error(msg));
       }
     }
+  }, []);
 
-    init();
-    // Timeout to detect hangs - 30s for large markmap content
-    const timeout = setTimeout(() => {
-      if (!cancelled && loading) {
-        console.warn('[MindMap] Init taking longer than expected (30s)');
-      }
-    }, 30000);
+  useEffect(() => {
+    if (!svgRef.current) return;
+    latestVersionRef.current++;
+    const version = latestVersionRef.current;
+
+    // debounce: 等待 markdown 稳定后再渲染
+    const timer = setTimeout(() => {
+      renderStable(markdown, version);
+    }, STREAMING_DEBOUNCE_MS);
 
     return () => {
-      cancelled = true;
-      clearTimeout(timeout);
-      cleanupDispose?.();
+      clearTimeout(timer);
     };
-  }, [markdown, retryKey]);
+  }, [markdown, retryKey, renderStable]);
 
   if (error) {
     return (
