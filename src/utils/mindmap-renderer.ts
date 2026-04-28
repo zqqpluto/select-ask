@@ -96,13 +96,27 @@ export async function renderMindmap(
   let timer: ReturnType<typeof setTimeout>;
   const observer = new ResizeObserver(() => {
     clearTimeout(timer);
-    timer = setTimeout(() => mm.fit(), 100);
+    timer = setTimeout(() => {
+      // Only fit if container has a measurable size
+      const rect = containerElement.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        mm.fit();
+      }
+    }, 100);
     options?.onResize?.();
   });
   observer.observe(containerElement);
 
-  // 初始适配
-  setTimeout(() => mm.fit(), 100);
+  // 初始适配：等待容器有尺寸后再 fit，避免 NaN
+  const initialFit = () => {
+    const rect = containerElement.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      mm.fit();
+    } else {
+      setTimeout(initialFit, 50);
+    }
+  };
+  setTimeout(initialFit, 50);
 
   return {
     markmap: mm,
