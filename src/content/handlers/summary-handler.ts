@@ -29,7 +29,7 @@ export async function showPageSummary(options: SummaryHandlerOptions): Promise<v
       return;
     }
 
-    const truncatedContent = truncateContent(extractedContent.content, 6000);
+    const truncatedContent = truncateContent(extractedContent.content, 100000);
     const summaryPrompt = generateSummaryPrompt({
       ...extractedContent,
       content: truncatedContent,

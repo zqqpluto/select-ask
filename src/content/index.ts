@@ -261,7 +261,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     // 提取页面内容用于脑图生成或总结
     try {
       const extractedContent = extractMainContent();
-      const truncatedContent = truncateContent(extractedContent.content, 6000);
+      const truncatedContent = truncateContent(extractedContent.content, 100000);
       sendResponse({
         title: extractedContent.title || document.title,
         content: truncatedContent,

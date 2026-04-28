@@ -30,7 +30,7 @@ export async function handleMindMapFromPage(options: MindMapHandlerOptions): Pro
       return;
     }
 
-    const truncatedContent = truncateContent(extractedContent.content, 6000);
+    const truncatedContent = truncateContent(extractedContent.content, 100000);
     const prompt = `将以下内容整理为思维导图（Markdown 格式）：\n"""\n${truncatedContent}\n"""`;
 
     options.openSidePanel({

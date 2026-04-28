@@ -1,7 +1,9 @@
 /**
  * 网页内容提取器
- * 智能提取网页正文内容，用于生成摘要
+ * 使用 Mozilla Readability 提取正文（与 Firefox Reader View / 豆包同款算法）
  */
+
+import { Readability } from '@mozilla/readability';
 
 /**
  * 提取结果
@@ -10,138 +12,88 @@ export interface ExtractedContent {
   title: string;
   content: string;
   wordCount: number;
-  extractionMethod: string; // 提取方法描述
+  extractionMethod: string;
 }
 
 /**
- * 计算元素的文本密度
- * 文本密度 = 文本长度 / 标签数量
+ * 将 HTML 转为纯文本（保留段落结构）
  */
-function calculateTextDensity(element: Element): number {
-  const text = element.textContent?.trim() || '';
-  const textLength = text.length;
+function htmlToPlainText(html: string): string {
+  const div = document.createElement('div');
+  div.innerHTML = html;
 
-  if (textLength === 0) return 0;
-
-  // 计算子元素数量
-  const childElements = element.querySelectorAll('*').length || 1;
-
-  return textLength / childElements;
-}
-
-/**
- * 清理文本
- * 移除多余的空白、换行等
- */
-function cleanText(text: string): string {
-  return text
-    .replace(/\s+/g, ' ') // 多个空白替换为单个空格
-    .replace(/\n\s*\n/g, '\n\n') // 多个换行替换为两个换行
-    .trim();
-}
-
-/**
- * 提取网页正文
- * 按优先级尝试多种提取策略
- */
-export function extractMainContent(): ExtractedContent {
-  const title = document.title || '未命名页面';
-
-  // 策略1: <article>标签(语义化文章标签)
-  const article = document.querySelector('article');
-  if (article) {
-    const content = cleanText(article.textContent || '');
-    return {
-      title,
-      content,
-      wordCount: content.length,
-      extractionMethod: 'article标签',
-    };
-  }
-
-  // 策略2: <main>标签(语义化主内容标签)
-  const main = document.querySelector('main');
-  if (main) {
-    const content = cleanText(main.textContent || '');
-    return {
-      title,
-      content,
-      wordCount: content.length,
-      extractionMethod: 'main标签',
-    };
-  }
-
-  // 策略3: 最大文本密度div
-  const divs = Array.from(document.querySelectorAll('div'));
-  if (divs.length > 0) {
-    let maxDensity = 0;
-    let bestDiv: Element | null = null;
-
-    // 过滤掉明显不是正文的div(导航、侧边栏等)
-    const candidates = divs.filter(div => {
-      const className = div.className.toLowerCase();
-      const id = (div.id || '').toLowerCase();
-
-      // 排除导航、侧边栏、头部、底部等
-      const isExcluded =
-        className.includes('nav') ||
-        className.includes('sidebar') ||
-        className.includes('header') ||
-        className.includes('footer') ||
-        className.includes('menu') ||
-        className.includes('comment') ||
-        className.includes('ad') ||
-        id.includes('nav') ||
-        id.includes('sidebar') ||
-        id.includes('header') ||
-        id.includes('footer');
-
-      return !isExcluded;
-    });
-
-    // 找到文本密度最高的div
-    for (const div of candidates) {
-      const density = calculateTextDensity(div);
-      if (density > maxDensity) {
-        maxDensity = density;
-        bestDiv = div;
-      }
-    }
-
-    if (bestDiv) {
-      const content = cleanText(bestDiv.textContent || '');
-      if (content.length > 100) { // 确保有足够的内容
-        return {
-          title,
-          content,
-          wordCount: content.length,
-          extractionMethod: '最大文本密度div',
-        };
-      }
-    }
-  }
-
-  // 策略4: 降级方案 - body全文(过滤导航等)
-  const body = document.body.cloneNode(true) as HTMLElement;
-
-  // 移除不需要的元素
-  const removeSelectors = [
-    'nav', 'header', 'footer', 'aside',
-    '.sidebar', '.navigation', '.menu', '.ads',
-    '.comment', '.social-share', '.related'
-  ];
-
-  removeSelectors.forEach(selector => {
-    body.querySelectorAll(selector).forEach(el => el.remove());
+  // 块级元素后加换行
+  div.querySelectorAll('p, div, h1, h2, h3, h4, h5, h6, li, tr, blockquote, pre, br, hr').forEach(el => {
+    el.appendChild(document.createTextNode('\n'));
   });
 
-  const content = cleanText(body.textContent || '');
+  // 移除脚本和样式
+  div.querySelectorAll('script, style').forEach(el => el.remove());
 
+  return div.textContent?.replace(/\n{3,}/g, '\n\n').trim() || '';
+}
+
+/**
+ * 提取网页正文 — 优先使用 Readability（豆包同款算法）
+ */
+export function extractMainContent(): ExtractedContent {
+  // 策略1: Mozilla Readability（Firefox Reader View / 豆包同款）
+  try {
+    const cloned = document.cloneNode(true) as Document;
+    const reader = new Readability(cloned, {
+      charThreshold: 500,
+      keepClasses: false,
+    });
+    const result = reader.parse();
+
+    if (result?.content && result.content.length > 100) {
+      const content = htmlToPlainText(result.content);
+      return {
+        title: result.title || document.title || '未命名页面',
+        content,
+        wordCount: content.length,
+        extractionMethod: 'Readability（豆包同款）',
+      };
+    }
+  } catch (e) {
+    console.warn('[Readability] 提取失败:', e);
+  }
+
+  // 策略2: 降级 — <article> 标签
+  const article = document.querySelector('article');
+  if (article) {
+    const content = article.textContent?.trim().replace(/\s+/g, ' ') || '';
+    return {
+      title: document.title || '未命名页面',
+      content,
+      wordCount: content.length,
+      extractionMethod: 'article标签（降级）',
+    };
+  }
+
+  // 策略3: 降级 — <main> 标签
+  const main = document.querySelector('main');
+  if (main) {
+    const content = main.textContent?.trim().replace(/\s+/g, ' ') || '';
+    return {
+      title: document.title || '未命名页面',
+      content,
+      wordCount: content.length,
+      extractionMethod: 'main标签（降级）',
+    };
+  }
+
+  // 策略4: 最低降级 — body 过滤
+  const body = document.body.cloneNode(true) as HTMLElement;
+  ['nav', 'header', 'footer', 'aside', 'script', 'style'].forEach(tag => {
+    body.querySelectorAll(tag).forEach(el => el.remove());
+  });
+  const content = body.textContent?.trim().replace(/\s+/g, ' ') || '';
   return {
-    title,
+    title: document.title || '未命名页面',
     content,
     wordCount: content.length,
-    extractionMethod: 'body全文(过滤)',
+    extractionMethod: 'body过滤（最低降级）',
   };
 }
 
