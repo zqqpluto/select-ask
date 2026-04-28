@@ -173,9 +173,9 @@ export default function ChatMessageList({
                 {(() => {
                   const msgId = msg.startTime?.toString() || '';
                   const mindMapForThisMessage = msgId && mindMapInline.has(msgId) ? mindMapInline.get(msgId) : null;
-                  const pendingEntry = mindMapInline.get(`pending_${msg.startTime}`) ?? null;
-                  const hasPendingMindMap = pendingEntry !== null && mindMapLoading && !msg.duration;
-                  const mindMapContent = mindMapForThisMessage ?? pendingEntry;
+                  const hasPendingEntry = mindMapInline.has(`pending_${msg.startTime}`);
+                  const pendingEntry = hasPendingEntry ? (mindMapInline.get(`pending_${msg.startTime}`) ?? '') : null;
+                  const mindMapContent = mindMapForThisMessage !== null ? mindMapForThisMessage : (hasPendingEntry ? pendingEntry : null);
                   return mindMapContent !== null ? (
                     <div className="side-panel-mindmap-inline">
                       <MindMap markdown={mindMapContent} />
@@ -187,10 +187,6 @@ export default function ChatMessageList({
                           打开全屏
                         </button>
                       )}
-                    </div>
-                  ) : hasPendingMindMap ? (
-                    <div className="side-panel-mindmap-inline">
-                      <MindMap markdown="" />
                     </div>
                   ) : (
                     <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />

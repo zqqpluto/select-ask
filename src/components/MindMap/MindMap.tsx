@@ -31,6 +31,10 @@ export default function MindMap({ markdown, onReady, onError }: MindMapProps) {
     let cleanupDispose: (() => void) | null = null;
 
     async function init() {
+      if (!markdown.trim()) {
+        // Empty markdown: stay in loading state for streaming
+        return;
+      }
       try {
         const container = svgRef.current!.parentElement || svgRef.current;
         const result = await renderMindmap(svgRef.current!, markdown, container as HTMLElement, {
