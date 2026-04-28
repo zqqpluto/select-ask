@@ -120,7 +120,9 @@ export default function MindMap({ markdown, onReady, onError }: MindMapProps) {
       <svg
         ref={svgRef}
         className="select-ask-mindmap-svg"
-        style={{ width: '100%', height: '100%' }}
+        viewBox="0 0 800 600"
+        width="100%"
+        height="100%"
       />
     </div>
   );
