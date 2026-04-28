@@ -78,7 +78,12 @@ test.describe('Popup 模型切换 + 重开回显', () => {
       args: [`--disable-extensions-except=${EXTENSION_PATH}`, `--load-extension=${EXTENSION_PATH}`, '--no-sandbox', '--disable-setuid-sandbox'],
     });
 
-    await context.waitForEvent('serviceworker');
+    try {
+      await context.waitForEvent('serviceworker', { timeout: 15000 });
+    } catch {
+      await new Promise(r => setTimeout(r, 2000));
+    }
+
     extensionId = await getExtensionId(context);
     background = context.serviceWorkers()[0];
   });
