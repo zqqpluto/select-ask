@@ -231,6 +231,13 @@ export function useChatStream(): UseChatStreamReturn {
     const startTime = Date.now();
     let reasoningContent = '';
     let answerContent = '';
+
+    // 脑图模式：预注册 entry，让 MindMap 组件立即渲染并显示内部 loading
+    const pendingMindMapKey = `pending_${startTime}`;
+    if (isMindMap) {
+      setMindMapInline(pm => { const m = new Map(pm); m.set(pendingMindMapKey, ''); return m; });
+    }
+
     try {
       const port = chrome.runtime.connect({ name: 'llm-stream' });
       currentPortRef.current = port;
@@ -249,6 +256,16 @@ export function useChatStream(): UseChatStreamReturn {
           }
           if (chunk === '[ANSWER]' || chunk === '[ANSWER_DONE]') return;
           answerContent += chunk;
+
+          // 脑图模式：实时更新 pending entry，让 MindMap 组件逐步渲染
+          if (isMindMap) {
+            const match = answerContent.match(/```markdown\s*([\s\S]*?)```|```\s*([\s\S]*?)```/);
+            const partialMarkdown = match ? (match[1] || match[2]) : (answerContent.includes('```') ? answerContent : '');
+            if (partialMarkdown) {
+              setMindMapInline(pm => { const m = new Map(pm); m.set(pendingMindMapKey, partialMarkdown); return m; });
+            }
+          }
+
           setMessages(prev => {
             const last = prev[prev.length - 1];
             if (last?.role === 'assistant') return [...prev.slice(0, -1), { ...last, content: answerContent, reasoning: reasoningContent || undefined, modelName: modelToUse.name, modelProvider: modelToUse.provider, startTime }];
@@ -270,11 +287,17 @@ export function useChatStream(): UseChatStreamReturn {
               }
             }
             if (mindMapContent && mindMapContent.trim().length > 20) {
+              // Replace pending key with final key, then clear content
+              const msgId = `mindmap_${start}`;
+              setMindMapInline(pm => {
+                const m = new Map(pm);
+                m.delete(pendingMindMapKey);
+                m.set(msgId, mindMapContent!.trim());
+                return m;
+              });
               setMessages(prev => {
                 const idx = prev.findIndex(m => m.role === 'assistant' && m.startTime && m.duration === undefined);
                 if (idx !== -1) {
-                  const msgId = prev[idx].startTime!.toString();
-                  setMindMapInline(pm => new Map(pm).set(msgId, mindMapContent!.trim()));
                   const n = [...prev]; n[idx] = { ...n[idx], content: '', duration: Date.now() - start }; return n;
                 }
                 return prev;
@@ -459,6 +482,8 @@ export function useChatStream(): UseChatStreamReturn {
     setMindMapLoading(true); setMindMapInline(new Map()); setIsLoading(true);
     const startTime = Date.now();
     let reasoningContent = ''; let answerContent = '';
+    const pendingKey = `pending_${startTime}`;
+    setMindMapInline(pm => { const m = new Map(pm); m.set(pendingKey, ''); return m; });
     setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: Date.now(), modelName: currentModel.name, modelProvider: currentModel.provider, startTime }]);
     const port = chrome.runtime.connect({ name: 'llm-stream' });
     currentPortRef.current = port;
@@ -466,6 +491,12 @@ export function useChatStream(): UseChatStreamReturn {
       if (message.type === 'LLM_STREAM_CHUNK') {
         const chunk = message.chunk || '';
         if (message.reasoning) reasoningContent += chunk; else answerContent += chunk;
+        // Stream partial markdown to MindMap component
+        const match = answerContent.match(/```markdown\s*([\s\S]*?)```|```\s*([\s\S]*?)```/);
+        const partialMarkdown = match ? (match[1] || match[2]) : (answerContent.includes('```') ? answerContent : '');
+        if (partialMarkdown) {
+          setMindMapInline(pm => { const m = new Map(pm); m.set(pendingKey, partialMarkdown); return m; });
+        }
         setMessages(prev => {
           const last = prev[prev.length - 1];
           if (last?.role === 'assistant') return [...prev.slice(0, -1), { ...last, content: '', reasoning: reasoningContent || undefined, startTime }];
@@ -474,7 +505,9 @@ export function useChatStream(): UseChatStreamReturn {
       } else if (message.type === 'LLM_STREAM_END') {
         const match = answerContent.match(/```markdown\s*([\s\S]*?)```|```\s*([\s\S]*?)```/);
         const content = match ? (match[1] || match[2]) : answerContent;
-        setMindMapInline(pm => { const m = new Map(pm); m.set(startTime.toString(), content.trim()); return m; }); setMindMapLoading(false); setIsLoading(false); currentPortRef.current = null;
+        const finalKey = `mindmap_${startTime}`;
+        setMindMapInline(pm => { const m = new Map(pm); m.delete(pendingKey); m.set(finalKey, content.trim()); return m; });
+        setMindMapLoading(false); setIsLoading(false); currentPortRef.current = null;
         setMessages(prev => {
           const last = prev[prev.length - 1];
           if (last?.role === 'assistant') return [...prev.slice(0, -1), { ...last, duration: Date.now() - startTime }];
@@ -502,6 +535,8 @@ export function useChatStream(): UseChatStreamReturn {
     setMindMapLoading(true); setMindMapInline(new Map()); setIsLoading(true);
     const startTime = Date.now();
     let reasoningContent = ''; let answerContent = '';
+    const pendingKey = `pending_${startTime}`;
+    setMindMapInline(pm => { const m = new Map(pm); m.set(pendingKey, ''); return m; });
     setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: Date.now(), modelName: currentModel.name, modelProvider: currentModel.provider, startTime }]);
     const port = chrome.runtime.connect({ name: 'llm-stream' });
     currentPortRef.current = port;
@@ -509,6 +544,12 @@ export function useChatStream(): UseChatStreamReturn {
       if (message.type === 'LLM_STREAM_CHUNK') {
         const chunk = message.chunk || '';
         if (message.reasoning) reasoningContent += chunk; else answerContent += chunk;
+        // Stream partial markdown to MindMap component
+        const match = answerContent.match(/```markdown\s*([\s\S]*?)```|```\s*([\s\S]*?)```/);
+        const partialMarkdown = match ? (match[1] || match[2]) : (answerContent.includes('```') ? answerContent : '');
+        if (partialMarkdown) {
+          setMindMapInline(pm => { const m = new Map(pm); m.set(pendingKey, partialMarkdown); return m; });
+        }
         setMessages(prev => {
           const last = prev[prev.length - 1];
           if (last?.role === 'assistant') return [...prev.slice(0, -1), { ...last, content: '', reasoning: reasoningContent || undefined, startTime }];
@@ -517,7 +558,9 @@ export function useChatStream(): UseChatStreamReturn {
       } else if (message.type === 'LLM_STREAM_END') {
         const match = answerContent.match(/```markdown\s*([\s\S]*?)```|```\s*([\s\S]*?)```/);
         const content = match ? (match[1] || match[2]) : answerContent;
-        setMindMapInline(pm => { const m = new Map(pm); m.set(startTime.toString(), content.trim()); return m; }); setMindMapLoading(false); setIsLoading(false); currentPortRef.current = null;
+        const finalKey = `mindmap_${startTime}`;
+        setMindMapInline(pm => { const m = new Map(pm); m.delete(pendingKey); m.set(finalKey, content.trim()); return m; });
+        setMindMapLoading(false); setIsLoading(false); currentPortRef.current = null;
         setMessages(prev => {
           const last = prev[prev.length - 1];
           if (last?.role === 'assistant') return [...prev.slice(0, -1), { ...last, duration: Date.now() - startTime }];

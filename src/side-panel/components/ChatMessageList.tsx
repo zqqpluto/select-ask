@@ -170,25 +170,27 @@ export default function ChatMessageList({
                   </div>
                 )}
 
-                {mindMapLoading && !msg.duration ? (
-                  <div className="side-panel-mindmap-loading">
-                    <svg className="side-panel-spin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
-                    </svg>
-                    <span>正在生成脑图...</span>
-                  </div>
-                ) : (() => {
+                {(() => {
                   const msgId = msg.startTime?.toString() || '';
                   const mindMapForThisMessage = msgId && mindMapInline.has(msgId) ? mindMapInline.get(msgId) : null;
-                  return mindMapForThisMessage ? (
+                  const pendingEntry = mindMapInline.get(`pending_${msg.startTime}`) ?? null;
+                  const hasPendingMindMap = pendingEntry !== null && mindMapLoading && !msg.duration;
+                  const mindMapContent = mindMapForThisMessage ?? pendingEntry;
+                  return mindMapContent !== null ? (
                     <div className="side-panel-mindmap-inline">
-                      <MindMap markdown={mindMapForThisMessage} />
-                      <button className="side-panel-mindmap-expand-btn" onClick={() => onSetMindMapMarkdown(mindMapForThisMessage)}>
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-                        </svg>
-                        打开全屏
-                      </button>
+                      <MindMap markdown={mindMapContent} />
+                      {mindMapContent && mindMapContent.length > 10 && (
+                        <button className="side-panel-mindmap-expand-btn" onClick={() => onSetMindMapMarkdown(mindMapContent)}>
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                          </svg>
+                          打开全屏
+                        </button>
+                      )}
+                    </div>
+                  ) : hasPendingMindMap ? (
+                    <div className="side-panel-mindmap-inline">
+                      <MindMap markdown="" />
                     </div>
                   ) : (
                     <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
