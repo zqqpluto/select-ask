@@ -1,7 +1,10 @@
 /**
  * 脑图全屏模式组件
- * 使用 React Portal 渲染到 document.body
- * 按 Escape 键退出全屏
+ * 对标豆包实现：
+ * - position: fixed inset: 0, z-index: 9999
+ * - 顶部 48px 白色 header，底部边框，包含工具栏
+ * - 内容区灰色背景 #f9fafb
+ * - Escape 键退出全屏
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -15,6 +18,7 @@ interface MindMapFullscreenProps {
   markdown: string;
   onClose: () => void;
 }
+
 export default function MindMapFullscreen({ markdown, onClose }: MindMapFullscreenProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const markmapRef = useRef<Markmap | null>(null);
@@ -87,41 +91,12 @@ export default function MindMapFullscreen({ markdown, onClose }: MindMapFullscre
   }, [markdown, retryKey]);
 
   const content = (
-    <div className={`select-ask-mindmap-fullscreen-overlay${closing ? ' exit' : ''}${entering ? ' enter' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}>
-      <div className="select-ask-mindmap-fullscreen-header">
-        <span className="select-ask-mindmap-fullscreen-title">脑图</span>
-        <button className="select-ask-mindmap-toolbar-btn" title="关闭 (Esc)" onClick={handleClose}>
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="18" y1="6" x2="6" y2="18"/>
-            <line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
-      </div>
-
-      <div className="select-ask-mindmap-fullscreen-content">
-        <div className="select-ask-mindmap-container">
-          {loading && (
-            <div className="select-ask-mindmap-loading">
-              <div className="select-ask-mindmap-loading-spinner" />
-              <span>正在生成脑图...</span>
-            </div>
-          )}
-          {error && (
-            <div className="select-ask-mindmap-error">
-              <span>脑图生成失败</span>
-              <span style={{ fontSize: 12, color: '#86909c' }}>{error}</span>
-              <button className="select-ask-mindmap-retry-btn" onClick={handleRetry}>重试</button>
-            </div>
-          )}
-          <svg
-            ref={svgRef}
-            className="select-ask-mindmap-svg"
-            style={{ width: '100%', height: '100%', display: loading || error ? 'none' : 'block' }}
-          />
+    <div className={`doubao-fullscreen-overlay${closing ? ' exit' : ''}${entering ? ' enter' : ''}`}>
+      {/* Header: 48px, white, bottom border, with toolbar */}
+      <div className="doubao-fullscreen-header">
+        <div className="doubao-header-left">
+          <span className="doubao-title">脑图</span>
         </div>
-      </div>
-
-      {!loading && !error && (
         <MindMapToolbar
           markmapRef={markmapRef}
           svgRef={svgRef}
@@ -133,7 +108,31 @@ export default function MindMapFullscreen({ markdown, onClose }: MindMapFullscre
           exporting={exporting}
           onClose={handleClose}
         />
-      )}
+      </div>
+
+      {/* Content area: gray background, mindmap */}
+      <div className="doubao-fullscreen-content">
+        <div className="doubao-diagram-content">
+          {loading && (
+            <div className="doubao-mindmap-loading">
+              <div className="doubao-mindmap-loading-spinner" />
+              <span>正在生成脑图...</span>
+            </div>
+          )}
+          {error && (
+            <div className="doubao-mindmap-error">
+              <span>脑图生成失败</span>
+              <span style={{ fontSize: 12, color: '#86909c' }}>{error}</span>
+              <button className="doubao-retry-btn" onClick={handleRetry}>重试</button>
+            </div>
+          )}
+          <svg
+            ref={svgRef}
+            className="doubao-mindmap-svg"
+            style={{ width: '100%', height: '100%', display: loading || error ? 'none' : 'block' }}
+          />
+        </div>
+      </div>
     </div>
   );
 

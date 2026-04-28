@@ -25,7 +25,7 @@ export default function App() {
     handleSend, handleStopGeneration, handleRegenerate,
     handleReEdit, handleConvertToMindMap,
     handleTextareaChange, handleKeyDown: _handleKeyDown,
-    handleNewChat, handleSendMindMap,
+    handleNewChat,
     autoGenerateEnabled: _autoGenerateEnabled, setAutoGenerateEnabled,
   } = useChatStream();
 
@@ -94,7 +94,28 @@ export default function App() {
       }
     };
     loadModels();
-  }, [setAvailableModels, setCurrentModel]);
+
+    // Listen for MODEL_CHANGED broadcast from popup
+    const handleMessage = (message: { type: string; modelId?: string }) => {
+      if (message.type === 'MODEL_CHANGED') {
+        loadModels();
+      }
+    };
+    chrome.runtime.onMessage.addListener(handleMessage);
+
+    // Also listen for app_config storage changes (backup for MODEL_CHANGED)
+    const handleStorageChange = (changes: Record<string, chrome.storage.StorageChange>, areaName: string) => {
+      if (areaName === 'sync' && changes.app_config) {
+        loadModels();
+      }
+    };
+    chrome.storage.onChanged.addListener(handleStorageChange);
+
+    return () => {
+      chrome.runtime.onMessage.removeListener(handleMessage);
+      chrome.storage.onChanged.removeListener(handleStorageChange);
+    };
+  }, [setAvailableModels, setCurrentModel, setAutoGenerateEnabled]);
 
   // Listen for messages from content script
   useEffect(() => {
@@ -162,7 +183,7 @@ export default function App() {
             const isMindMap = userMessage?.includes('脑图');
             if (isMindMap) {
               setMindMapLoading(true);
-              setMindMapInline(null);
+              setMindMapInline(new Map());
             }
             getAIResponseWithMessages(summaryPrompt, currentModel, { isMindMap });
           } else {
@@ -210,7 +231,7 @@ export default function App() {
               const isMindMap = userMessage?.includes('脑图');
               if (isMindMap) {
                 setMindMapLoading(true);
-                setMindMapInline(null);
+                setMindMapInline(new Map());
               }
               getAIResponseWithMessages(summaryPrompt, currentModel, { isMindMap });
             } else {
@@ -267,11 +288,33 @@ export default function App() {
         onSend={handleSend}
         onStop={handleStopGeneration}
         onSummary={async () => {
-          if (isLoading || !currentModel) return;
-          setMessages(prev => [...prev, { role: 'user', content: '总结页面', timestamp: Date.now() }]);
-          await getAIResponseWithMessages(`请总结当前页面内容：${pageInfo?.pageTitle || '当前网页'}`, currentModel);
+          if (isLoading) return;
+          chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+            if (!tabs[0]?.id) return;
+            try {
+              const resp = await chrome.tabs.sendMessage(tabs[0].id, { type: 'EXTRACT_PAGE_FOR_SUMMARY' });
+              if (!resp?.content) return;
+              const summaryPrompt = `总结以下内容：\n"""\n${resp.content}\n"""`;
+              setMessages(prev => [...prev, { role: 'user', content: '总结页面', timestamp: Date.now() }]);
+              await getAIResponseWithMessages(summaryPrompt, currentModel || undefined);
+            } catch { /* 回退 */ }
+          });
         }}
-        onMindMap={handleSendMindMap}
+        onMindMap={async () => {
+          if (isLoading) return;
+          chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+            if (!tabs[0]?.id) return;
+            try {
+              const resp = await chrome.tabs.sendMessage(tabs[0].id, { type: 'EXTRACT_PAGE_FOR_MINDMAP' });
+              if (!resp?.content) return;
+              const mindMapPrompt = `将以下内容整理为思维导图（Markdown 格式）：\n"""\n${resp.content}\n"""`;
+              setMessages(prev => [...prev, { role: 'user', content: '生成脑图', timestamp: Date.now() }]);
+              setMindMapLoading(true);
+              setMindMapInline(new Map());
+              await getAIResponseWithMessages(mindMapPrompt, currentModel || undefined, { isMindMap: true });
+            } catch { /* 回退 */ }
+          });
+        }}
         onNewChat={handleNewChat}
       />
 

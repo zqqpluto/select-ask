@@ -178,19 +178,5 @@ export function truncateContent(content: string, maxTokens: number = 100000): st
  * 生成网页总结的Prompt
  */
 export function generateSummaryPrompt(content: ExtractedContent): string {
-  return `请总结以下网页内容，提炼关键信息。
-
-网页标题: ${content.title}
-
-内容:
-${content.content}
-
-要求:
-1. 用3-5个要点概括主要内容
-2. 提取关键数据和结论
-3. 语言简洁，重点突出
-4. 如果是技术文章，请保留关键代码或配置示例
-5. 如果是新闻资讯，请说明时间、地点、人物等关键信息
-
-请用中文回答。`;
+  return `总结以下内容：\n"""\n${content.content}\n"""`;
 }

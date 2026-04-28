@@ -31,14 +31,7 @@ export async function handleMindMapFromPage(options: MindMapHandlerOptions): Pro
     }
 
     const truncatedContent = truncateContent(extractedContent.content, 6000);
-    const prompt = `请将以下内容整理为层级化 Markdown 脑图格式。要求：
-1. 使用 ## 作为一级标题，### 作为二级标题，#### 作为三级标题
-2. 使用 - 列表项表示子节点
-3. 结构清晰，层次分明
-4. 提取核心要点，不要遗漏重要信息
-
-内容：
-${truncatedContent}`;
+    const prompt = `将以下内容整理为思维导图（Markdown 格式）：\n"""\n${truncatedContent}\n"""`;
 
     options.openSidePanel({
       selectedText: '',
@@ -61,14 +54,7 @@ export async function handleMindMapFromSelection(options: MindMapHandlerOptions)
   if (!options.selectionData) return;
 
   const { text } = options.selectionData;
-  const prompt = `请将以下内容整理为层级化 Markdown 脑图格式。要求：
-1. 使用 ## 作为一级标题，### 作为二级标题，#### 作为三级标题
-2. 使用 - 列表项表示子节点
-3. 结构清晰，层次分明
-4. 提取核心要点，不要遗漏重要信息
-
-内容：
-${text}`;
+  const prompt = `将以下内容整理为思维导图（Markdown 格式）：\n"""\n${text}\n"""`;
 
   options.openSidePanel({
     selectedText: '',

@@ -41,8 +41,8 @@ interface UseChatStreamReturn {
   setSelectedTextNeedsExpand: React.Dispatch<React.SetStateAction<boolean>>;
   mindMapMarkdown: string | null;
   setMindMapMarkdown: React.Dispatch<React.SetStateAction<string | null>>;
-  mindMapInline: string | null;
-  setMindMapInline: React.Dispatch<React.SetStateAction<string | null>>;
+  mindMapInline: Map<string, string>;
+  setMindMapInline: React.Dispatch<React.SetStateAction<Map<string, string>>>;
   mindMapLoading: boolean;
   setMindMapLoading: React.Dispatch<React.SetStateAction<boolean>>;
   expandedReasoning: Record<number, boolean>;
@@ -84,7 +84,7 @@ export function useChatStream(): UseChatStreamReturn {
   const [selectedTextNeedsExpand, setSelectedTextNeedsExpand] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [mindMapMarkdown, setMindMapMarkdown] = useState<string | null>(null);
-  const [mindMapInline, setMindMapInline] = useState<string | null>(null);
+  const [mindMapInline, setMindMapInline] = useState<Map<string, string>>(new Map());
   const [mindMapLoading, setMindMapLoading] = useState(false);
   const [expandedReasoning, setExpandedReasoning] = useState<Record<number, boolean>>({});
   const [userHasScrolled, setUserHasScrolled] = useState(false);
@@ -137,7 +137,7 @@ export function useChatStream(): UseChatStreamReturn {
     setCurrentSessionId(generateSessionId());
     setExpandedReasoning({});
     setMindMapMarkdown(null);
-    setMindMapInline(null);
+    setMindMapInline(new Map());
     setMindMapLoading(false);
   }, []);
 
@@ -270,10 +270,13 @@ export function useChatStream(): UseChatStreamReturn {
               }
             }
             if (mindMapContent && mindMapContent.trim().length > 20) {
-              setMindMapInline(mindMapContent.trim());
               setMessages(prev => {
                 const idx = prev.findIndex(m => m.role === 'assistant' && m.startTime && m.duration === undefined);
-                if (idx !== -1) { const n = [...prev]; n[idx] = { ...n[idx], content: '', duration: Date.now() - start }; return n; }
+                if (idx !== -1) {
+                  const msgId = prev[idx].startTime!.toString();
+                  setMindMapInline(pm => new Map(pm).set(msgId, mindMapContent!.trim()));
+                  const n = [...prev]; n[idx] = { ...n[idx], content: '', duration: Date.now() - start }; return n;
+                }
                 return prev;
               });
             } else {
@@ -437,14 +440,7 @@ export function useChatStream(): UseChatStreamReturn {
       if (!tab?.id) return null;
       const response = await chrome.tabs.sendMessage(tab.id, { type: 'EXTRACT_PAGE_FOR_MINDMAP' });
       if (!response?.content) return null;
-      return `请将以下内容整理为层级化 Markdown 脑图格式。要求：
-1. 使用 ## 作为一级标题，### 作为二级标题，#### 作为三级标题
-2. 使用 - 列表项表示子节点
-3. 结构清晰，层次分明
-4. 提取核心要点，不要遗漏重要信息
-
-内容：
-${response.content}`;
+      return `将以下内容整理为思维导图（Markdown 格式）：\n"""\n${response.content}\n"""`;
     } catch (error) { console.error('[脑图] 获取页面内容失败:', error); return null; }
   }
 
@@ -460,7 +456,7 @@ ${response.content}`;
       setMessages(prev => [...prev, { role: 'assistant', content: '无法获取页面内容，请稍后重试', timestamp: Date.now() }]);
       return;
     }
-    setMindMapLoading(true); setMindMapInline(null); setIsLoading(true);
+    setMindMapLoading(true); setMindMapInline(new Map()); setIsLoading(true);
     const startTime = Date.now();
     let reasoningContent = ''; let answerContent = '';
     setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: Date.now(), modelName: currentModel.name, modelProvider: currentModel.provider, startTime }]);
@@ -478,7 +474,7 @@ ${response.content}`;
       } else if (message.type === 'LLM_STREAM_END') {
         const match = answerContent.match(/```markdown\s*([\s\S]*?)```|```\s*([\s\S]*?)```/);
         const content = match ? (match[1] || match[2]) : answerContent;
-        setMindMapInline(content.trim()); setMindMapLoading(false); setIsLoading(false); currentPortRef.current = null;
+        setMindMapInline(pm => { const m = new Map(pm); m.set(startTime.toString(), content.trim()); return m; }); setMindMapLoading(false); setIsLoading(false); currentPortRef.current = null;
         setMessages(prev => {
           const last = prev[prev.length - 1];
           if (last?.role === 'assistant') return [...prev.slice(0, -1), { ...last, duration: Date.now() - startTime }];
@@ -501,17 +497,9 @@ ${response.content}`;
       setMessages(prev => [...prev, { role: 'assistant', content: '请先在配置中添加并启用模型', timestamp: Date.now() }]);
       return;
     }
-    const mindMapPrompt = `请将以下内容整理为层级化 Markdown 脑图格式。要求：
-1. 使用 ## 作为一级标题，### 作为二级标题，#### 作为三级标题
-2. 使用 - 列表项表示子节点
-3. 结构清晰，层次分明
-4. 提取核心要点，不要遗漏重要信息
-5. 直接输出脑图 Markdown，不要添加任何解释性文字
-
-内容：
-${content}`;
+    const mindMapPrompt = `将以下内容整理为思维导图（Markdown 格式）：\n"""\n${content}\n"""`;
     setMessages(prev => [...prev, { role: 'user', content: '将以上内容整理为脑图', timestamp: Date.now() }]);
-    setMindMapLoading(true); setMindMapInline(null); setIsLoading(true);
+    setMindMapLoading(true); setMindMapInline(new Map()); setIsLoading(true);
     const startTime = Date.now();
     let reasoningContent = ''; let answerContent = '';
     setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: Date.now(), modelName: currentModel.name, modelProvider: currentModel.provider, startTime }]);
@@ -529,7 +517,7 @@ ${content}`;
       } else if (message.type === 'LLM_STREAM_END') {
         const match = answerContent.match(/```markdown\s*([\s\S]*?)```|```\s*([\s\S]*?)```/);
         const content = match ? (match[1] || match[2]) : answerContent;
-        setMindMapInline(content.trim()); setMindMapLoading(false); setIsLoading(false); currentPortRef.current = null;
+        setMindMapInline(pm => { const m = new Map(pm); m.set(startTime.toString(), content.trim()); return m; }); setMindMapLoading(false); setIsLoading(false); currentPortRef.current = null;
         setMessages(prev => {
           const last = prev[prev.length - 1];
           if (last?.role === 'assistant') return [...prev.slice(0, -1), { ...last, duration: Date.now() - startTime }];

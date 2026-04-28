@@ -215,29 +215,23 @@ function addToolbarActions(
 ) {
   const btnClass = 'select-ask-mindmap-panel-toolbar-btn';
 
-  // Fullscreen
-  const fullscreenBtn = createToolbarBtn(btnClass, '全屏', '⛶');
-  fullscreenBtn.addEventListener('click', () => {
-    panel.classList.toggle('select-ask-mindmap-panel-fullscreen');
-  });
-  toolbar.insertBefore(fullscreenBtn, toolbar.firstChild);
-
-  // Zoom in
-  const zoomInBtn = createToolbarBtn(btnClass, '放大', '+');
-  zoomInBtn.addEventListener('click', () => mm.scaleBy(1.25));
-  toolbar.insertBefore(zoomInBtn, toolbar.firstChild);
-
-  // Zoom out
-  const zoomOutBtn = createToolbarBtn(btnClass, '缩小', '−');
-  zoomOutBtn.addEventListener('click', () => mm.scaleBy(0.8));
-  toolbar.insertBefore(zoomOutBtn, toolbar.firstChild);
-
-  // Fit
+  // 按钮按正确顺序 append（从左到右）
+  // 1. 适配
   const fitBtn = createToolbarBtn(btnClass, '适配', '⊡');
   fitBtn.addEventListener('click', () => mm.fit());
-  toolbar.insertBefore(fitBtn, toolbar.firstChild);
+  toolbar.appendChild(fitBtn);
 
-  // Expand All
+  // 2. 缩小
+  const zoomOutBtn = createToolbarBtn(btnClass, '缩小', '−');
+  zoomOutBtn.addEventListener('click', () => mm.scaleBy(0.8));
+  toolbar.appendChild(zoomOutBtn);
+
+  // 3. 放大
+  const zoomInBtn = createToolbarBtn(btnClass, '放大', '+');
+  zoomInBtn.addEventListener('click', () => mm.scaleBy(1.25));
+  toolbar.appendChild(zoomInBtn);
+
+  // 4. 展开全部
   const expandBtn = createToolbarBtn(btnClass, '展开全部', '⊞');
   expandBtn.addEventListener('click', () => {
     const data = mm.getData();
@@ -251,9 +245,9 @@ function addToolbarActions(
     mm.setData(data);
     mm.fit();
   });
-  toolbar.insertBefore(expandBtn, toolbar.firstChild);
+  toolbar.appendChild(expandBtn);
 
-  // Collapse All
+  // 5. 折叠全部
   const collapseBtn = createToolbarBtn(btnClass, '折叠全部', '⊟');
   collapseBtn.addEventListener('click', () => {
     const data = mm.getData();
@@ -267,15 +261,15 @@ function addToolbarActions(
     mm.setData(data);
     mm.fit();
   });
-  toolbar.insertBefore(collapseBtn, toolbar.firstChild);
+  toolbar.appendChild(collapseBtn);
 
-  // Zoom level display
+  // 缩放级别显示
   const zoomDisplay = document.createElement('span');
   zoomDisplay.className = 'select-ask-mindmap-toolbar-zoom';
   zoomDisplay.textContent = '100%';
-  toolbar.insertBefore(zoomDisplay, toolbar.firstChild);
+  toolbar.appendChild(zoomDisplay);
 
-  // Update zoom display when transform changes
+  // 更新缩放显示
   const updateZoom = () => {
     const g = svg.querySelector('g');
     if (g) {
@@ -293,25 +287,12 @@ function addToolbarActions(
     updateZoom();
   }
 
-  // Copy image
-  const copyBtn = createToolbarBtn(btnClass, '复制图片', '⊡');
-  copyBtn.addEventListener('click', async () => {
-    try {
-      const { toBlob } = await import('html-to-image');
-      const blob = await toBlob(svg as unknown as HTMLElement, {
-        backgroundColor: '#ffffff',
-        pixelRatio: 2,
-      });
-      if (blob) {
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-      }
-    } catch (err) {
-      console.error('Copy failed:', err);
-    }
-  });
-  toolbar.insertBefore(copyBtn, toolbar.firstChild);
+  // 分隔线
+  const divider = document.createElement('div');
+  divider.className = 'select-ask-mindmap-toolbar-divider';
+  toolbar.appendChild(divider);
 
-  // Download PNG
+  // 下载图片
   const downloadBtn = createToolbarBtn(btnClass, '下载图片', '↓');
   downloadBtn.addEventListener('click', async () => {
     try {
@@ -328,7 +309,32 @@ function addToolbarActions(
       console.error('Download failed:', err);
     }
   });
-  toolbar.insertBefore(downloadBtn, toolbar.firstChild);
+  toolbar.appendChild(downloadBtn);
+
+  // 复制图片
+  const copyBtn = createToolbarBtn(btnClass, '复制图片', '⊡');
+  copyBtn.addEventListener('click', async () => {
+    try {
+      const { toBlob } = await import('html-to-image');
+      const blob = await toBlob(svg as unknown as HTMLElement, {
+        backgroundColor: '#ffffff',
+        pixelRatio: 2,
+      });
+      if (blob) {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      }
+    } catch (err) {
+      console.error('Copy failed:', err);
+    }
+  });
+  toolbar.appendChild(copyBtn);
+
+  // 全屏（最右侧）
+  const fullscreenBtn = createToolbarBtn(btnClass, '全屏', '⛶');
+  fullscreenBtn.addEventListener('click', () => {
+    panel.classList.toggle('select-ask-mindmap-panel-fullscreen');
+  });
+  toolbar.appendChild(fullscreenBtn);
 }
 
 function createToolbarBtn(className: string, title: string, text: string): HTMLButtonElement {

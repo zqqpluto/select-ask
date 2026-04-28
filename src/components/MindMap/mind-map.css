@@ -76,7 +76,157 @@
   color: #ffffff;
 }
 
-/* 全屏覆盖层 */
+/* 全屏覆盖层 — 对标豆包 */
+.doubao-fullscreen-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  background: #f9fafb;
+}
+
+@keyframes doubao-fullscreen-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.doubao-fullscreen-overlay.enter {
+  animation: doubao-fullscreen-enter 0.25s ease-out;
+}
+
+.doubao-fullscreen-overlay.exit {
+  animation: doubao-fullscreen-fadeOut 0.2s ease-in !important;
+}
+
+@keyframes doubao-fullscreen-fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* 全屏头部 — 48px 白色，底部边框 */
+.doubao-fullscreen-header {
+  height: 48px;
+  min-height: 48px;
+  background: #ffffff;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  gap: 12px;
+}
+
+.doubao-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.doubao-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1d2129;
+}
+
+/* 全屏内容区 — 灰色背景 */
+.doubao-fullscreen-content {
+  flex: 1;
+  min-height: 0;
+  background: #f9fafb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.doubao-diagram-content {
+  width: 100%;
+  height: 100%;
+}
+
+.doubao-mindmap-svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* 加载状态 */
+.doubao-mindmap-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+  color: #86909c;
+  font-size: 14px;
+}
+
+.doubao-mindmap-loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e5e6eb;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: select-ask-mindmap-spin 0.8s linear infinite;
+}
+
+/* 错误状态 */
+.doubao-mindmap-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  padding: 24px;
+  color: #f53f3f;
+  font-size: 14px;
+  text-align: center;
+}
+
+.doubao-retry-btn {
+  margin-top: 4px;
+  padding: 6px 20px;
+  border: 1px solid #f53f3f;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #f53f3f;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.doubao-retry-btn:hover {
+  background: #f53f3f;
+  color: #ffffff;
+}
+
+/* 全屏 header 内工具栏 — 扁平排列 */
+.doubao-fullscreen-header .select-ask-mindmap-toolbar {
+  position: static;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+  padding: 0;
+  border-radius: 0;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.doubao-fullscreen-header .select-ask-mindmap-export-dropdown {
+  bottom: auto;
+  top: 48px;
+  right: 16px;
+}
+
+/* 旧全屏样式保留（兼容） */
 .select-ask-mindmap-fullscreen-overlay {
   position: fixed;
   inset: 0;

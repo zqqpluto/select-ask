@@ -257,8 +257,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       initFloatingIcon();
     }
     sendResponse({ success: true });
-  } else if (message.type === 'EXTRACT_PAGE_FOR_MINDMAP') {
-    // 提取页面内容用于脑图生成
+  } else if (message.type === 'EXTRACT_PAGE_FOR_MINDMAP' || message.type === 'EXTRACT_PAGE_FOR_SUMMARY') {
+    // 提取页面内容用于脑图生成或总结
     try {
       const extractedContent = extractMainContent();
       const truncatedContent = truncateContent(extractedContent.content, 6000);
@@ -267,7 +267,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         content: truncatedContent,
       });
     } catch (error) {
-      console.error('[脑图] 页面内容提取失败:', error);
+      const type = message.type === 'EXTRACT_PAGE_FOR_MINDMAP' ? '脑图' : '总结';
+      console.error(`[${type}] 页面内容提取失败:`, error);
       sendResponse({ error: error instanceof Error ? error.message : String(error) });
     }
   }

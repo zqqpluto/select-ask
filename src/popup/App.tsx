@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { useAppStore } from '../store';
 import { getAppConfig, getSelectedTranslationModel, setSelectedTranslationModel } from '../utils/config-manager';
 import type { ModelConfig } from '../types';
 import { useI18n } from '../hooks/useI18n';
@@ -151,6 +152,8 @@ export default function App() {
       setAvailableModels(modelsToUse);
       const model = modelsToUse.find(m => m.id === modelId);
       if (model) setCurrentModel(model);
+      // 同步更新 Zustand store，确保 background/content script 一致
+      useAppStore.getState().setSelectedModel(modelId);
 
       setShowModelSelector(false);
       setDropdownPosition(null);

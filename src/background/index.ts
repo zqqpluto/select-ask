@@ -216,14 +216,22 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
 
     case 'SET_SELECTED_CHAT_MODEL':
-      // 设置选中的聊天模型
+      // 直接更新 storage 中的 selectedChatModelIds，避免动态 import 触发 window 引用
       (async () => {
         try {
-          const { setSelectedChatModel } = await import('../utils/config-manager');
-          await setSelectedChatModel(message.modelId);
+          const result = await chrome.storage.sync.get(['app_config']);
+          const config = result.app_config;
+          if (config && config.selectedChatModelIds && message.modelId) {
+            const ids = config.selectedChatModelIds.filter((id: string) => id !== message.modelId);
+            ids.unshift(message.modelId);
+            config.selectedChatModelIds = ids;
+            await chrome.storage.sync.set({ app_config: config });
+          }
+          useAppStore.getState().setSelectedModel(message.modelId);
+          chrome.runtime.sendMessage({ type: 'MODEL_CHANGED', modelId: message.modelId }).catch(() => {});
           sendResponse({ success: true });
         } catch (error) {
-          console.error('Failed to set selected model:', error);
+          console.error('[SET_SELECTED_CHAT_MODEL] FAILED:', error);
           sendResponse({ success: false, error: error instanceof Error ? error.message : String(error) });
         }
       })();
