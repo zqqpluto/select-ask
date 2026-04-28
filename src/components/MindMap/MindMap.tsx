@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Markmap } from 'markmap-view';
 import { renderMindmap } from '../../utils/mindmap-renderer';
+import { createTransformer, transformMarkdown } from './mindmap-utils';
 
 interface MindMapProps {
   markdown: string;
@@ -36,13 +37,28 @@ export default function MindMap({ markdown, onReady, onError }: MindMapProps) {
         return;
       }
       try {
+        // Reuse existing instance if available - just update data instead of recreating
+        if (markmapRef.current) {
+          try {
+            const { root } = await transformMarkdown(await createTransformer(), markdown);
+            if (cancelled) return;
+            markmapRef.current.setData(root);
+            markmapRef.current.fit();
+            setLoading(false);
+            onReady?.();
+            return;
+          } catch (reuseErr) {
+            // If reuse fails, fall through to create new
+            markmapRef.current = null;
+          }
+        }
+
         const container = svgRef.current!.parentElement || svgRef.current;
         const result = await renderMindmap(svgRef.current!, markdown, container as HTMLElement, {
           existingMarkmap: markmapRef.current,
         });
         if (cancelled) {
-          // Only dispose if we created a new instance (not reusing)
-          if (!markmapRef.current) result.dispose();
+          result.dispose();
           return;
         }
 
