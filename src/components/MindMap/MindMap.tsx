@@ -41,7 +41,13 @@ export default function MindMap({ markdown, onReady, onError }: MindMapProps) {
 
   // 稳定版渲染函数：只在 markdown 稳定后执行
   const renderStable = useCallback(async (md: string, version: number) => {
-    if (!svgRef.current || !md.trim()) return;
+    if (!svgRef.current) return;
+
+    // 空内容：停止 loading，等待流式内容到达
+    if (!md.trim()) {
+      setLoading(false);
+      return;
+    }
 
     // 跳过过时版本
     if (version < latestVersionRef.current) return;
@@ -77,6 +83,7 @@ export default function MindMap({ markdown, onReady, onError }: MindMapProps) {
       onReady?.();
     } catch (err) {
       if (version >= latestVersionRef.current) {
+        setLoading(false);
         const msg = err instanceof Error ? err.message : String(err);
         setError(msg);
         onError?.(err instanceof Error ? err : new Error(msg));
