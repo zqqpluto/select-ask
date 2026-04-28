@@ -175,7 +175,9 @@ export default function ChatMessageList({
                   const mindMapForThisMessage = msgId && mindMapInline.has(msgId) ? mindMapInline.get(msgId) : null;
                   const hasPendingEntry = mindMapInline.has(`pending_${msg.startTime}`);
                   const pendingEntry = hasPendingEntry ? (mindMapInline.get(`pending_${msg.startTime}`) ?? '') : null;
-                  const mindMapContent = mindMapForThisMessage !== null ? mindMapForThisMessage : (hasPendingEntry ? pendingEntry : null);
+                  // Only render MindMap when there's actual markdown content
+                  const hasPendingContent = hasPendingEntry && pendingEntry && pendingEntry.trim().length > 0;
+                  const mindMapContent = mindMapForThisMessage !== null ? mindMapForThisMessage : (hasPendingContent ? pendingEntry : null);
                   return mindMapContent !== null ? (
                     <div className="side-panel-mindmap-inline">
                       <MindMap markdown={mindMapContent} />

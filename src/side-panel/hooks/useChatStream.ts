@@ -231,12 +231,7 @@ export function useChatStream(): UseChatStreamReturn {
     const startTime = Date.now();
     let reasoningContent = '';
     let answerContent = '';
-
-    // 脑图模式：预注册 entry，让 MindMap 组件立即渲染并显示内部 loading
-    const pendingMindMapKey = `pending_${startTime}`;
-    if (isMindMap) {
-      setMindMapInline(pm => { const m = new Map(pm); m.set(pendingMindMapKey, ''); return m; });
-    }
+    let pendingMindMapKey = '';
 
     try {
       const port = chrome.runtime.connect({ name: 'llm-stream' });
@@ -257,12 +252,21 @@ export function useChatStream(): UseChatStreamReturn {
           if (chunk === '[ANSWER]' || chunk === '[ANSWER_DONE]') return;
           answerContent += chunk;
 
-          // 脑图模式：实时更新 pending entry，让 MindMap 组件逐步渲染
+          // 脑图模式：answerContent 到达后才注册 pendingKey（思考时不显示）
           if (isMindMap) {
-            const match = answerContent.match(/```markdown\s*([\s\S]*?)```|```\s*([\s\S]*?)```/);
-            const partialMarkdown = match ? (match[1] || match[2]) : (answerContent.includes('```') ? answerContent : '');
-            if (partialMarkdown) {
-              setMindMapInline(pm => { const m = new Map(pm); m.set(pendingMindMapKey, partialMarkdown); return m; });
+            if (pendingMindMapKey === '' && answerContent.length > 0) {
+              pendingMindMapKey = `pending_${startTime}`;
+              setMindMapInline(pm => { const m = new Map(pm); m.set(pendingMindMapKey, ''); return m; });
+            }
+            // 提取部分 markdown：支持 unclosed code block
+            let partialMarkdown = '';
+            const openMatch = answerContent.match(/```(?:markdown)?\s*([\s\S]*)/);
+            if (openMatch) {
+              partialMarkdown = openMatch[1] || '';
+              partialMarkdown = partialMarkdown.replace(/\s*```\s*[\s\S]*$/, '');
+            }
+            if (partialMarkdown.trim().length > 0 && pendingMindMapKey) {
+              setMindMapInline(pm => { const m = new Map(pm); m.set(pendingMindMapKey, partialMarkdown.trim()); return m; });
             }
           }
 
