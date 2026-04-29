@@ -110,6 +110,7 @@ export default function MindMapIntegration({ mindMapMarkdown, onClose }: Props) 
             copySvg={copySvg}
             exporting={exporting}
             onClose={handleClose}
+            variant="fullscreen"
           />
         </div>
 

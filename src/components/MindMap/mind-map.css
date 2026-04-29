@@ -299,51 +299,61 @@
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
 }
 
-/* 工具栏 */
+/* 工具栏 — 对标豆包：药丸形容器 */
 .select-ask-mindmap-toolbar {
-  position: absolute;
-  bottom: 12px;
-  right: 12px;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(8px);
-  border-radius: 10px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
-  z-index: 10;
+  gap: 2px;
+  height: 32px;
+  padding: 0 2px;
+  background: #fff;
+  border: 0.5px solid rgba(0, 0, 0, 0.08);
+  border-radius: 999px;
+  position: relative;
+  width: fit-content;
 }
 
 .select-ask-mindmap-toolbar-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: #4e5969;
+  border-radius: 999px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  outline: none;
+  padding: 6px;
+  border: none;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.5);
+  transition: background-color 0.15s;
 }
 
 .select-ask-mindmap-toolbar-btn:hover {
-  background: #f2f3f5;
-  color: #1d2129;
+  background-color: rgba(0, 0, 0, 0.06) !important;
+  color: rgba(0, 0, 0, 0.8);
 }
 
 .select-ask-mindmap-toolbar-btn:active {
-  background: #e5e6eb;
+  background-color: rgba(0, 0, 0, 0.15) !important;
+}
+
+/* 导出按钮：图标+下拉箭头组合 */
+.select-ask-mindmap-toolbar-btn > svg:first-child {
+  width: 16px;
+  height: 16px;
+}
+
+/* 下拉箭头 */
+.select-ask-mindmap-toolbar-btn > svg:last-child {
+  width: 10px !important;
+  height: 10px !important;
+  color: rgba(0, 0, 0, 0.35) !important;
 }
 
 .select-ask-mindmap-toolbar-divider {
   width: 1px;
-  height: 20px;
-  background: #e5e6eb;
-  margin: 0 2px;
+  height: 16px;
+  background: rgba(0, 0, 0, 0.12);
+  margin: 0 0;
 }
 
 /* 缩放级别显示 */
@@ -351,27 +361,28 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 40px;
-  padding: 0 6px;
+  min-width: 36px;
   height: 24px;
+  padding: 0 6px;
   font-size: 12px;
   font-weight: 500;
-  color: #4e5969;
+  color: rgba(0, 0, 0, 0.55);
   background: #f2f3f5;
   border-radius: 6px;
   user-select: none;
 }
 
-/* 导出下拉菜单 */
+/* 导出下拉菜单 — 对标豆包：圆角 16px + 阴影 */
 .select-ask-mindmap-export-dropdown {
   position: absolute;
-  bottom: 52px;
-  right: 12px;
-  min-width: 160px;
+  bottom: 40px;
+  left: 0;
+  min-width: 140px;
   background: #ffffff;
-  border-radius: 10px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
-  padding: 6px;
+  border: 0.5px solid rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 10px 20px 0 rgba(0, 0, 0, 0.08);
+  padding: 4px;
   z-index: 11;
   animation: select-ask-mindmap-dropdown-enter 0.15s ease-out;
 }
@@ -390,25 +401,26 @@
 .select-ask-mindmap-export-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
-  padding: 8px 12px;
+  padding: 8px 8px 8px 10px;
   border: none;
-  border-radius: 6px;
+  border-radius: 12px;
   background: transparent;
   color: #1d2129;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   transition: background 0.15s ease;
   text-align: left;
 }
 
 .select-ask-mindmap-export-item:hover {
-  background: #f2f3f5;
+  background: rgba(0, 0, 0, 0.06);
 }
 
 .select-ask-mindmap-export-item:active {
-  background: #e5e6eb;
+  background: rgba(0, 0, 0, 0.15);
 }
 
 .select-ask-mindmap-export-item svg {
@@ -421,4 +433,108 @@
 .chat-message .select-ask-mindmap-container {
   margin-top: 8px;
   min-height: 300px;
+}
+
+/* ===== 全屏模式工具栏 — 对标豆包 ===== */
+/* 豆包结构: header 48px 白色底部边框，左侧 actionMenu(文字按钮)，右侧 otherBtnMenu(图标按钮) */
+
+.select-ask-mindmap-toolbar--fullscreen {
+  position: static;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+  padding: 0 16px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+/* 左侧操作菜单 — 文字按钮 */
+.select-ask-mindmap-toolbar__action-menu {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+}
+
+/* 全屏模式文字按钮 — 对标 doubao actionMenu */
+.select-ask-mindmap-toolbar__text-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 36px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.8);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 0.15s;
+}
+
+.select-ask-mindmap-toolbar__text-btn:hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+.select-ask-mindmap-toolbar__text-btn:active {
+  background-color: rgba(0, 0, 0, 0.15) !important;
+}
+
+.select-ask-mindmap-toolbar__text-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.select-ask-mindmap-toolbar__text-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* 右侧图标按钮 — 对标 doubao otherBtnMenu */
+.select-ask-mindmap-toolbar__other-btns {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* 全屏模式图标按钮 */
+.select-ask-mindmap-toolbar__icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.8);
+  cursor: pointer;
+  outline: none;
+  transition: background-color 0.15s;
+}
+
+.select-ask-mindmap-toolbar__icon-btn:hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+.select-ask-mindmap-toolbar__icon-btn:active {
+  background-color: rgba(0, 0, 0, 0.15) !important;
+}
+
+/* 全屏模式分隔线 — 垂直 */
+.select-ask-mindmap-toolbar-divider--vertical {
+  width: 1px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.12);
 }

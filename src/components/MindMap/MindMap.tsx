@@ -121,7 +121,7 @@ export default function MindMap({ markdown, onReady, onError, onFullscreen }: Mi
   }
 
   return (
-    <div className="select-ask-mindmap-container" style={{ position: 'relative' }}>
+    <div className="select-ask-mindmap-container" style={{ position: 'relative', minHeight: '400px' }}>
       {loading && (
         <div className="select-ask-mindmap-loading" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fafbfc', zIndex: 10 }}>
           <div className="select-ask-mindmap-loading-spinner" />
@@ -136,17 +136,20 @@ export default function MindMap({ markdown, onReady, onError, onFullscreen }: Mi
         height="100%"
       />
       {!loading && !error && (
-        <MindMapToolbar
-          markmapRef={markmapRef}
-          svgRef={svgRef}
-          downloadPng={downloadPng}
-          downloadSvg={downloadSvg}
-          copyPngToClipboard={copyPngToClipboard}
-          copyRichText={copyRichText}
-          copySvg={copySvg}
-          exporting={exporting}
-          onFullscreen={onFullscreen}
-        />
+        <div style={{ position: 'absolute', bottom: 12, right: 12, zIndex: 10 }}>
+          <MindMapToolbar
+            markmapRef={markmapRef}
+            svgRef={svgRef}
+            downloadPng={downloadPng}
+            downloadSvg={downloadSvg}
+            copyPngToClipboard={copyPngToClipboard}
+            copyRichText={copyRichText}
+            copySvg={copySvg}
+            exporting={exporting}
+            onFullscreen={onFullscreen}
+            variant="inline"
+          />
+        </div>
       )}
     </div>
   );

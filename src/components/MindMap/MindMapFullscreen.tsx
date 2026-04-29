@@ -107,6 +107,7 @@ export default function MindMapFullscreen({ markdown, onClose }: MindMapFullscre
           copySvg={copySvg}
           exporting={exporting}
           onClose={handleClose}
+          variant="fullscreen"
         />
       </div>
 
