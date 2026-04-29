@@ -517,7 +517,7 @@ export function useChatStream(): UseChatStreamReturn {
       } else if (message.type === 'LLM_STREAM_END') {
         const match = answerContent.match(/```markdown\s*([\s\S]*?)```|```\s*([\s\S]*?)```/);
         let content = match ? (match[1] || match[2]) : answerContent;
-        const finalKey = `mindmap_${startTime}`;
+        const finalKey = startTime.toString();
         content = content.trim();
         if (content.length > 20) {
           setMindMapInline(pm => { const m = new Map(pm); m.delete(pendingKey); m.set(finalKey, content); return m; });
@@ -584,7 +584,7 @@ export function useChatStream(): UseChatStreamReturn {
       } else if (message.type === 'LLM_STREAM_END') {
         const match = answerContent.match(/```markdown\s*([\s\S]*?)```|```\s*([\s\S]*?)```/);
         let content = match ? (match[1] || match[2]) : answerContent;
-        const finalKey = `mindmap_${startTime}`;
+        const finalKey = startTime.toString();
         content = content.trim();
         if (content.length > 20) {
           setMindMapInline(pm => { const m = new Map(pm); m.delete(pendingKey); m.set(finalKey, content); return m; });
