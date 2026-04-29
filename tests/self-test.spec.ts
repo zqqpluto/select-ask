@@ -205,11 +205,26 @@ test.describe('Popup 模型切换 + 重开回显', () => {
     await sidePanel.close();
   });
 
-  // 注意：脑图 debounce 渲染的 E2E 测试在当前 Playwright 环境下失败
-  // （mindmap-e2e.spec.ts 测试 4/5/6 也失败），原因可能是 extension
-  // 的 content script 在 test 页面未正确注入。
-  // debounce 逻辑的正确性通过代码审查保证：
-  // 1. latestVersionRef 确保跳过过时渲染请求
-  // 2. 300ms debounce 避免频繁重渲染
-  // 3. renderStable 函数的版本检查防止竞态
+  test('MindMap 渲染：验证 markmap SVG 节点和连线正确渲染', async () => {
+    // 独立 HTML 页面直接测试 markmap 渲染路径
+    // 绕过 extension API，验证 markmap-lib + markmap-view 渲染链
+
+    const MINDMAP_TEST = `file://${path.join(__dirname, 'fixtures', 'mindmap-render-test.html')}`;
+
+    const testPage = await context.newPage();
+    await testPage.goto(MINDMAP_TEST, { waitUntil: 'domcontentloaded' });
+
+    // 等待渲染完成（esm.sh 加载 + markmap 渲染）
+    await testPage.waitForTimeout(10000);
+
+    const result = await testPage.evaluate(() => window.__mindmapTestResult__);
+    console.log('Mindmap render result:', result);
+
+    expect(result.status).toBe('PASS');
+    expect(result.nodeCount).toBeGreaterThan(0);
+    expect(result.linkCount).toBeGreaterThan(0);
+    expect(result.hasNaN).toBe(false);
+
+    await testPage.close();
+  });
 });
