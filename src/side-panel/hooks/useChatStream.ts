@@ -292,7 +292,7 @@ export function useChatStream(): UseChatStreamReturn {
             }
             if (mindMapContent && mindMapContent.trim().length > 20) {
               // Replace pending key with final key, then clear content
-              const msgId = `mindmap_${start}`;
+              const msgId = start.toString();
               setMindMapInline(pm => {
                 const m = new Map(pm);
                 m.delete(pendingMindMapKey);
