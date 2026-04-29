@@ -11,23 +11,27 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import type { Markmap } from 'markmap-view';
 import { renderMindmap } from '../../utils/mindmap-renderer';
 import { createTransformer, transformMarkdown } from './mindmap-utils';
+import { useMindMapExport } from './useMindMapExport';
+import MindMapToolbar from './MindMapToolbar';
 
 interface MindMapProps {
   markdown: string;
   onReady?: () => void;
   onError?: (error: Error) => void;
+  onFullscreen?: () => void;
 }
 
 // 流式更新 debounce 时间（ms）
 // 豆包不存在此问题（一次性渲染），本项目需 300ms 防抖
 const STREAMING_DEBOUNCE_MS = 300;
 
-export default function MindMap({ markdown, onReady, onError }: MindMapProps) {
+export default function MindMap({ markdown, onReady, onError, onFullscreen }: MindMapProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const markmapRef = useRef<Markmap | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
+  const { downloadPng, copyPngToClipboard, copyRichText, copySvg, downloadSvg, exporting } = useMindMapExport(svgRef);
 
   // 当前正在渲染的 markdown 版本（用于跳过过时的流式更新）
   const renderingVersionRef = useRef(0);
@@ -131,6 +135,19 @@ export default function MindMap({ markdown, onReady, onError }: MindMapProps) {
         width="100%"
         height="100%"
       />
+      {!loading && !error && (
+        <MindMapToolbar
+          markmapRef={markmapRef}
+          svgRef={svgRef}
+          downloadPng={downloadPng}
+          downloadSvg={downloadSvg}
+          copyPngToClipboard={copyPngToClipboard}
+          copyRichText={copyRichText}
+          copySvg={copySvg}
+          exporting={exporting}
+          onFullscreen={onFullscreen}
+        />
+      )}
     </div>
   );
 }
