@@ -1,10 +1,14 @@
 /**
  * 脑图全屏集成组件
- * 通过 content script 在页面层级渲染真正的全屏覆盖层
+ * 对标 MindMapFullscreen：自渲染 markmap + 工具栏 + 导出
+ * 区别：在 side-panel 内直接渲染（不用 createPortal）
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import MindMapToolbar from './MindMapToolbar';
+import { renderMindmap } from '../../utils/mindmap-renderer';
+import type { Markmap } from 'markmap-view';
+import { useMindMapExport } from '../../components/MindMap/useMindMapExport';
+import MindMapToolbar from '../../components/MindMap/MindMapToolbar';
 
 interface Props {
   mindMapMarkdown: string | null;
@@ -12,9 +16,14 @@ interface Props {
 }
 
 export default function MindMapIntegration({ mindMapMarkdown, onClose }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [entering, setEntering] = useState(true);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const markmapRef = useRef<Markmap | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
+  const [entering, setEntering] = useState(true);
+  const [retryKey, setRetryKey] = useState(0);
+  const { downloadPng, copyPngToClipboard, copyRichText, copySvg, downloadSvg, exporting } = useMindMapExport(svgRef);
 
   useEffect(() => {
     const t = setTimeout(() => setEntering(false), 300);
@@ -23,46 +32,110 @@ export default function MindMapIntegration({ mindMapMarkdown, onClose }: Props) 
 
   useEffect(() => {
     if (!mindMapMarkdown) return;
-    // 发消息给 content script 在页面层级渲染全屏脑图
-    chrome.runtime.sendMessage({
-      type: 'MINDMAP_FULLSCREEN',
-      markdown: mindMapMarkdown,
-    });
+    setClosing(false);
+    setEntering(true);
+    const t = setTimeout(() => setEntering(false), 300);
+    return () => clearTimeout(t);
+  }, [mindMapMarkdown]);
 
-    // 监听 content script 的全屏关闭事件
-    const handler = (message: any) => {
-      if (message.type === 'MINDMAP_FULLSCREEN_CLOSED') {
-        onClose();
+  const handleClose = useCallback(() => {
+    setClosing(true);
+    setTimeout(() => onClose(), 200);
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!mindMapMarkdown) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleClose();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [mindMapMarkdown, handleClose]);
+
+  useEffect(() => {
+    if (!svgRef.current || !mindMapMarkdown) return;
+    let cancelled = false;
+    let dispose: (() => void) | null = null;
+
+    async function init() {
+      try {
+        const container = svgRef.current!.parentElement || svgRef.current;
+        const result = await renderMindmap(svgRef.current!, mindMapMarkdown, container as HTMLElement);
+        if (cancelled) {
+          result.dispose();
+          return;
+        }
+
+        markmapRef.current = result.markmap;
+        dispose = result.dispose;
+        setLoading(false);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : String(err));
+        }
       }
-    };
-    chrome.runtime.onMessage.addListener(handler);
+    }
+
+    setLoading(true);
+    setError(null);
+    init();
     return () => {
-      chrome.runtime.onMessage.removeListener(handler);
+      cancelled = true;
+      dispose?.();
     };
-  }, [mindMapMarkdown, onClose]);
+  }, [mindMapMarkdown, retryKey]);
+
+  const handleRetry = useCallback(() => {
+    setError(null);
+    setLoading(true);
+    setRetryKey((k) => k + 1);
+  }, []);
 
   if (!mindMapMarkdown) return null;
 
-  // 在 side-panel 内也显示一个简易的占位，让用户知道脑图已全屏打开
-  const content = (
-    <div className={`doubao-fullscreen-overlay${closing ? ' exit' : ''}${entering ? ' enter' : ''}`} onClick={() => onClose()}>
-      <div className="doubao-fullscreen-header">
-        <div className="doubao-header-left">
-          <span className="doubao-title">脑图</span>
-        </div>
-      </div>
-      <div className="doubao-fullscreen-content">
-        <div className="doubao-mindmap-loading">
-          <div className="doubao-mindmap-loading-spinner" />
-          <span>已在页面全屏打开...</span>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
-    <div ref={containerRef} className="side-panel-mindmap-fullscreen-placeholder">
-      {content}
+    <div className="side-panel-mindmap-fullscreen-placeholder">
+      <div className={`doubao-fullscreen-overlay${closing ? ' exit' : ''}${entering ? ' enter' : ''}`}>
+        <div className="doubao-fullscreen-header">
+          <div className="doubao-header-left">
+            <span className="doubao-title">脑图</span>
+          </div>
+          <MindMapToolbar
+            markmapRef={markmapRef}
+            svgRef={svgRef}
+            downloadPng={downloadPng}
+            downloadSvg={downloadSvg}
+            copyPngToClipboard={copyPngToClipboard}
+            copyRichText={copyRichText}
+            copySvg={copySvg}
+            exporting={exporting}
+            onClose={handleClose}
+          />
+        </div>
+
+        <div className="doubao-fullscreen-content">
+          <div className="doubao-diagram-content">
+            {loading && (
+              <div className="doubao-mindmap-loading">
+                <div className="doubao-mindmap-loading-spinner" />
+                <span>正在生成脑图...</span>
+              </div>
+            )}
+            {error && (
+              <div className="doubao-mindmap-error">
+                <span>脑图生成失败</span>
+                <span style={{ fontSize: 12, color: '#86909c' }}>{error}</span>
+                <button className="doubao-retry-btn" onClick={handleRetry}>重试</button>
+              </div>
+            )}
+            <svg
+              ref={svgRef}
+              className="doubao-mindmap-svg"
+              style={{ width: '100%', height: '100%', display: loading || error ? 'none' : 'block' }}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
