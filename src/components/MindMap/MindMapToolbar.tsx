@@ -194,6 +194,53 @@ export default function MindMapToolbar({
   const handleZoomOut = useCallback(() => markmapRef.current?.rescale(0.8), [markmapRef]);
   const handleFit = useCallback(() => markmapRef.current?.fit(), [markmapRef]);
 
+  const handleExpandAll = useCallback(() => {
+    const mm = markmapRef.current;
+    if (!mm || !mm.state.data) return;
+    const data = mm.state.data;
+    function setFold(node: any, fold: number) {
+      if (node.children) {
+        node.payload = { ...node.payload, fold };
+        node.children.forEach((child: any) => setFold(child, fold));
+      }
+    }
+    data.children?.forEach((child: any) => setFold(child, 0));
+    void mm.setData(data as any).then(() => mm.fit());
+  }, [markmapRef]);
+
+  const handleCollapseAll = useCallback(() => {
+    const mm = markmapRef.current;
+    if (!mm || !mm.state.data) return;
+    const data = mm.state.data;
+    function setFold(node: any) {
+      if (node.children && node.children.length > 0) {
+        node.payload = { ...node.payload, fold: 1 };
+        node.children.forEach((child: any) => setFold(child));
+      }
+    }
+    data.children?.forEach((child: any) => setFold(child));
+    void mm.setData(data as any).then(() => mm.fit());
+  }, [markmapRef]);
+
+  function ExpandIcon() {
+    return (
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="15 3 21 3 21 9"/>
+        <polyline points="9 21 3 21 3 15"/>
+        <line x1="21" y1="3" x2="14" y2="10"/>
+        <line x1="3" y1="21" x2="10" y2="14"/>
+      </svg>
+    );
+  }
+
+  function CollapseIcon() {
+    return (
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M4 14h6m0 0v6m0-6H4m0 0V8m16 6h-6m0 0v6m0-6h6m0 0V8M8 10V4h6"/>
+      </svg>
+    );
+  }
+
   /* ---- 内联模式（药丸形） ---- */
   if (variant === 'inline') {
     return (
@@ -229,6 +276,14 @@ export default function MindMapToolbar({
 
         <button className="select-ask-mindmap-toolbar-btn" title="适配" onClick={handleFit}>
           <FitIcon />
+        </button>
+
+        <button className="select-ask-mindmap-toolbar-btn" title="展开全部" onClick={handleExpandAll}>
+          <ExpandIcon />
+        </button>
+
+        <button className="select-ask-mindmap-toolbar-btn" title="折叠全部" onClick={handleCollapseAll}>
+          <CollapseIcon />
         </button>
 
         {onFullscreen && (
